@@ -1,0 +1,18 @@
+{
+    "name": "bartoffw/simple-trader",
+    "description": "Test your trading strategies easily in PHP",
+    "type": "library",
+    "license": "GPL-3.0",
+    "autoload": {
+        "psr-4": {
+            "SimpleTrader\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Bartosz Wójcik",
+            "email": "bartek@procreative.eu"
+        }
+    ],
+    "require": {}
+}
