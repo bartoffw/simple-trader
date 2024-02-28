@@ -11,7 +11,7 @@ class Backtester
     protected BaseStrategy $strategy;
     protected Assets $assets;
 
-    public function __construct(protected Resolution $resolution, protected DateTime $startTime, protected ?DateTime $endTime = null)
+    public function __construct(protected Resolution $resolution)
     {
     }
 
@@ -25,16 +25,21 @@ class Backtester
         $this->strategy = $strategy;
     }
 
-    public function runBacktest(DateTime $startTime, ?DateTime $endTime = null)
+    public function runBacktest(Assets $assets, DateTime $startTime, ?DateTime $endTime = null)
     {
         if (!isset($this->strategy)) {
             throw new LoaderException('Strategy is not set');
         }
-        if (!isset($this->assets) || $this->assets->isEmpty()) {
+        if ($assets->isEmpty()) {
             throw new LoaderException('No assets defined');
         }
 
         while ($endTime === null || $startTime->getCurrentDateTime() <= $endTime->getDateTime()) {
+            $currentDateTime = new DateTime($startTime->getCurrentDateTime());
+            $this->strategy->onOpen($assets->getLimitedToDate($currentDateTime, Event::OnOpen), $currentDateTime);
+            $this->strategy->onClose($assets->getLimitedToDate($currentDateTime, Event::OnClose), $currentDateTime);
+
+            $startTime->increaseByStep($this->resolution);
             // TODO
         }
     }
