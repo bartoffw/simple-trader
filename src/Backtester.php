@@ -2,12 +2,15 @@
 
 namespace SimpleTrader;
 
-use SimpleTrader\Resolution;
 use SimpleTrader\Exceptions\LoaderException;
+use SimpleTrader\Helpers\DateTime;
+use SimpleTrader\Helpers\Resolution;
+use SimpleTrader\Loggers\Level;
+use SimpleTrader\Loggers\LoggerInterface;
 
 class Backtester
 {
-    protected array $loggers;
+    protected ?LoggerInterface $logger = null;
     protected BaseStrategy $strategy;
     protected Assets $assets;
 
@@ -15,9 +18,9 @@ class Backtester
     {
     }
 
-    public function setLoggers(array $loggers)
+    public function setLogger(LoggerInterface $logger)
     {
-        $this->loggers = $loggers;
+        $this->logger = $logger;
     }
 
     public function setStrategy(BaseStrategy $strategy)
@@ -33,8 +36,11 @@ class Backtester
         if ($assets->isEmpty()) {
             throw new LoaderException('No assets defined');
         }
+        $this->strategy->setLogger($this->logger);
 
+        $this->logger?->log(Level::Debug, 'Starting the backtest');
         while ($endTime === null || $startTime->getCurrentDateTime() <= $endTime->getDateTime()) {
+            $this->logger?->log(Level::Debug, 'Backtest day: ' . $startTime->getCurrentDateTime());
             $currentDateTime = new DateTime($startTime->getCurrentDateTime());
             $this->strategy->onOpen($assets->getLimitedToDate($currentDateTime, Event::OnOpen), $currentDateTime);
             $this->strategy->onClose($assets->getLimitedToDate($currentDateTime, Event::OnClose), $currentDateTime);

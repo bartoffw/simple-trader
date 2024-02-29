@@ -3,6 +3,7 @@
 namespace SimpleTrader;
 
 use SimpleTrader\Exceptions\LoaderException;
+use SimpleTrader\Helpers\DateTime;
 use SimpleTrader\Loaders\LoaderInterface;
 
 class Assets
@@ -27,6 +28,11 @@ class Assets
         $this->assetList[$ticker] = $loader;
     }
 
+    public function getAssets(): array
+    {
+        return $this->assetList;
+    }
+
     public function isEmpty():bool
     {
         return empty($this->assetList);
@@ -37,10 +43,7 @@ class Assets
         $limitedAssets = new Assets();
         /** @var LoaderInterface $asset */
         foreach ($this->assetList as $asset) {
-            $limitedAsset = $asset->limitToDate($dateTime, $event);
-            if ($event === Event::OnOpen) {
-                // TODO: need to overwrite the last day to show all open on OHLC
-            }
+            $limitedAsset = $asset::fromLoaderLimited($asset, $dateTime, $event);
             $limitedAssets->addAsset($limitedAsset, $asset->getFromDate());
         }
         return $limitedAssets;

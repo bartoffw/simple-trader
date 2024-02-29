@@ -2,35 +2,36 @@
 
 namespace SimpleTrader\Loggers;
 
+
 class Console implements LoggerInterface
 {
-    protected static function getDateTime()
+    protected function getDateTime()
     {
         return date('Y-m-d H:i:s');
     }
 
-    protected static function outputString(string $level, string $text)
+    public function log(Level $level, string $text)
     {
-        echo '[' . self::getDateTime() . '][' . $level . '] ' . $text . "\n";
+        echo '[' . self::getDateTime() . '][' . $level->value . '] ' . $text . "\n";
     }
 
-    public static function logDebug(string $debug)
+    public function logDebug(string $debug)
     {
-        self::outputString('DEBUG', $debug);
+        $this->log(Level::Debug, $debug);
     }
 
-    public static function logInfo(string $info)
+    public function logInfo(string $info)
     {
-        self::outputString('INFO', $info);
+        $this->log(Level::Info, $info);
     }
 
-    public static function logWarning(string $warning)
+    public function logWarning(string $warning)
     {
-        self::outputString('WARNING', $warning);
+        $this->log(Level::Warning, $warning);
     }
 
-    public static function logError(string $error)
+    public function logError(string $error)
     {
-        self::outputString('ERROR', $error);
+        $this->log(Level::Error, $error);
     }
 }

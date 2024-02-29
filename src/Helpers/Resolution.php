@@ -1,6 +1,6 @@
 <?php
 
-namespace SimpleTrader;
+namespace SimpleTrader\Helpers;
 
 enum Resolution {
     case Tick;

@@ -2,8 +2,9 @@
 
 namespace SimpleTrader\Loaders;
 
-use SimpleTrader\DateTime;
 use SimpleTrader\Event;
+use SimpleTrader\Helpers\DateTime;
+use SimpleTrader\Helpers\Ohlc;
 
 class BaseLoader implements LoaderInterface
 {
@@ -40,9 +41,18 @@ class BaseLoader implements LoaderInterface
         return [];
     }
 
-    public function limitToDate(DateTime $dateTime, Event $event): LoaderInterface
+    public static function fromLoaderLimited(LoaderInterface $loader, DateTime $limitToDate, Event $event): static
     {
-        $this->isLoaded = true;
-        return $this;
+        return new static();
+    }
+
+    public function getDateField(): string
+    {
+        return '';
+    }
+
+    public function getCurrentValues(DateTime $dateTime): Ohlc
+    {
+        return new Ohlc($dateTime, 0, 0, 0, 0);
     }
 }

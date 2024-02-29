@@ -1,8 +1,6 @@
 <?php
 
-namespace SimpleTrader;
-
-use SimpleTrader\Resolution;
+namespace SimpleTrader\Helpers;
 
 class DateTime
 {
