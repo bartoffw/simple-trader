@@ -14,5 +14,8 @@
             "email": "bartek@procreative.eu"
         }
     ],
-    "require": {}
+    "require": {
+      "php": ">=8.3",
+      "ext-sqlite3": "*"
+    }
 }

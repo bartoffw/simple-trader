@@ -4,11 +4,13 @@ namespace SimpleTrader;
 
 use SimpleTrader\Exceptions\LoaderException;
 use SimpleTrader\Helpers\DateTime;
-use SimpleTrader\Loaders\LoaderInterface;
+use SimpleTrader\Helpers\Asset;
+use SimpleTrader\Loaders\SQLite;
 
 class Assets
 {
     protected array $assetList = [];
+    protected SQLite $loader;
 
 
     public function __construct()
@@ -16,16 +18,18 @@ class Assets
 
     }
 
-    public function addAsset(LoaderInterface $loader, DateTime $fromDate, $replace = false):void
+    public function setLoader(SQLite $loader): void
     {
-        $ticker = $loader->getTicker();
+        $this->loader = $loader;
+    }
+
+    public function addAsset(Asset $asset, $replace = false): void
+    {
+        $ticker = $asset->getTicker();
         if (isset($this->assetList[$ticker]) && !$replace) {
             throw new LoaderException('This asset is already loaded: ' . $ticker);
         }
-        if (!$loader->isLoaded()) {
-            $loader->loadData($fromDate);
-        }
-        $this->assetList[$ticker] = $loader;
+        $this->assetList[$ticker] = $asset;
     }
 
     public function getAssets(): array
@@ -33,18 +37,17 @@ class Assets
         return $this->assetList;
     }
 
-    public function isEmpty():bool
+    public function isEmpty(): bool
     {
         return empty($this->assetList);
     }
 
-    public function getLimitedToDate(DateTime $dateTime, Event $event):Assets
+    public function getAssetsForDates(DateTime $startTime, DateTime $endTime, Event $event): Assets
     {
         $limitedAssets = new Assets();
-        /** @var LoaderInterface $asset */
+        /** @var Asset $asset */
         foreach ($this->assetList as $asset) {
-            $limitedAsset = $asset::fromLoaderLimited($asset, $dateTime, $event);
-            $limitedAssets->addAsset($limitedAsset, $asset->getFromDate());
+            $limitedAssets->addAsset($this->loader->getAsset($asset->getTicker(), $startTime, $endTime, $event));
         }
         return $limitedAssets;
     }

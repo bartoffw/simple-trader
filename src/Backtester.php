@@ -42,8 +42,9 @@ class Backtester
         while ($endTime === null || $startTime->getCurrentDateTime() <= $endTime->getDateTime()) {
             $this->logger?->log(Level::Debug, 'Backtest day: ' . $startTime->getCurrentDateTime());
             $currentDateTime = new DateTime($startTime->getCurrentDateTime());
-            $this->strategy->onOpen($assets->getLimitedToDate($currentDateTime, Event::OnOpen), $currentDateTime);
-            $this->strategy->onClose($assets->getLimitedToDate($currentDateTime, Event::OnClose), $currentDateTime);
+
+            $this->strategy->onOpen($assets->getAssetsForDates($startTime, $currentDateTime, Event::OnOpen), $currentDateTime);
+            $this->strategy->onClose($assets->getAssetsForDates($startTime, $currentDateTime, Event::OnClose), $currentDateTime);
 
             $startTime->increaseByStep($this->resolution);
             // TODO
