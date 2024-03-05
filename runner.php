@@ -14,8 +14,7 @@ use SimpleTrader\TestStrategy;
 
 
 $fromDate = new DateTime('2020-01-01');
-$toDate = new DateTime('2023-01-31');
-$resolution = Resolution::Daily;
+$toDate = new DateTime('2020-01-31');
 
 $logger = new Console();
 try {
@@ -23,9 +22,12 @@ try {
     $assets->setLoader(new SQLite(__DIR__ . '/securities.sqlite'));
     $assets->addAsset(new Asset('QQQ3'));
 
-    $backtest = new Backtester($resolution);
+    $strategy = new TestStrategy();
+    $strategy->setCapital('10000');
+
+    $backtest = new Backtester(Resolution::Daily);
     $backtest->setLogger($logger);
-    $backtest->setStrategy(new TestStrategy());
+    $backtest->setStrategy($strategy);
     $backtest->runBacktest($assets, $fromDate, $toDate);
 
 } catch (\Exception $e) {

@@ -4,8 +4,61 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2687a81069818e460111f2d7bd7812c2",
-    "packages": [],
+    "content-hash": "a4d73bec165aac6ef5b12a02b72acaf6",
+    "packages": [
+        {
+            "name": "lupecode/php-trader-native",
+            "version": "v2.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/LupeCode/phpTraderNative.git",
+                "reference": "7548d4d1b2bab55cebcf38fc195fa460bcd7d70e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/LupeCode/phpTraderNative/zipball/7548d4d1b2bab55cebcf38fc195fa460bcd7d70e",
+                "reference": "7548d4d1b2bab55cebcf38fc195fa460bcd7d70e",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.1.0"
+            },
+            "require-dev": {
+                "ext-ds": "*",
+                "ext-trader": ">=0.4.1",
+                "phpbench/phpbench": "~1.2.14",
+                "phpunit/phpunit": "~10.3.1"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "source/polyfill.php"
+                ],
+                "psr-4": {
+                    "LupeCode\\phpTraderNative\\": "source/",
+                    "LupeCode\\phpTraderNativeTest\\": "tests/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-3.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Joshua Lopez",
+                    "email": "joshua@lupecode.com",
+                    "homepage": "https://github.com/jb-lopez",
+                    "role": "Developer"
+                }
+            ],
+            "description": "An native version of the PHP Trader extension.",
+            "support": {
+                "issues": "https://github.com/LupeCode/phpTraderNative/issues",
+                "source": "https://github.com/LupeCode/phpTraderNative/tree/v2.1.0"
+            },
+            "time": "2023-11-26T19:16:53+00:00"
+        }
+    ],
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",

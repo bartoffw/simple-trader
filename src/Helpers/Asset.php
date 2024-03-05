@@ -2,13 +2,34 @@
 
 namespace SimpleTrader\Helpers;
 
+use LupeCode\phpTraderNative\TraderFriendly;
 use SimpleTrader\Event;
 
 class Asset
 {
+    protected bool $isLoaded = false;
+    protected array $opens = [];
+    protected array $highs = [];
+    protected array $lows = [];
+    protected array $closes = [];
+
+
     public function __construct(protected string $ticker, protected array $data = [], protected ?Event $event = null)
     {
+        if (!empty($this->data)) {
+            $this->isLoaded = true;
+        }
+        foreach ($this->data as $element) {
+            $this->opens[] = $element['open'];
+            $this->highs[] = $element['high'];
+            $this->lows[] = $element['low'];
+            $this->closes[] = $element['close'];
+        }
+    }
 
+    public function isLoaded(): bool
+    {
+        return $this->isLoaded;
     }
 
     public function getTicker(): string
@@ -24,5 +45,37 @@ class Asset
     public function getEvent(): ?Event
     {
         return $this->event;
+    }
+
+    public function getLatestValues(): ?Ohlc
+    {
+        if ($this->isLoaded()) {
+            $dateTime = new DateTime(array_key_last($this->data));
+            $element = end($this->data);
+            return $this->event === Event::OnOpen ?
+                new Ohlc($dateTime, $element['open'], $element['open'], $element['open'], $element['open']) :
+                new Ohlc($dateTime, $element['open'], $element['high'], $element['low'], $element['close'], $element['volume']);
+        }
+        return null;
+    }
+
+    public function getOpens(): array
+    {
+        return $this->opens;
+    }
+
+    public function getHighs(): array
+    {
+        return $this->highs;
+    }
+
+    public function getLows(): array
+    {
+        return $this->lows;
+    }
+
+    public function getCloses(): array
+    {
+        return $this->closes;
     }
 }

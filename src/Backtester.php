@@ -2,7 +2,8 @@
 
 namespace SimpleTrader;
 
-use SimpleTrader\Exceptions\LoaderException;
+use ReflectionMethod;
+use SimpleTrader\Exceptions\BacktesterException;
 use SimpleTrader\Helpers\DateTime;
 use SimpleTrader\Helpers\Resolution;
 use SimpleTrader\Loggers\Level;
@@ -18,12 +19,12 @@ class Backtester
     {
     }
 
-    public function setLogger(LoggerInterface $logger)
+    public function setLogger(LoggerInterface $logger): void
     {
         $this->logger = $logger;
     }
 
-    public function setStrategy(BaseStrategy $strategy)
+    public function setStrategy(BaseStrategy $strategy): void
     {
         $this->strategy = $strategy;
     }
@@ -31,21 +32,30 @@ class Backtester
     public function runBacktest(Assets $assets, DateTime $startTime, ?DateTime $endTime = null)
     {
         if (!isset($this->strategy)) {
-            throw new LoaderException('Strategy is not set');
+            throw new BacktesterException('Strategy is not set');
         }
         if ($assets->isEmpty()) {
-            throw new LoaderException('No assets defined');
+            throw new BacktesterException('No assets defined');
+        }
+        if (empty($this->strategy->getCapital())) {
+            throw new BacktesterException('No capital set');
         }
         $this->strategy->setLogger($this->logger);
+
+        $onOpenExists = (new ReflectionMethod($this->strategy, 'onOpen'))->getDeclaringClass()->getName() !== BaseStrategy::class;
+        $onCloseExists = (new ReflectionMethod($this->strategy, 'onClose'))->getDeclaringClass()->getName() !== BaseStrategy::class;
 
         $this->logger?->log(Level::Debug, 'Starting the backtest');
         while ($endTime === null || $startTime->getCurrentDateTime() <= $endTime->getDateTime()) {
             $this->logger?->log(Level::Debug, 'Backtest day: ' . $startTime->getCurrentDateTime());
             $currentDateTime = new DateTime($startTime->getCurrentDateTime());
 
-            $this->strategy->onOpen($assets->getAssetsForDates($startTime, $currentDateTime, Event::OnOpen), $currentDateTime);
-            $this->strategy->onClose($assets->getAssetsForDates($startTime, $currentDateTime, Event::OnClose), $currentDateTime);
-
+            if ($onOpenExists) {
+                $this->strategy->onOpen($assets->getAssetsForDates($startTime, $currentDateTime, Event::OnOpen), $currentDateTime);
+            }
+            if ($onCloseExists) {
+                $this->strategy->onClose($assets->getAssetsForDates($startTime, $currentDateTime, Event::OnClose), $currentDateTime);
+            }
             $startTime->increaseByStep($this->resolution);
             // TODO
         }

@@ -14,15 +14,14 @@ class DateTime
         $this->currentDateTime = $this->dateTime;
     }
 
-    public function getDateTime(?Resolution $resolution = null):string
+    public function getDateTime():string
     {
-        if ($resolution === null) {
-            return $this->dateTime;
-        }
-        return match($resolution) {
-            Resolution::Daily, Resolution::Weekly, Resolution::Monthly => date('Y-m-d', strtotime($this->dateTime)),
-            default => $this->dateTime
-        };
+        return $this->dateTime;
+    }
+
+    public function getDate(): string
+    {
+        return date('Y-m-d', strtotime($this->dateTime));
     }
 
     public function getCurrentDateTime():string

@@ -1,21 +1,23 @@
 {
-    "name": "bartoffw/simple-trader",
-    "description": "Test your trading strategies easily in PHP",
-    "type": "library",
-    "license": "GPL-3.0",
-    "autoload": {
-        "psr-4": {
-            "SimpleTrader\\": "src/"
-        }
-    },
-    "authors": [
-        {
-            "name": "Bartosz Wójcik",
-            "email": "bartek@procreative.eu"
-        }
-    ],
-    "require": {
-      "php": ">=8.3",
-      "ext-sqlite3": "*"
+  "name": "bartoffw/simple-trader",
+  "description": "Test your trading strategies easily in PHP",
+  "type": "library",
+  "license": "GPL-3.0",
+  "autoload": {
+    "psr-4": {
+      "SimpleTrader\\": "src/"
     }
+  },
+  "authors": [
+    {
+      "name": "Bartosz Wójcik",
+      "email": "bartek@procreative.eu"
+    }
+  ],
+  "require": {
+    "php": ">=8.3",
+    "ext-sqlite3": "*",
+    "ext-bcmath": "*",
+    "lupecode/php-trader-native": "^2.1"
+  }
 }

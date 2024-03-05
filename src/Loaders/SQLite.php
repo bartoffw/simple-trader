@@ -78,6 +78,8 @@ class SQLite
                 date_time >= :start_date
                 " . ($toDate ?
                 'AND date_time <= :end_date' : '') . "
+            ORDER BY
+                date_time ASC
             ;
         ");
         $stmt->bindValue(':start_date', $fromDate->getDateTime());

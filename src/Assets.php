@@ -32,6 +32,12 @@ class Assets
         $this->assetList[$ticker] = $asset;
     }
 
+    public function getAsset(string $ticker): ?Asset
+    {
+        return array_key_exists($ticker, $this->assetList) ?
+            $this->assetList[$ticker] : null;
+    }
+
     public function getAssets(): array
     {
         return $this->assetList;
