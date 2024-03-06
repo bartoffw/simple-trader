@@ -47,6 +47,11 @@ class Asset
         return $this->event;
     }
 
+    public function hasValues(int $minLength): bool
+    {
+        return $this->isLoaded() && count($this->data) >= $minLength;
+    }
+
     public function getLatestValues(): ?Ohlc
     {
         if ($this->isLoaded()) {
@@ -55,6 +60,15 @@ class Asset
             return $this->event === Event::OnOpen ?
                 new Ohlc($dateTime, $element['open'], $element['open'], $element['open'], $element['open']) :
                 new Ohlc($dateTime, $element['open'], $element['high'], $element['low'], $element['close'], $element['volume']);
+        }
+        return null;
+    }
+
+    public function getCurrentValue(): ?string
+    {
+        if ($this->isLoaded() && $this->event !== null) {
+            $element = end($this->data);
+            return $this->event == Event::OnOpen ? $element['open'] : $element['close'];
         }
         return null;
     }

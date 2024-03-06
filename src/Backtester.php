@@ -59,5 +59,7 @@ class Backtester
             $startTime->increaseByStep($this->resolution);
             // TODO
         }
+        $currentDateTime = new DateTime($startTime->getCurrentDateTime());
+        $this->strategy->onStrategyEnd($assets->getAssetsForDates($startTime, $currentDateTime, Event::OnClose), $currentDateTime);
     }
 }

@@ -4,30 +4,30 @@ namespace SimpleTrader\Helpers;
 
 class Ohlc
 {
-    public function __construct(protected DateTime $dateTime, protected float $open, protected float $high,
-                                protected float $low, protected float $close, protected ?int $volume = 0) {}
+    public function __construct(protected DateTime $dateTime, protected string $open, protected string $high,
+                                protected string $low, protected string $close, protected ?int $volume = 0) {}
 
     public function getDateTime(): DateTime
     {
         return $this->dateTime;
     }
 
-    public function getOpen(): float
+    public function getOpen(): string
     {
         return $this->open;
     }
 
-    public function getHigh(): float
+    public function getHigh(): string
     {
         return $this->high;
     }
 
-    public function getLow(): float
+    public function getLow(): string
     {
         return $this->low;
     }
 
-    public function getClose(): float
+    public function getClose(): string
     {
         return $this->close;
     }

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a4d73bec165aac6ef5b12a02b72acaf6",
+    "content-hash": "b7cb3d8db8aee597721e930f07379037",
     "packages": [
         {
             "name": "lupecode/php-trader-native",
@@ -67,7 +67,8 @@
     "prefer-lowest": false,
     "platform": {
         "php": ">=8.3",
-        "ext-sqlite3": "*"
+        "ext-sqlite3": "*",
+        "ext-bcmath": "*"
     },
     "platform-dev": [],
     "plugin-api-version": "2.2.0"

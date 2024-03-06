@@ -53,6 +53,6 @@ class BaseLoader implements LoaderInterface
 
     public function getCurrentValues(DateTime $dateTime): Ohlc
     {
-        return new Ohlc($dateTime, 0, 0, 0, 0);
+        return new Ohlc($dateTime, '0', '0', '0', '0');
     }
 }
