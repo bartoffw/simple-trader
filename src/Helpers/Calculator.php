@@ -4,7 +4,7 @@ namespace SimpleTrader\Helpers;
 
 class Calculator
 {
-    public static function calculate()
+    public static function calculate(): string
     {
         $functions = 'sqrt';
         // list of | separated functions
@@ -13,7 +13,9 @@ class Calculator
 
         $argv = func_get_args();
         $string = str_replace(' ', '', '('.$argv[0].')');
-        $string = preg_replace('/\$([0-9\.]+)/e', '$argv[$1]', $string);
+        $string = preg_replace_callback('/\$([0-9\.]+)/', function ($matches) use ($argv) {
+            return $argv[$matches[1]];
+        }, $string);
         while (preg_match('/(('.$functions.')?)\(([^\)\(]*)\)/', $string, $match)) {
             while (
                 preg_match('/([0-9\.]+)(\^)([0-9\.]+)/', $match[3], $m) ||

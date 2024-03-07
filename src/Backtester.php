@@ -14,6 +14,9 @@ class Backtester
     protected ?LoggerInterface $logger = null;
     protected BaseStrategy $strategy;
     protected Assets $assets;
+    protected string $backtestStarted;
+    protected string $backtestFinished;
+    protected string $lastBacktestTime;
 
     public function __construct(protected Resolution $resolution)
     {
@@ -29,6 +32,11 @@ class Backtester
         $this->strategy = $strategy;
     }
 
+    public function getLastBacktestTime(): string
+    {
+        return $this->lastBacktestTime;
+    }
+
     public function runBacktest(Assets $assets, DateTime $startTime, ?DateTime $endTime = null)
     {
         if (!isset($this->strategy)) {
@@ -41,6 +49,7 @@ class Backtester
             throw new BacktesterException('No capital set');
         }
         $this->strategy->setLogger($this->logger);
+        $this->backtestStarted = microtime(true);
 
         $onOpenExists = (new ReflectionMethod($this->strategy, 'onOpen'))->getDeclaringClass()->getName() !== BaseStrategy::class;
         $onCloseExists = (new ReflectionMethod($this->strategy, 'onClose'))->getDeclaringClass()->getName() !== BaseStrategy::class;
@@ -61,5 +70,8 @@ class Backtester
         }
         $currentDateTime = new DateTime($startTime->getCurrentDateTime());
         $this->strategy->onStrategyEnd($assets->getAssetsForDates($startTime, $currentDateTime, Event::OnClose), $currentDateTime);
+
+        $this->backtestFinished = microtime(true);
+        $this->lastBacktestTime = $this->backtestFinished - $this->backtestStarted;
     }
 }

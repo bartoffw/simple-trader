@@ -13,16 +13,17 @@ use SimpleTrader\Loggers\Level;
 use SimpleTrader\TestStrategy;
 
 
-$fromDate = new DateTime('2020-01-01');
-$toDate = new DateTime('2020-01-31');
+$fromDate = new DateTime('2019-12-01');
+$toDate = new DateTime('2023-12-31');
 
 $logger = new Console();
+$logger->setLevel(Level::Info);
 try {
     $assets = new Assets();
     $assets->setLoader(new SQLite(__DIR__ . '/securities.sqlite'));
     $assets->addAsset(new Asset('QQQ3'));
 
-    $strategy = new TestStrategy();
+    $strategy = new \SimpleTrader\MaSurferStrategy();
     $strategy->setCapital('10000');
 
     $backtest = new Backtester(Resolution::Daily);
@@ -30,8 +31,10 @@ try {
     $backtest->setStrategy($strategy);
     $backtest->runBacktest($assets, $fromDate, $toDate);
 
+    $logger->logInfo('Backtest run in ' . number_format($backtest->getLastBacktestTime(), 2) . 's');
+
 } catch (\Exception $e) {
-    $logger->log(Level::Error, $e->getMessage() . ' at ' . $e->getTraceAsString());
+    $logger->logError($e->getMessage() . ' at ' . $e->getTraceAsString());
 }
 
 
