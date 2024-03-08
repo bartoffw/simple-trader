@@ -64,6 +64,14 @@ class Asset
         return null;
     }
 
+    public function getLastDateTime(): ?string
+    {
+        if ($this->isLoaded()) {
+            return array_key_last($this->data);
+        }
+        return null;
+    }
+
     public function getCurrentValue(): ?string
     {
         if ($this->isLoaded() && $this->event !== null) {

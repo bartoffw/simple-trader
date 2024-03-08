@@ -67,8 +67,17 @@ class SQLite
         $this->db->close();
     }
 
-    public function getAsset(string $ticker, DateTime $fromDate, ?DateTime $toDate = null, ?Event $event = null): Asset
+    public function loadAsset(Asset $baseAsset, DateTime $fromDate, ?DateTime $toDate = null, ?Event $event = null): Asset
     {
+        $ticker = $baseAsset->getTicker();
+        $startDate = $fromDate->getDateTime();
+        $newStartDate = $baseAsset->getLastDateTime();
+        $data = [];
+        if ($newStartDate && $newStartDate > $startDate) {
+            $startDate = $newStartDate;
+            $data = $baseAsset->getRawData();
+        }
+
         $stmt = $this->db->prepare("
             SELECT
                 *
@@ -82,12 +91,11 @@ class SQLite
                 date_time ASC
             ;
         ");
-        $stmt->bindValue(':start_date', $fromDate->getDateTime());
+        $stmt->bindValue(':start_date', $startDate);
         if ($toDate) {
             $stmt->bindValue(':end_date', $toDate->getDateTime());
         }
         $results = $stmt->execute();
-        $data = [];
         while ($row = $results->fetchArray(SQLITE3_ASSOC)) {
             $data[$row['date_time']] = $row;
         }

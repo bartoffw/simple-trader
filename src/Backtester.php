@@ -2,9 +2,13 @@
 
 namespace SimpleTrader;
 
+use ReflectionException;
 use ReflectionMethod;
 use SimpleTrader\Exceptions\BacktesterException;
+use SimpleTrader\Exceptions\LoaderException;
+use SimpleTrader\Helpers\Calculator;
 use SimpleTrader\Helpers\DateTime;
+use SimpleTrader\Helpers\Position;
 use SimpleTrader\Helpers\Resolution;
 use SimpleTrader\Loggers\Level;
 use SimpleTrader\Loggers\LoggerInterface;
@@ -14,6 +18,7 @@ class Backtester
     protected ?LoggerInterface $logger = null;
     protected BaseStrategy $strategy;
     protected Assets $assets;
+    protected DateTime $backtestStartTime;
     protected string $backtestStarted;
     protected string $backtestFinished;
     protected string $lastBacktestTime;
@@ -37,7 +42,35 @@ class Backtester
         return $this->lastBacktestTime;
     }
 
-    public function runBacktest(Assets $assets, DateTime $startTime, ?DateTime $endTime = null)
+    public function getTradeLog(): array
+    {
+        return $this->strategy->getTradeLog();
+    }
+
+    public function getCapitalLog(): array
+    {
+        $currentCapital = $this->strategy->getInitialCapital();
+        $capitalLog = [
+            $currentCapital
+        ];
+        $tradeLog = $this->strategy->getTradeLog();
+        /** @var Position $position */
+        foreach ($tradeLog as $position) {
+            $profit = $position->getProfitAmount();
+            $currentCapital = $profit > 0 ?
+                Calculator::calculate('$1 + $2', $currentCapital, $profit) :
+                Calculator::calculate('$1 - $2', $currentCapital, trim($profit, '-'));
+            $capitalLog[] = $currentCapital;
+        }
+        return $capitalLog;
+    }
+
+    /**
+     * @throws ReflectionException
+     * @throws LoaderException
+     * @throws BacktesterException
+     */
+    public function runBacktest(Assets $assets, DateTime $startTime, ?DateTime $endTime = null): void
     {
         if (!isset($this->strategy)) {
             throw new BacktesterException('Strategy is not set');
@@ -49,6 +82,7 @@ class Backtester
             throw new BacktesterException('No capital set');
         }
         $this->strategy->setLogger($this->logger);
+        $this->backtestStartTime = $startTime;
         $this->backtestStarted = microtime(true);
 
         $onOpenExists = (new ReflectionMethod($this->strategy, 'onOpen'))->getDeclaringClass()->getName() !== BaseStrategy::class;

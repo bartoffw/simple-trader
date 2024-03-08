@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b7cb3d8db8aee597721e930f07379037",
+    "content-hash": "f2515682110cb1e4d2d7dda753024f9d",
     "packages": [
         {
             "name": "lupecode/php-trader-native",
@@ -57,6 +57,53 @@
                 "source": "https://github.com/LupeCode/phpTraderNative/tree/v2.1.0"
             },
             "time": "2023-11-26T19:16:53+00:00"
+        },
+        {
+            "name": "mitoteam/jpgraph",
+            "version": "10.4.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/mitoteam/jpgraph.git",
+                "reference": "bf92f4e7b498412c8bb60b70eb7625041b1526d8"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/mitoteam/jpgraph/zipball/bf92f4e7b498412c8bb60b70eb7625041b1526d8",
+                "reference": "bf92f4e7b498412c8bb60b70eb7625041b1526d8",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.5"
+            },
+            "replace": {
+                "jpgraph/jpgraph": "4.0.2",
+                "rulin132/jpgraph": "4.3.5"
+            },
+            "type": "library",
+            "autoload": {
+                "classmap": [
+                    "src/MtJpGraph.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "QPL-1.0"
+            ],
+            "authors": [
+                {
+                    "name": "JpGraph team"
+                }
+            ],
+            "description": "JpGraph library composer package with PHP 8.3 support",
+            "homepage": "https://github.com/mitoteam/jpgraph",
+            "keywords": [
+                "jpgraph"
+            ],
+            "support": {
+                "issues": "https://github.com/mitoteam/jpgraph/issues",
+                "source": "https://github.com/mitoteam/jpgraph/tree/10.4.1"
+            },
+            "time": "2024-01-29T10:59:20+00:00"
         }
     ],
     "packages-dev": [],
@@ -68,7 +115,8 @@
     "platform": {
         "php": ">=8.3",
         "ext-sqlite3": "*",
-        "ext-bcmath": "*"
+        "ext-bcmath": "*",
+        "ext-gd": "*"
     },
     "platform-dev": [],
     "plugin-api-version": "2.2.0"

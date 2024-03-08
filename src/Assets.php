@@ -48,12 +48,15 @@ class Assets
         return empty($this->assetList);
     }
 
+    /**
+     * @throws LoaderException
+     */
     public function getAssetsForDates(DateTime $startTime, DateTime $endTime, Event $event): Assets
     {
         $limitedAssets = new Assets();
         /** @var Asset $asset */
         foreach ($this->assetList as $asset) {
-            $limitedAssets->addAsset($this->loader->getAsset($asset->getTicker(), $startTime, $endTime, $event));
+            $limitedAssets->addAsset($this->loader->loadAsset($asset, $startTime, $endTime, $event));
         }
         return $limitedAssets;
     }

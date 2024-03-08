@@ -10,6 +10,7 @@ use SimpleTrader\Helpers\Resolution;
 use SimpleTrader\Loaders\SQLite;
 use SimpleTrader\Loggers\Console;
 use SimpleTrader\Loggers\Level;
+use SimpleTrader\Reporting\HtmlReport;
 use SimpleTrader\TestStrategy;
 
 
@@ -32,6 +33,9 @@ try {
     $backtest->runBacktest($assets, $fromDate, $toDate);
 
     $logger->logInfo('Backtest run in ' . number_format($backtest->getLastBacktestTime(), 2) . 's');
+
+    $report = new HtmlReport(__DIR__);
+    $report->generateReport($backtest);
 
 } catch (\Exception $e) {
     $logger->logError($e->getMessage() . ' at ' . $e->getTraceAsString());

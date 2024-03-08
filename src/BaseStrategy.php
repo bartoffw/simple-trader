@@ -17,8 +17,10 @@ class BaseStrategy
     protected ?LoggerInterface $logger = null;
     protected DateTime $currentDateTime;
     protected Assets $currentAssets;
+    protected array $tradeLog = [];
     protected array $openTrades = [];
     protected string $openPositionSize = '0';
+    protected ?string $initialCapital = null;
     protected ?string $capital = null;
     protected ?string $capitalAvailable = null;
     protected int $precision = 2;
@@ -35,17 +37,29 @@ class BaseStrategy
         }
     }
 
+    /**
+     * @throws StrategyException
+     */
     public function setCapital(string $capital, int $precision = 2): void
     {
+        if ($this->capital !== null) {
+            throw new StrategyException('Capital already set to: ' . $this->capital);
+        }
         $this->precision = $precision;
         $this->capital = $capital;
         $this->capitalAvailable = $capital;
+        $this->initialCapital = $capital;
         bcscale($precision);
     }
 
     public function getCapital($formatted = false): ?string
     {
         return $formatted ? number_format($this->capital, $this->precision) : $this->capital;
+    }
+
+    public function getInitialCapital(): ?string
+    {
+        return $this->initialCapital;
     }
 
     public function getOpenProfitPercent(): string
@@ -74,7 +88,7 @@ class BaseStrategy
     /**
      * @throws StrategyException
      */
-    public function entry(Side $side, string $ticker, string $price, string $positionSize = '100', string $comment = ''): Position
+    public function entry(Side $side, string $ticker, string $price, string $positionSize = '100', string $comment = ''): string
     {
         if (empty($price)) {
             throw new StrategyException("Price ($price) cannot be empty or zero");
@@ -85,8 +99,10 @@ class BaseStrategy
         }
         $calculatedQty = Calculator::calculate('$1 / $2', $calculatedSize, $price);
 
-        $position = new Position($side, $ticker, $price, $calculatedQty, $calculatedSize, $comment);
+        $position = new Position($this->currentDateTime, $side, $ticker, $price, $calculatedQty, $calculatedSize, $comment);
         $this->openTrades[$position->getId()] = $position;
+        $this->tradeLog[$position->getId()] = $position;
+
         $this->openPositionSize = Calculator::calculate('$1 + $2', $this->openPositionSize, $calculatedSize);
         $this->capitalAvailable = Calculator::calculate('$1 - $2', $this->capitalAvailable, $calculatedSize);
 
@@ -96,7 +112,7 @@ class BaseStrategy
             ($comment ? ' (' . $comment . ')' : '')
         );
 
-        return $position;
+        return $position->getId();
     }
 
     /**
@@ -112,7 +128,9 @@ class BaseStrategy
             }
             $currentPrice = $asset->getCurrentValue();
             $calculatedSize = $this->calculatePositionSize($currentPrice, $position->getQuantity(), QuantityType::Units);
-            $position->closePosition($currentPrice, $calculatedSize);
+            $position->closePosition($this->currentDateTime, $currentPrice, $calculatedSize);
+
+            $this->tradeLog[$position->getId()] = $position;
 
             $profit = $position->getProfitAmount();
             $this->capital = $profit > 0 ?
@@ -138,6 +156,20 @@ class BaseStrategy
     public function getOpenTrades(): array
     {
         return $this->openTrades;
+    }
+
+    public function getTradeLog(): array
+    {
+        $tradeLog = $this->tradeLog;
+        // order by close time
+        uasort($tradeLog, function($a, $b) {
+            /** @var Position $a */
+            /** @var Position $b */
+            $closeTimeA = $a->getCloseTime()->getDateTime();
+            $closeTimeB = $b->getCloseTime()->getDateTime();
+            return $closeTimeA <=> $closeTimeB;
+        });
+        return $tradeLog;
     }
 
     /**

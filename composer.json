@@ -18,6 +18,8 @@
     "php": ">=8.3",
     "ext-sqlite3": "*",
     "ext-bcmath": "*",
-    "lupecode/php-trader-native": "^2.1"
+    "ext-gd": "*",
+    "lupecode/php-trader-native": "^2.1",
+    "mitoteam/jpgraph": "^10.4"
   }
 }
