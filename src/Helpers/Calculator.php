@@ -39,4 +39,9 @@ class Calculator
         }
         return $string;
     }
+
+    public static function compare(string $val1, string $val2): int
+    {
+        return bccomp($val1, $val2);
+    }
 }

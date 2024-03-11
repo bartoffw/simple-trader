@@ -47,22 +47,62 @@ class Backtester
         return $this->strategy->getTradeLog();
     }
 
-    public function getCapitalLog(): array
+    public function getProfit(): string
+    {
+        return Calculator::calculate('$1 - $2', $this->strategy->getCapital(), $this->strategy->getInitialCapital());
+    }
+
+    public function getProfitPercent(): string
+    {
+        return Calculator::calculate('$1 * 100 / $2 - 100', $this->strategy->getCapital(), $this->strategy->getInitialCapital());
+    }
+
+    public function getAvgProfit(string $profit, int $transactionCount): string
+    {
+        return $transactionCount > 0 ? Calculator::calculate('$1 / $2', $profit, $transactionCount) : '0';
+    }
+
+    public function getTradeStats(array $tradeLog)
     {
         $currentCapital = $this->strategy->getInitialCapital();
         $capitalLog = [
             $currentCapital
         ];
-        $tradeLog = $this->strategy->getTradeLog();
+        $lastPeak = $currentCapital;
+        $lastThrough = $currentCapital;
+
+        $profitableTransactions = 0;
+        $profits = '0';
+        $losses = '0';
+        $maxDrawdown = '0';
+
         /** @var Position $position */
         foreach ($tradeLog as $position) {
             $profit = $position->getProfitAmount();
-            $currentCapital = $profit > 0 ?
-                Calculator::calculate('$1 + $2', $currentCapital, $profit) :
-                Calculator::calculate('$1 - $2', $currentCapital, trim($profit, '-'));
             $capitalLog[] = $currentCapital;
+
+            if ($profit > 0) {
+                $profitableTransactions++;
+                $profits = Calculator::calculate('$1 + $2', $profits, $profit);
+                $currentCapital = Calculator::calculate('$1 + $2', $currentCapital, $profit);
+                if (Calculator::compare($currentCapital, $lastPeak) > 0) {
+                    $lastPeak = $currentCapital;
+                }
+            } else {
+                $losses = Calculator::calculate('$1 + $2', $losses, trim($profit, '-'));
+                $currentCapital = Calculator::calculate('$1 - $2', $currentCapital, trim($profit, '-'));
+                if (Calculator::compare($currentCapital, $lastThrough) < 0) {
+                    $lastThrough = $currentCapital;
+                }
+            }
         }
-        return $capitalLog;
+        return [
+            'capital_log' => $capitalLog,
+            'profitable_transactions' => count($tradeLog) > 0 ? Calculator::calculate('$1 * 100 / $2 - 1', $profitableTransactions, count($tradeLog)) : '0',
+            'profit_factor' => $losses > 0 ? Calculator::calculate('$1 / $2', $profits, $losses) : '0',
+            'max_drawdown' => $maxDrawdown,
+            'avg_bars' => '?'
+        ];
     }
 
     /**

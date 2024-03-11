@@ -13,7 +13,7 @@ class Graphs
 
     }
 
-    public function generateCapitalGraph(array $capitalLog)
+    public function generateCapitalGraph(array $capitalLog): string
     {
         MtJpGraph::load(['line']);
 
@@ -24,11 +24,16 @@ class Graphs
         $graph->title->Set('Strategy capital Log');
         $graph->xaxis->title->Set('Trade #');
         $graph->yaxis->title->Set('Capital');
+        //$graph->SetScale('linlin', 8000, 40000);
 
-        $linePlot = new LinePlot($capitalLog);
-        $graph->Add($linePlot);
+        $capitalPlot = new LinePlot($capitalLog);
+        $capitalPlot->SetColor('black');
+        $capitalPlot->AddArea(0, count($capitalLog) - 1, '#f00');
+        $graph->Add($capitalPlot);
 
-        $gdImgHandler = $graph->Stroke(_IMG_HANDLER);
-        $graph->img->Stream($this->reportPath . '/capital.png');
+        $graph->Stroke(_IMG_HANDLER);
+        ob_start();
+        $graph->img->Stream();
+        return ob_get_clean();
     }
 }

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>%title%</title>
+    <style>
+        %styles%
+        .text-right { text-align: right }
+    </style>
+</head>
+<body>
+<main class="wrapper">
+    <nav class="navigation" tabindex="-1">
+        <section class="container">
+            <a class="pagename" href="#">Backtest Report</a>
+        </section>
+    </nav>
+    <div class="container">
+        <h2>Backtest stats</h2>
+        <table>
+            <thead>
+            <tr>
+                <th><small>Net profit/loss</small></th>
+                <th><small>Number of closed transactions</small></th>
+                <th><small>Percent of profitable transactions</small></th>
+                <th><small>Profit factor</small></th>
+                <th><small>Max drawdown</small></th>
+                <th><small>Average profit/loss</small></th>
+                <th><small>Average bars in trade</small></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td class="text-right"><small>%net_profit%</small></td>
+                <td class="text-right"><small>%closed_transactions%</small></td>
+                <td class="text-right"><small>%profitable_transactions%%</small></td>
+                <td class="text-right"><small>%profit_factor%</small></td>
+                <td class="text-right"><small>%max_drawdown%</small></td>
+                <td class="text-right"><small>%avg_profit%</small></td>
+                <td class="text-right"><small>%avg_bars%</small></td>
+            </tr>
+            </tbody>
+        </table>
+
+        <h2>Detailed stats</h2>
+        <p>TODO</p>
+
+        <h2>Capital graph</h2>
+        %capital_graph%
+    </div>
+</main>
+</body>
+</html>
