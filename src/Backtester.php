@@ -6,6 +6,7 @@ use ReflectionException;
 use ReflectionMethod;
 use SimpleTrader\Exceptions\BacktesterException;
 use SimpleTrader\Exceptions\LoaderException;
+use SimpleTrader\Exceptions\StrategyException;
 use SimpleTrader\Helpers\Calculator;
 use SimpleTrader\Helpers\DateTime;
 use SimpleTrader\Helpers\Position;
@@ -35,6 +36,11 @@ class Backtester
     public function setStrategy(BaseStrategy $strategy): void
     {
         $this->strategy = $strategy;
+    }
+
+    public function getStrategyName(): string
+    {
+        return $this->strategy->getStrategyName();
     }
 
     public function getLastBacktestTime(): string
@@ -68,9 +74,10 @@ class Backtester
         $capitalLog = [
             $currentCapital
         ];
-        $lastPeak = $currentCapital;
-        $lastThrough = $currentCapital;
+        $peakValue = $currentCapital;
+        $currentDrawdown = '0';
 
+        $totalOpenBars = 0;
         $profitableTransactions = 0;
         $profits = '0';
         $losses = '0';
@@ -79,29 +86,42 @@ class Backtester
         /** @var Position $position */
         foreach ($tradeLog as $position) {
             $profit = $position->getProfitAmount();
-            $capitalLog[] = $currentCapital;
+            $profitPct = $position->getProfitPercent();
+            $totalOpenBars += $position->getOpenBars();
 
             if ($profit > 0) {
                 $profitableTransactions++;
                 $profits = Calculator::calculate('$1 + $2', $profits, $profit);
                 $currentCapital = Calculator::calculate('$1 + $2', $currentCapital, $profit);
-                if (Calculator::compare($currentCapital, $lastPeak) > 0) {
-                    $lastPeak = $currentCapital;
+                if (Calculator::compare($currentCapital, $peakValue) > 0) {
+                    $peakValue = $currentCapital;
                 }
             } else {
                 $losses = Calculator::calculate('$1 + $2', $losses, trim($profit, '-'));
                 $currentCapital = Calculator::calculate('$1 - $2', $currentCapital, trim($profit, '-'));
-                if (Calculator::compare($currentCapital, $lastThrough) < 0) {
-                    $lastThrough = $currentCapital;
+                if (Calculator::compare($currentCapital, $peakValue) < 0) {
+                    $currentDrawdown = Calculator::calculate('$1 - $2', $peakValue, $currentCapital);
+                    if (Calculator::compare($currentDrawdown, $maxDrawdown) > 0) {
+                        $maxDrawdown = $currentDrawdown;
+                    }
                 }
             }
+            $capitalLog[] = $currentCapital;
+            $position->setPortfolioBalance($currentCapital);
+            $currentTroughValue = Calculator::calculate('$1 - $2', $peakValue, $currentDrawdown);
+            $position->setPortfolioDrawdown(
+                Calculator::calculate('($1 - $2) * 100 / $3', $peakValue, $currentTroughValue, $peakValue)
+            );
         }
+        $troughValue = Calculator::calculate('$1 - $2', $peakValue, $maxDrawdown);
         return [
             'capital_log' => $capitalLog,
             'profitable_transactions' => count($tradeLog) > 0 ? Calculator::calculate('$1 * 100 / $2 - 1', $profitableTransactions, count($tradeLog)) : '0',
             'profit_factor' => $losses > 0 ? Calculator::calculate('$1 / $2', $profits, $losses) : '0',
-            'max_drawdown' => $maxDrawdown,
-            'avg_bars' => '?'
+            'max_drawdown' => Calculator::calculate('($1 - $2) * 100 / $3', $peakValue, $troughValue, $peakValue),
+            'avg_bars' => Calculator::calculate('$1 / $2', $totalOpenBars, count($tradeLog)),
+            'peak_value' => $peakValue,
+            'trough_value' => $troughValue
         ];
     }
 
@@ -109,6 +129,7 @@ class Backtester
      * @throws ReflectionException
      * @throws LoaderException
      * @throws BacktesterException
+     * @throws StrategyException
      */
     public function runBacktest(Assets $assets, DateTime $startTime, ?DateTime $endTime = null): void
     {
@@ -138,6 +159,10 @@ class Backtester
             }
             if ($onCloseExists) {
                 $this->strategy->onClose($assets->getAssetsForDates($startTime, $currentDateTime, Event::OnClose), $currentDateTime);
+            }
+            /** @var Position $position */
+            foreach ($this->strategy->getOpenTrades() as $position) {
+                $position->incrementOpenBars();
             }
             $startTime->increaseByStep($this->resolution);
             // TODO

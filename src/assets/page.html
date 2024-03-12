@@ -7,6 +7,11 @@
     <style>
         %styles%
         .text-right { text-align: right }
+        .text-green { color: green }
+        .text-red { color: orangered }
+        table td { font-size: 80% }
+        table thead th { text-align: center }
+        table td:last-child, table th:last-child { padding-right: 1.5rem !important }
     </style>
 </head>
 <body>
@@ -17,28 +22,33 @@
         </section>
     </nav>
     <div class="container">
+        <h1>%title%</h1>
+        <blockquote>
+            <p>Backtest ran at: <strong>%backtest_date%</strong></p>
+        </blockquote>
+
         <h2>Backtest stats</h2>
         <table>
             <thead>
             <tr>
-                <th><small>Net profit/loss</small></th>
-                <th><small>Number of closed transactions</small></th>
-                <th><small>Percent of profitable transactions</small></th>
-                <th><small>Profit factor</small></th>
-                <th><small>Max drawdown</small></th>
-                <th><small>Average profit/loss</small></th>
-                <th><small>Average bars in trade</small></th>
+                <th>Net profit/loss</th>
+                <th>Number of closed transactions</th>
+                <th>Percent of profitable transactions</th>
+                <th>Profit factor</th>
+                <th>Max drawdown</th>
+                <th>Average profit/loss</th>
+                <th>Average bars in trade</th>
             </tr>
             </thead>
             <tbody>
             <tr>
-                <td class="text-right"><small>%net_profit%</small></td>
-                <td class="text-right"><small>%closed_transactions%</small></td>
-                <td class="text-right"><small>%profitable_transactions%%</small></td>
-                <td class="text-right"><small>%profit_factor%</small></td>
-                <td class="text-right"><small>%max_drawdown%</small></td>
-                <td class="text-right"><small>%avg_profit%</small></td>
-                <td class="text-right"><small>%avg_bars%</small></td>
+                <td class="text-right">%net_profit%</td>
+                <td class="text-right">%closed_transactions%</td>
+                <td class="text-right">%profitable_transactions%%</td>
+                <td class="text-right">%profit_factor%</td>
+                <td class="text-right">%max_drawdown%%</td>
+                <td class="text-right">%avg_profit%</td>
+                <td class="text-right">%avg_bars%</td>
             </tr>
             </tbody>
         </table>
@@ -48,6 +58,25 @@
 
         <h2>Capital graph</h2>
         %capital_graph%
+
+        <h2>Transactions history</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Time</th>
+                <th>Type</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Profit/loss</th>
+                <th>Balance</th>
+                <th>Drawdown</th>
+            </tr>
+            </thead>
+            <tbody>
+            %transactions_history%
+            </tbody>
+        </table>
     </div>
 </main>
 </body>

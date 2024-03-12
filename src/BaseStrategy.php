@@ -12,6 +12,7 @@ use SimpleTrader\Loggers\LoggerInterface;
 
 class BaseStrategy
 {
+    protected string $strategyName = 'Base Strategy';
     private bool $parentOnOpenCalled = false;
     private bool $parentOnCloseCalled = false;
     protected ?LoggerInterface $logger = null;
@@ -28,6 +29,11 @@ class BaseStrategy
 
     public function __construct(protected QuantityType $qtyType = QuantityType::Percent)
     {
+    }
+
+    public function getStrategyName(): string
+    {
+        return $this->strategyName;
     }
 
     public function setLogger(LoggerInterface $logger, bool $override = false): void

@@ -2,18 +2,22 @@
 
 namespace SimpleTrader\Helpers;
 
+use SimpleTrader\Exceptions\BacktesterException;
 use SimpleTrader\Exceptions\StrategyException;
 
 class Position
 {
     protected string $id;
     protected PositionStatus $status;
+    protected int $openBars = 0;
     protected DateTime $openTime;
     protected DateTime $closeTime;
     protected string $openPrice;
     protected string $closePrice;
     protected string $openPositionSize;
     protected string $closePositionSize;
+    protected ?string $portfolioBalance = null;
+    protected ?string $portfolioDrawdown = null;
 
 
     public function __construct(DateTime $currentTime, protected Side $side, protected string $ticker,
@@ -52,6 +56,26 @@ class Position
         return $this->positionSize;
     }
 
+    public function getOpenPrice(): string
+    {
+        return $this->openPrice;
+    }
+
+    public function getSide(): Side
+    {
+        return $this->side;
+    }
+
+    public function getComment(): string
+    {
+        return $this->comment;
+    }
+
+    public function getClosePrice(): string
+    {
+        return $this->closePrice;
+    }
+
     public function getOpenTime(): DateTime
     {
         return $this->openTime;
@@ -60,6 +84,32 @@ class Position
     public function getCloseTime(): DateTime
     {
         return $this->closeTime;
+    }
+
+    public function setPortfolioBalance(string $balance): void
+    {
+        if ($this->portfolioBalance !== null) {
+            throw new BacktesterException('Portfolio balance is already set for this position: ' . $this->getId());
+        }
+        $this->portfolioBalance = $balance;
+    }
+
+    public function getPortfolioBalance(): ?string
+    {
+        return $this->portfolioBalance;
+    }
+
+    public function setPortfolioDrawdown(string $drawdown): void
+    {
+        if ($this->portfolioDrawdown !== null) {
+            throw new BacktesterException('Portfolio drawdown is already set for this position: ' . $this->getId());
+        }
+        $this->portfolioDrawdown = $drawdown;
+    }
+
+    public function getPortfolioDrawdown(): ?string
+    {
+        return $this->portfolioDrawdown;
     }
 
     public function updatePosition(string $price, string $positionSize): void
@@ -81,6 +131,22 @@ class Position
         $this->closePrice = $price;
         $this->closePositionSize = $positionSize;
         $this->status = PositionStatus::Closed;
+    }
+
+    /**
+     * @throws StrategyException
+     */
+    public function incrementOpenBars(): int
+    {
+        if ($this->status === PositionStatus::Closed) {
+            throw new StrategyException('Tried to increase open bars for a closed position');
+        }
+        return ++$this->openBars;
+    }
+
+    public function getOpenBars(): int
+    {
+        return $this->openBars;
     }
 
     public function getProfitPercent(): string

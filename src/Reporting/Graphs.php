@@ -20,7 +20,7 @@ class Graphs
         $graph = new Graph(1280, 800);
         $graph->SetScale('intlin');
 
-        $graph->SetMargin(40,20,20,40);
+        $graph->SetMargin(80,20,20,40);
         $graph->title->Set('Strategy capital Log');
         $graph->xaxis->title->Set('Trade #');
         $graph->yaxis->title->Set('Capital');
