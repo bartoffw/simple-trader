@@ -9,7 +9,7 @@
         .text-right { text-align: right }
         .text-green { color: green }
         .text-red { color: orangered }
-        table td { font-size: 80% }
+        table th, table td { font-size: 80% }
         table thead th { text-align: center }
         table td:last-child, table th:last-child { padding-right: 1.5rem !important }
     </style>
@@ -54,7 +54,19 @@
         </table>
 
         <h2>Detailed stats</h2>
-        <p>TODO</p>
+        <table>
+            <thead>
+            <tr>
+                <th>Detail</th>
+                <th>All</th>
+                <th>Longs</th>
+                <th>Shorts</th>
+            </tr>
+            </thead>
+            <tbody>
+            %detailed_stats%
+            </tbody>
+        </table>
 
         <h2>Capital graph</h2>
         %capital_graph%

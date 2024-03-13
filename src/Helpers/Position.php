@@ -17,7 +17,8 @@ class Position
     protected string $openPositionSize;
     protected string $closePositionSize;
     protected ?string $portfolioBalance = null;
-    protected ?string $portfolioDrawdown = null;
+    protected ?string $portfolioDrawdownValue = null;
+    protected ?string $portfolioDrawdownPercent = null;
 
 
     public function __construct(DateTime $currentTime, protected Side $side, protected string $ticker,
@@ -99,17 +100,23 @@ class Position
         return $this->portfolioBalance;
     }
 
-    public function setPortfolioDrawdown(string $drawdown): void
+    public function setPortfolioDrawdown(string $drawdownValue, string $drawdownPercent): void
     {
-        if ($this->portfolioDrawdown !== null) {
+        if ($this->portfolioDrawdownValue !== null) {
             throw new BacktesterException('Portfolio drawdown is already set for this position: ' . $this->getId());
         }
-        $this->portfolioDrawdown = $drawdown;
+        $this->portfolioDrawdownValue = $drawdownValue;
+        $this->portfolioDrawdownPercent = $drawdownPercent;
     }
 
-    public function getPortfolioDrawdown(): ?string
+    public function getPortfolioDrawdownValue(): ?string
     {
-        return $this->portfolioDrawdown;
+        return $this->portfolioDrawdownValue;
+    }
+
+    public function getPortfolioDrawdownPercent(): ?string
+    {
+        return $this->portfolioDrawdownPercent;
     }
 
     public function updatePosition(string $price, string $positionSize): void
