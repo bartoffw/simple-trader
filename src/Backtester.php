@@ -79,24 +79,29 @@ class Backtester
         $troughValue = $currentCapital;
         $currentTroughValue = $currentCapital;
 
+        $netProfit = $this->getProfit();
         $profits = '0';
         $losses = '0';
-        $grossProfitLongs = '0';
-        $grossProfitShorts = '0';
-        $grossLossLongs = '0';
-        $grossLossShorts = '0';
+        $avgProfit = $this->getAvgProfit($netProfit, count($tradeLog));
 
         $totalOpenBars = 0;
-        $profitableTransactions = 0;
-        $losingTransactions = 0;
+        $profitableTransactionsLong = 0;
+        $profitableTransactionsShort = 0;
+        $losingTransactionsLong = 0;
+        $losingTransactionsShort = 0;
         $maxDrawdownValue = '0';
         $maxDrawdownPercent = '0';
         $maxQuantityLongs = '0';
         $maxQuantityShorts = '0';
 
+        $sharpeRatio = '0';
+        $resultLog = [];
+
         /** @var Position $position */
         foreach ($tradeLog as $position) {
             $profit = $position->getProfitAmount();
+            $resultLog[] = $profit;
+
             $totalOpenBars += $position->getOpenBars();
             $quantity = $position->getQuantity();
             if ($position->getSide() === Side::Long && Calculator::compare($quantity, $maxQuantityLongs) > 0) {
@@ -107,32 +112,26 @@ class Backtester
             }
 
             if ($profit > 0) {
-                $profitableTransactions++;
+                if ($position->getSide() === Side::Long) {
+                    $profitableTransactionsLong++;
+                } else {
+                    $profitableTransactionsShort++;
+                }
                 $profits = Calculator::calculate('$1 + $2', $profits, $profit);
                 $currentCapital = Calculator::calculate('$1 + $2', $currentCapital, $profit);
-
-                if ($position->getSide() === Side::Long) {
-                    $grossProfitLongs = Calculator::calculate('$1 + $2', $grossProfitLongs, $profit);
-                }
-                if ($position->getSide() === Side::Short) {
-                    $grossProfitShorts = Calculator::calculate('$1 + $2', $grossProfitShorts, $profit);
-                }
 
                 if (Calculator::compare($currentCapital, $peakValue) > 0) {
                     $peakValue = $currentCapital;
                 }
             } else {
-                $losingTransactions++;
+                if ($position->getSide() === Side::Long) {
+                    $losingTransactionsLong++;
+                } else {
+                    $losingTransactionsShort++;
+                }
                 $loss = trim($profit, '-');
                 $losses = Calculator::calculate('$1 + $2', $losses, $loss);
-                $currentCapital = Calculator::calculate('$1 - $2', $currentCapital, trim($profit, '-'));
-
-                if ($position->getSide() === Side::Long) {
-                    $grossLossLongs = Calculator::calculate('$1 + $2', $grossLossLongs, $loss);
-                }
-                if ($position->getSide() === Side::Short) {
-                    $grossLossShorts = Calculator::calculate('$1 + $2', $grossLossShorts, $loss);
-                }
+                $currentCapital = Calculator::calculate('$1 - $2', $currentCapital, $loss);
             }
             $capitalLog[] = $currentCapital;
             $position->setPortfolioBalance($currentCapital);
@@ -151,15 +150,32 @@ class Backtester
                 $troughValue = $currentTroughValue;
             }
         }
+
+        if (count($resultLog) > 2) {
+            $stdDev = Calculator::stdDev($resultLog);
+            var_dump(sqrt(count($tradeLog)), $avgProfit, $stdDev);
+            $sharpeRatio = Calculator::calculate('sqrt($1) * $2 / $3', count($tradeLog), $avgProfit, $stdDev);
+        }
+
+        $profitableTransactions = $profitableTransactionsLong + $profitableTransactionsShort;
+        $losingTransactions = $losingTransactionsLong + $losingTransactionsShort;
         return [
             'capital_log' => $capitalLog,
-            'net_profit' => $this->getProfit(),
-            'gross_profit_longs' => $grossProfitLongs,
-            'gross_profit_shorts' => $grossProfitShorts,
-            'gross_loss_longs' => $grossLossLongs,
-            'gross_loss_shorts' => $grossLossShorts,
+            'net_profit' => $netProfit,
+            'avg_profit' => $avgProfit,
+            'avg_profit_longs' => '0',
+            'avg_profit_shorts' => '0',
+            'net_profit_longs' => $this->strategy->getNetProfitLongs(),
+            'net_profit_shorts' => $this->strategy->getNetProfitShorts(),
+            'gross_profit_longs' => $this->strategy->getGrossProfitLongs(),
+            'gross_profit_shorts' => $this->strategy->getGrossProfitShorts(),
+            'gross_loss_longs' => $this->strategy->getGrossLossLongs(),
+            'gross_loss_shorts' => $this->strategy->getGrossLossShorts(),
             'profitable_transactions' => count($tradeLog) > 0 ? Calculator::calculate('$1 * 100 / $2 - 1', $profitableTransactions, count($tradeLog)) : '0',
             'profit_factor' => $losses > 0 ? Calculator::calculate('$1 / $2', $profits, $losses) : '0',
+            'profit_factor_longs' => $this->strategy->getGrossLossLongs() > 0 ? Calculator::calculate('$1 / $2', $this->strategy->getGrossProfitLongs(), $this->strategy->getGrossLossLongs()) : '0',
+            'profit_factor_shorts' => $this->strategy->getGrossLossShorts() > 0 ? Calculator::calculate('$1 / $2', $this->strategy->getGrossProfitShorts(), $this->strategy->getGrossLossShorts()) : '0',
+            'sharpe_ratio' => $sharpeRatio,
             'max_quantity_longs' => $maxQuantityLongs,
             'max_quantity_shorts' => $maxQuantityShorts,
             'max_drawdown_value' => $maxDrawdownValue,
@@ -167,9 +183,16 @@ class Backtester
             'avg_bars' => Calculator::calculate('$1 / $2', $totalOpenBars, count($tradeLog)),
             'peak_value' => $peakValue,
             'trough_value' => $troughValue,
-            'avg_profitable_transaction' => Calculator::compare($losingTransactions, '0') > 0 ? Calculator::calculate('$1 / $2', $profits, $profitableTransactions) : '0',
-            'avg_losing_transaction' => Calculator::compare($losingTransactions, '0') > 0 ? Calculator::calculate('$1 / $2', $losses, $losingTransactions) : '0',
-            'sharpe' => '?'
+            'profitable_transactions_long_count' => $profitableTransactionsLong,
+            'profitable_transactions_short_count' => $profitableTransactionsShort,
+            'losing_transactions_long_count' => $losingTransactionsLong,
+            'losing_transactions_short_count' => $losingTransactionsShort,
+            'avg_profitable_transaction' => Calculator::compare($profitableTransactions, '0') > 0 ? Calculator::calculate('($1 + $2) / $3', $this->strategy->getGrossProfitLongs(), $this->strategy->getGrossProfitShorts(), $profitableTransactions) : '0',
+            'avg_profitable_transaction_longs' => Calculator::compare($profitableTransactionsLong, '0') > 0 ? Calculator::calculate('$1 / $2', $this->strategy->getGrossProfitLongs(), $profitableTransactionsLong) : '0',
+            'avg_profitable_transaction_shorts' => Calculator::compare($profitableTransactionsShort, '0') > 0 ? Calculator::calculate('$1 / $2', $this->strategy->getGrossProfitShorts(), $profitableTransactionsShort) : '0',
+            'avg_losing_transaction' => Calculator::compare($losingTransactions, '0') > 0 ? Calculator::calculate('($1 + $2) / $3', $this->strategy->getGrossLossLongs(), $this->strategy->getGrossLossShorts(), $losingTransactions) : '0',
+            'avg_losing_transaction_longs' => Calculator::compare($losingTransactionsLong, '0') > 0 ? Calculator::calculate('$1 / $2', $this->strategy->getGrossLossLongs(), $losingTransactionsLong) : '0',
+            'avg_losing_transaction_shorts' => Calculator::compare($losingTransactionsShort, '0') > 0 ? Calculator::calculate('$1 / $2', $this->strategy->getGrossLossShorts(), $losingTransactionsShort) : '0',
         ];
     }
 

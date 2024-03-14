@@ -24,6 +24,10 @@ class BaseStrategy
     protected ?string $initialCapital = null;
     protected ?string $capital = null;
     protected ?string $capitalAvailable = null;
+    protected string $grossProfitLongs = '0';
+    protected string $grossProfitShorts = '0';
+    protected string $grossLossLongs = '0';
+    protected string $grossLossShorts = '0';
     protected int $precision = 2;
 
 
@@ -139,9 +143,25 @@ class BaseStrategy
             $this->tradeLog[$position->getId()] = $position;
 
             $profit = $position->getProfitAmount();
-            $this->capital = $profit > 0 ?
+            $loss = Calculator::compare($profit, '0') > 0 ? null : trim($profit, '-');
+
+            $this->capital = $loss === null ?
                 Calculator::calculate('$1 + $2', $this->capital, $profit) :
-                Calculator::calculate('$1 - $2', $this->capital, trim($profit, '-'));
+                Calculator::calculate('$1 - $2', $this->capital, $loss);
+
+            if ($position->getSide() === Side::Long) {
+                if ($loss === null) {
+                    $this->grossProfitLongs = Calculator::calculate('$1 + $2', $this->grossProfitLongs, $profit);
+                } else {
+                    $this->grossLossLongs = Calculator::calculate('$1 + $2', $this->grossLossLongs, $loss);
+                }
+            } elseif ($position->getSide() === Side::Short) {
+                if ($loss === null) {
+                    $this->grossProfitShorts = Calculator::calculate('$1 + $2', $this->grossProfitShorts, $profit);
+                } else {
+                    $this->grossLossShorts = Calculator::calculate('$1 + $2', $this->grossLossShorts, $loss);
+                }
+            }
 
             $this->logger->logInfo(
                 '[' . $this->currentDateTime->getDateTime() . '][' . $position->getId() . '] CLOSE @ ' . $currentPrice . ', ' .
@@ -162,6 +182,36 @@ class BaseStrategy
     public function getOpenTrades(): array
     {
         return $this->openTrades;
+    }
+
+    public function getGrossProfitLongs(): string
+    {
+        return $this->grossProfitLongs;
+    }
+
+    public function getGrossProfitShorts(): string
+    {
+        return $this->grossProfitShorts;
+    }
+
+    public function getGrossLossLongs(): string
+    {
+        return $this->grossLossLongs;
+    }
+
+    public function getGrossLossShorts(): string
+    {
+        return $this->grossLossShorts;
+    }
+
+    public function getNetProfitLongs(): string
+    {
+        return Calculator::calculate('$1 - $2', $this->grossProfitLongs, $this->grossLossLongs);
+    }
+
+    public function getNetProfitShorts(): string
+    {
+        return Calculator::calculate('$1 - $2', $this->grossProfitShorts, $this->grossLossShorts);
     }
 
     public function getTradeLog(): array

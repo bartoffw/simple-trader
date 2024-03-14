@@ -26,7 +26,6 @@ class HtmlReport
         $tradeLog = $backtester->getTradeLog();
         $tradeStats = $backtester->getTradeStats($tradeLog);
         $netProfit = number_format((float)$tradeStats['net_profit'], 2) . '<br/>' . $backtester->getProfitPercent() . '%';
-        $avgProfit = $backtester->getAvgProfit($backtester->getProfit(), count($tradeLog));
         $capitalGraph = '<img src="data:image/png;base64,' . base64_encode($this->graphs->generateCapitalGraph($tradeStats['capital_log'])) . '" />';
 
         $output = strtr($html, [
@@ -38,7 +37,7 @@ class HtmlReport
             '%profitable_transactions%' => number_format((float)$tradeStats['profitable_transactions']),
             '%profit_factor%' => number_format($tradeStats['profit_factor'], 2),
             '%max_drawdown%' => number_format((float)$tradeStats['max_drawdown_value'], 2) . '<br/>' . number_format((float)$tradeStats['max_drawdown_percent'], 2),
-            '%avg_profit%' => number_format((float)$avgProfit, 2),
+            '%avg_profit%' => number_format((float)$tradeStats['avg_profit'], 2),
             '%avg_bars%' => number_format(floor((float)$tradeStats['avg_bars'])),
             '%capital_graph%' => $capitalGraph,
 
@@ -54,8 +53,8 @@ class HtmlReport
         $stats[] = '<tr>' .
             '<th>Net profit</th>' .
             '<td class="text-right">' . number_format((float)$tradeStats['net_profit'], 2) . '</td>' .
-            '<td class="text-right">?</td>' .
-            '<td class="text-right">?</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['net_profit_longs'], 2) . '</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['net_profit_shorts'], 2) . '</td>' .
         '</tr>';
         $stats[] = '<tr>' .
             '<th>Gross profit</th>' .
@@ -72,15 +71,69 @@ class HtmlReport
         $stats[] = '<tr>' .
             '<th>Profit factor</th>' .
             '<td class="text-right">' . number_format((float)$tradeStats['profit_factor'], 2) . '</td>' .
-            '<td class="text-right">?</td>' .
-            '<td class="text-right">?</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['profit_factor_longs'], 2) . '</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['profit_factor_shorts'], 2) . '</td>' .
         '</tr>';
+        $stats[] = '<tr>' .
+            '<th>Sharpe ratio</th>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['sharpe_ratio'], 2) . '</td>' .
+            '<td class="text-right"></td>' .
+            '<td class="text-right"></td>' .
+            '</tr>';
+        $stats[] = '<tr>' .
+            '<th>Max drawdown</th>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['max_drawdown_value'], 2) . '</td>' .
+            '<td class="text-right"></td>' .
+            '<td class="text-right"></td>' .
+            '</tr>';
         $stats[] = '<tr>' .
             '<th>Max quantity</th>' .
             '<td class="text-right">' . number_format((float)Calculator::calculate('$1 + $2', $tradeStats['max_quantity_longs'], $tradeStats['max_quantity_shorts']), 2) . '</td>' .
             '<td class="text-right">' . number_format((float)$tradeStats['max_quantity_longs'], 2) . '</td>' .
             '<td class="text-right">' . number_format((float)$tradeStats['max_quantity_shorts'], 2) . '</td>' .
         '</tr>';
+        $stats[] = '<tr>' .
+            '<th>All transactions</th>' .
+            '<td class="text-right">' . number_format(
+                (float)Calculator::calculate('$1 + $2 + $3 + $4',
+                    $tradeStats['profitable_transactions_long_count'],
+                    $tradeStats['profitable_transactions_short_count'],
+                    $tradeStats['losing_transactions_long_count'],
+                    $tradeStats['losing_transactions_short_count']
+                )) . '</td>' .
+            '<td class="text-right">' . number_format((float)Calculator::calculate('$1 + $2', $tradeStats['profitable_transactions_long_count'], $tradeStats['losing_transactions_long_count'])) . '</td>' .
+            '<td class="text-right">' . number_format((float)Calculator::calculate('$1 + $2', $tradeStats['profitable_transactions_short_count'], $tradeStats['losing_transactions_short_count'])) . '</td>' .
+            '</tr>';
+        $stats[] = '<tr>' .
+            '<th>Profitable transactions</th>' .
+            '<td class="text-right">' . number_format((float)Calculator::calculate('$1 + $2', $tradeStats['profitable_transactions_long_count'], $tradeStats['profitable_transactions_short_count'])) . '</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['profitable_transactions_long_count']) . '</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['profitable_transactions_short_count']) . '</td>' .
+            '</tr>';
+        $stats[] = '<tr>' .
+            '<th>Losing transactions</th>' .
+            '<td class="text-right">' . number_format((float)Calculator::calculate('$1 + $2', $tradeStats['losing_transactions_long_count'], $tradeStats['losing_transactions_short_count'])) . '</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['losing_transactions_long_count']) . '</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['losing_transactions_short_count']) . '</td>' .
+            '</tr>';
+        $stats[] = '<tr>' .
+            '<th>Average transaction</th>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['avg_profit'], 2) . '</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['avg_profit_longs'], 2) . '</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['avg_profit_shorts'], 2) . '</td>' .
+            '</tr>';
+        $stats[] = '<tr>' .
+            '<th>Average profitable transaction</th>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['avg_profitable_transaction'], 2) . '</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['avg_profitable_transaction_longs'], 2) . '</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['avg_profitable_transaction_shorts'], 2) . '</td>' .
+            '</tr>';
+        $stats[] = '<tr>' .
+            '<th>Average losing transaction</th>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['avg_losing_transaction'], 2) . '</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['avg_losing_transaction_longs'], 2) . '</td>' .
+            '<td class="text-right">' . number_format((float)$tradeStats['avg_losing_transaction_shorts'], 2) . '</td>' .
+            '</tr>';
         return implode("\n", $stats);
     }
 
