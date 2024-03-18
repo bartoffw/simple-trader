@@ -24,7 +24,7 @@ class SQLite
     ]): void
     {
         $this->db->exec("
-            CREATE TABLE IF NOT EXISTS {$ticker} (
+            CREATE TABLE IF NOT EXISTS `{$ticker}` (
                 id INTEGER PRIMARY KEY,
                 date_time DATETIME UNIQUE,
                 open DECIMAL(12,4),
@@ -44,7 +44,7 @@ class SQLite
                 $volume = $data[$columns['volume']][$i] ?? null;
                 if (!empty($date) && !empty($open) && !empty($high) && !empty($low) && !empty($close)) {
                     $stmt = $this->db->prepare("
-                        INSERT OR IGNORE INTO {$ticker}
+                        INSERT OR IGNORE INTO `{$ticker}`
                         (
                             date_time, open, high, low, close, volume
                         )
@@ -82,7 +82,7 @@ class SQLite
             SELECT
                 *
             FROM
-                {$ticker}
+                `{$ticker}`
             WHERE
                 date_time >= :start_date
                 " . ($toDate ?

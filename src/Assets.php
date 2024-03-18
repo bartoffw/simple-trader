@@ -32,10 +32,18 @@ class Assets
         $this->assetList[$ticker] = $asset;
     }
 
-    public function getAsset(string $ticker): ?Asset
+    public function getAsset(string $ticker, ?DateTime $loadFromDate = null): ?Asset
     {
-        return array_key_exists($ticker, $this->assetList) ?
-            $this->assetList[$ticker] : null;
+        /** @var Asset $asset */
+        if (array_key_exists($ticker, $this->assetList)) {
+            $asset = $this->assetList[$ticker];
+            if ($loadFromDate !== null && !$asset->isLoaded()) {
+                // TODO: optimize this to just use one instance
+                return $this->loader->loadAsset($asset, $loadFromDate);
+            }
+            return $asset;
+        }
+        return null;
     }
 
     public function getAssets(): array

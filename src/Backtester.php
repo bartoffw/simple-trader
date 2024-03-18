@@ -21,6 +21,7 @@ class Backtester
     protected BaseStrategy $strategy;
     protected Assets $assets;
     protected DateTime $backtestStartTime;
+    protected ?DateTime $backtestEndTime;
     protected string $backtestStarted;
     protected string $backtestFinished;
     protected string $lastBacktestTime;
@@ -42,6 +43,11 @@ class Backtester
     public function getStrategyName(): string
     {
         return $this->strategy->getStrategyName();
+    }
+
+    public function getBacktestStartTime(): DateTime
+    {
+        return $this->backtestStartTime;
     }
 
     public function getLastBacktestTime(): string
@@ -67,6 +73,11 @@ class Backtester
     public function getAvgProfit(string $profit, int $transactionCount): string
     {
         return $transactionCount > 0 ? Calculator::calculate('$1 / $2', $profit, $transactionCount) : '0';
+    }
+
+    public function getAssets(): Assets
+    {
+        return $this->assets;
     }
 
     public function getTradeStats(array $tradeLog)
@@ -213,8 +224,10 @@ class Backtester
         if (empty($this->strategy->getCapital())) {
             throw new BacktesterException('No capital set');
         }
+        $this->assets = $assets;
         $this->strategy->setLogger($this->logger);
         $this->backtestStartTime = $startTime;
+        $this->backtestEndTime = $endTime;
         $this->backtestStarted = microtime(true);
 
         $onOpenExists = (new ReflectionMethod($this->strategy, 'onOpen'))->getDeclaringClass()->getName() !== BaseStrategy::class;
@@ -226,10 +239,10 @@ class Backtester
             $currentDateTime = new DateTime($startTime->getCurrentDateTime());
 
             if ($onOpenExists) {
-                $this->strategy->onOpen($assets->getAssetsForDates($startTime, $currentDateTime, Event::OnOpen), $currentDateTime);
+                $this->strategy->onOpen($this->assets->getAssetsForDates($startTime, $currentDateTime, Event::OnOpen), $currentDateTime);
             }
             if ($onCloseExists) {
-                $this->strategy->onClose($assets->getAssetsForDates($startTime, $currentDateTime, Event::OnClose), $currentDateTime);
+                $this->strategy->onClose($this->assets->getAssetsForDates($startTime, $currentDateTime, Event::OnClose), $currentDateTime);
             }
             /** @var Position $position */
             foreach ($this->strategy->getOpenTrades() as $position) {

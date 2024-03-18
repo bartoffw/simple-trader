@@ -13,6 +13,9 @@
         table thead th { text-align: center }
         table td:last-child, table th:last-child { padding-right: 1.5rem !important }
     </style>
+    <script>
+        %chart_js%
+    </script>
 </head>
 <body>
 <main class="wrapper">
@@ -53,6 +56,11 @@
             </tbody>
         </table>
 
+        <h2>Capital graph</h2>
+        <div>
+            <canvas id="capital-graph"></canvas>
+        </div>
+
         <h2>Detailed stats</h2>
         <table>
             <thead>
@@ -68,8 +76,8 @@
             </tbody>
         </table>
 
-        <h2>Capital graph</h2>
-        %capital_graph%
+        <h2>Stock Chart</h2>
+        %stock_chart%
 
         <h2>Transactions history</h2>
         <table>
@@ -90,6 +98,25 @@
             </tbody>
         </table>
     </div>
+    <script>
+        const capitalCtx = document.getElementById('capital-graph');
+        new Chart(capitalCtx, {
+            type: 'line',
+            data: {
+                labels: ['%capital_labels%'],
+                datasets: [{
+                    label: 'Strategy capital log',
+                    fill: true,
+                    data: ['%capital_data%']
+                }]
+            },
+            options: {
+                scales: {
+
+                }
+            }
+        });
+    </script>
 </main>
 </body>
 </html>

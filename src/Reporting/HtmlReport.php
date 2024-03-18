@@ -16,9 +16,10 @@ class HtmlReport
         $this->graphs = new Graphs($this->reportPath);
     }
 
-    public function generateReport(Backtester $backtester)
+    public function generateReport(Backtester $backtester, ?string $tickerForChart = null): void
     {
         $styles = file_get_contents(__DIR__ . '/../assets/styles.min.css');
+        $chartJs = file_get_contents(__DIR__ . '/../assets/chart.js');
         $html = file_get_contents(__DIR__ . '/../assets/page.html');
         $title = 'Backtest Results - ' . $backtester->getStrategyName();
         $date = date('Y-m-d H:i');
@@ -26,12 +27,22 @@ class HtmlReport
         $tradeLog = $backtester->getTradeLog();
         $tradeStats = $backtester->getTradeStats($tradeLog);
         $netProfit = number_format((float)$tradeStats['net_profit'], 2) . '<br/>' . $backtester->getProfitPercent() . '%';
-        $capitalGraph = '<img src="data:image/png;base64,' . base64_encode($this->graphs->generateCapitalGraph($tradeStats['capital_log'])) . '" />';
+        //$capitalGraph = '<img src="data:image/png;base64,' . base64_encode($this->graphs->generateCapitalGraph($tradeStats['capital_log'])) . '" />';
+        $stockChart = '<p>None</p>';
+        if ($tickerForChart !== null) {
+            $asset = $backtester->getAssets()->getAsset($tickerForChart, $backtester->getBacktestStartTime());
+            if ($asset) {
+                $stockChart = '<img src="data:image/png;base64,' . base64_encode($this->graphs->generateStockChart($asset->getRawData())) . '" />';
+            }
+        }
 
         $output = strtr($html, [
             '%title%' => $title,
             '%backtest_date%' => $date,
             '%styles%' => $styles,
+            '%chart_js%' => $chartJs,
+            "'%capital_labels%'" => implode(',', array_keys($tradeStats['capital_log'])),
+            "'%capital_data%'" => implode(',', $tradeStats['capital_log']),
             '%net_profit%' => $netProfit,
             '%closed_transactions%' => number_format(count($tradeLog)),
             '%profitable_transactions%' => number_format((float)$tradeStats['profitable_transactions']),
@@ -39,7 +50,8 @@ class HtmlReport
             '%max_drawdown%' => number_format((float)$tradeStats['max_drawdown_value'], 2) . '<br/>' . number_format((float)$tradeStats['max_drawdown_percent'], 2),
             '%avg_profit%' => number_format((float)$tradeStats['avg_profit'], 2),
             '%avg_bars%' => number_format(floor((float)$tradeStats['avg_bars'])),
-            '%capital_graph%' => $capitalGraph,
+            //'%capital_graph%' => $capitalGraph,
+            '%stock_chart%' => $stockChart,
 
             '%detailed_stats%' => $this->formatDetailedStats($tradeStats),
             '%transactions_history%' => $this->formatTransactionHistory($tradeLog, $tradeStats)
@@ -154,7 +166,7 @@ class HtmlReport
             $row = '<tr>' .
                     '<td rowspan="2" class="text-right"><strong>' . $i . '</strong></td>' .
                     '<td class="text-right">' . $position->getOpenTime()->getDate() . '</td>' .
-                    '<td>' . $position->getSide()->value . ' OPEN</td>' .
+                    '<td>' . $position->getSide()->value . ' OPEN' . ($position->getOpenComment() ? ' - ' . $position->getOpenComment() : '') . '</td>' .
                     '<td class="text-right">' . number_format($position->getOpenPrice(), 2) . '</td>' .
                     '<td rowspan="2" class="text-right">' . $position->getQuantity() . '</td>' .
                     '<td rowspan="2" class="text-right">' . $position->getProfitAmount() . '<br/>' . $this->textColor(
@@ -169,7 +181,7 @@ class HtmlReport
                 '</tr>';
             $row .= '<tr>' .
                     '<td class="text-right">' . $position->getCloseTime()->getDate() . '</td>' .
-                    '<td>' . $position->getSide()->value . ' CLOSE</td>' .
+                    '<td>' . $position->getSide()->value . ' CLOSE' . ($position->getCloseComment() ? ' - ' . $position->getCloseComment() : '') . '</td>' .
                     '<td class="text-right">' . number_format($position->getClosePrice(), 2) . '</td>' .
                 '</tr>';
             $rows[] = $row;

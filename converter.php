@@ -11,11 +11,13 @@ use SimpleTrader\Loggers\Level;
 $ticker = 'QQQ3';
 $logger = new Console();
 try {
-    $csvData = Csv::fromFile($ticker, __DIR__ . '/QQQ3.MI.csv');
+    $logger->logInfo('Importing data for ' . $ticker);
+    $csvData = Csv::fromFile($ticker, __DIR__ . '/QQQ3.tv.csv');
     $csvData->loadData();
     $sqlite = new SQLite(__DIR__ . '/securities.sqlite');
 
     $sqlite->importData($ticker, $csvData->getData());
+    $logger->logInfo('Import finished');
 } catch (\Exception $e) {
-    $logger->log(Level::Error, $e->getMessage() . ' at ' . $e->getTraceAsString());
+    $logger->logError($e->getMessage() . ' at ' . $e->getTraceAsString());
 }

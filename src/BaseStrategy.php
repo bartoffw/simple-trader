@@ -72,9 +72,19 @@ class BaseStrategy
         return $this->initialCapital;
     }
 
-    public function getOpenProfitPercent(): string
+    /**
+     * @throws StrategyException
+     */
+    public function getOpenProfitPercent(Position $position): string
     {
-        return '0';
+        $asset = $this->currentAssets->getAsset($position->getTicker());
+        if ($asset === null) {
+            throw new StrategyException('Asset not found in the asset list for an open position: ' . $position->getTicker());
+        }
+        $currentPrice = $asset->getCurrentValue();
+        $calculatedSize = $this->calculatePositionSize($currentPrice, $position->getQuantity(), QuantityType::Units);
+        $position->updatePosition($currentPrice, $calculatedSize);
+        return $position->getProfitPercent();
     }
 
     public function onOpen(Assets $assets, DateTime $dateTime): void
@@ -98,18 +108,23 @@ class BaseStrategy
     /**
      * @throws StrategyException
      */
-    public function entry(Side $side, string $ticker, string $price, string $positionSize = '100', string $comment = ''): string
+    public function entry(Side $side, string $ticker, string $positionSize = '100', string $comment = ''): Position
     {
-        if (empty($price)) {
-            throw new StrategyException("Price ($price) cannot be empty or zero");
+        $asset = $this->currentAssets->getAsset($ticker);
+        if ($asset === null) {
+            throw new StrategyException('Asset not found in the asset list for an open position: ' . $ticker);
         }
-        $calculatedSize = $this->calculatePositionSize($price, $positionSize, $this->qtyType);
+        $currentPrice = $asset->getCurrentValue();
+        if (empty($currentPrice)) {
+            throw new StrategyException("Price ($currentPrice) cannot be empty or zero");
+        }
+        $calculatedSize = $this->calculatePositionSize($currentPrice, $positionSize, $this->qtyType);
         if ($calculatedSize > $this->capitalAvailable) {
             throw new StrategyException("Position size ($calculatedSize) is greater than the available capital ($this->capitalAvailable)");
         }
-        $calculatedQty = Calculator::calculate('$1 / $2', $calculatedSize, $price);
+        $calculatedQty = Calculator::calculate('$1 / $2', $calculatedSize, $currentPrice);
 
-        $position = new Position($this->currentDateTime, $side, $ticker, $price, $calculatedQty, $calculatedSize, $comment);
+        $position = new Position($this->currentDateTime, $side, $ticker, $currentPrice, $calculatedQty, $calculatedSize, $comment);
         $this->openTrades[$position->getId()] = $position;
         $this->tradeLog[$position->getId()] = $position;
 
@@ -117,12 +132,12 @@ class BaseStrategy
         $this->capitalAvailable = Calculator::calculate('$1 - $2', $this->capitalAvailable, $calculatedSize);
 
         $this->logger->logInfo(
-            '[' . $this->currentDateTime->getDateTime() . '][' . $position->getId() . '] ' . $side->value . ' @ ' . $price . ', ' .
+            '[' . $this->currentDateTime->getDateTime() . '][' . $position->getId() . '] ' . $side->value . ' @ ' . $currentPrice . ', ' .
             'total size: ' . $calculatedSize . ', equity: ' . $this->getCapital() .
             ($comment ? ' (' . $comment . ')' : '')
         );
 
-        return $position->getId();
+        return $position;
     }
 
     /**
@@ -138,7 +153,7 @@ class BaseStrategy
             }
             $currentPrice = $asset->getCurrentValue();
             $calculatedSize = $this->calculatePositionSize($currentPrice, $position->getQuantity(), QuantityType::Units);
-            $position->closePosition($this->currentDateTime, $currentPrice, $calculatedSize);
+            $position->closePosition($this->currentDateTime, $currentPrice, $calculatedSize, $comment);
 
             $this->tradeLog[$position->getId()] = $position;
 
@@ -172,6 +187,14 @@ class BaseStrategy
         $this->openPositionSize = 0;
         $this->openTrades = [];
         $this->capitalAvailable = $this->capital;
+    }
+
+    public function getOpenPosition(string $positionId): ?Position
+    {
+        if (array_key_exists($positionId, $this->openTrades)) {
+            return $this->openTrades[$positionId];
+        }
+        return null;
     }
 
     public function hasOpenTrades()

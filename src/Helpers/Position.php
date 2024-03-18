@@ -10,6 +10,8 @@ class Position
     protected string $id;
     protected PositionStatus $status;
     protected int $openBars = 0;
+    protected string $openComment = '';
+    protected string $closeComment = '';
     protected DateTime $openTime;
     protected DateTime $closeTime;
     protected string $openPrice;
@@ -23,13 +25,14 @@ class Position
 
     public function __construct(DateTime $currentTime, protected Side $side, protected string $ticker,
                                 protected string $price, protected string $quantity,
-                                protected string $positionSize, protected string $comment = '')
+                                protected string $positionSize, string $comment = '')
     {
         $this->id = uniqid($this->ticker . '-' . $this->side->value . '-');
         $this->status = PositionStatus::Open;
         $this->openTime = $currentTime;
         $this->openPrice = $this->price;
         $this->openPositionSize = $this->positionSize;
+        $this->openComment = $comment;
     }
 
     public function getId(): string
@@ -67,9 +70,14 @@ class Position
         return $this->side;
     }
 
-    public function getComment(): string
+    public function getOpenComment(): string
     {
-        return $this->comment;
+        return $this->openComment;
+    }
+
+    public function getCloseComment(): string
+    {
+        return $this->closeComment;
     }
 
     public function getClosePrice(): string
@@ -128,12 +136,13 @@ class Position
     /**
      * @throws StrategyException
      */
-    public function closePosition(DateTime $currentTime, string $price, string $positionSize): void
+    public function closePosition(DateTime $currentTime, string $price, string $positionSize, string $comment = ''): void
     {
         if ($this->status === PositionStatus::Closed) {
             throw new StrategyException('Position is already closed');
         }
         $this->updatePosition($price, $positionSize);
+        $this->closeComment = $comment;
         $this->closeTime = $currentTime;
         $this->closePrice = $price;
         $this->closePositionSize = $positionSize;
