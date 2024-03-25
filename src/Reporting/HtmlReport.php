@@ -155,16 +155,9 @@ class HtmlReport
         $i = 1;
         /** @var Position $position */
         foreach ($tradeLog as $position) {
-//            if (Calculator::compare($position->getPortfolioBalance(), $tradeStats['peak_value']) === 0) {
-//                $balance = '<span class="text-green">%balance%</span>';
-//            } elseif (Calculator::compare($position->getPortfolioBalance(), $tradeStats['trough_value']) === 0) {
-//                $balance = '<span class="text-red">%balance%</span>';
-//            } else {
-//                $balance = '%balance%';
-//            }
-//            $balance = strtr($balance, ['%balance%' => number_format((float)$position->getPortfolioBalance(), 2)]);
             $row = '<tr>' .
                     '<td rowspan="2" class="text-right"><strong>' . $i . '</strong></td>' .
+                    '<td rowspan="2">' . $position->getTicker() . '</td>' .
                     '<td class="text-right">' . $position->getOpenTime()->getDate() . '</td>' .
                     '<td>' . $position->getSide()->value . ' OPEN' . ($position->getOpenComment() ? ' - ' . $position->getOpenComment() : '') . '</td>' .
                     '<td class="text-right">' . number_format($position->getOpenPrice(), 2) . '</td>' .
@@ -174,10 +167,12 @@ class HtmlReport
                     Calculator::compare($position->getProfitPercent(), '0') < 0 ? 'red' : 'green'
                     ) . '</td>' .
                     '<td rowspan="2" class="text-right">' . number_format((float)$position->getPortfolioBalance(), 2) . '</td>' .
-                    '<td rowspan="2" class="text-right">' . $this->textColor(
-                        number_format($position->getPortfolioDrawdownPercent(), 2) . '%',
-                        Calculator::compare($position->getPortfolioDrawdownPercent(), '0') > 0 ? 'red' : null
-                    ) . '</td>' .
+                    '<td rowspan="2" class="text-right">' . number_format((float)$position->getMaxDrawdownValue(), 2) . '<br/>' .
+                        $this->textColor(
+                            number_format($position->getMaxDrawdownPercent(), 2) . '%',
+                            Calculator::compare($position->getMaxDrawdownPercent(), '0') > 0 ? 'red' : null
+                        ) .
+                    '</td>' .
                 '</tr>';
             $row .= '<tr>' .
                     '<td class="text-right">' . $position->getCloseTime()->getDate() . '</td>' .

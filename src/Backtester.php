@@ -88,7 +88,6 @@ class Backtester
         ];
         $peakValue = $currentCapital;
         $troughValue = $currentCapital;
-        $currentTroughValue = $currentCapital;
 
         $netProfit = $this->getProfit();
         $profits = '0';
@@ -130,10 +129,6 @@ class Backtester
                 }
                 $profits = Calculator::calculate('$1 + $2', $profits, $profit);
                 $currentCapital = Calculator::calculate('$1 + $2', $currentCapital, $profit);
-
-                if (Calculator::compare($currentCapital, $peakValue) > 0) {
-                    $peakValue = $currentCapital;
-                }
             } else {
                 if ($position->getSide() === Side::Long) {
                     $losingTransactionsLong++;
@@ -146,25 +141,15 @@ class Backtester
             }
             $capitalLog[] = $currentCapital;
             $position->setPortfolioBalance($currentCapital);
-            if (Calculator::compare($currentCapital, $peakValue) < 0) {
-                $currentTroughValue = $currentCapital;
-                $currentDrawdownValue = Calculator::calculate('$1 - $2', $peakValue, $currentTroughValue);
-                $currentDrawdownPercent = Calculator::calculate('$1 * 100 / $2', $currentDrawdownValue, $peakValue);
-            } else {
-                $currentDrawdownValue = '0';
-                $currentDrawdownPercent = '0';
-            }
-            $position->setPortfolioDrawdown($currentDrawdownValue, $currentDrawdownPercent);
-            if (Calculator::compare($currentDrawdownPercent, $maxDrawdownPercent) > 0) {
-                $maxDrawdownValue = $currentDrawdownValue;
-                $maxDrawdownPercent = $currentDrawdownPercent;
-                $troughValue = $currentTroughValue;
+
+            if (Calculator::compare($position->getMaxDrawdownValue(), $maxDrawdownValue) > 0) {
+                $maxDrawdownValue = $position->getMaxDrawdownValue();
+                $maxDrawdownPercent = $position->getMaxDrawdownPercent();
             }
         }
 
         if (count($resultLog) > 2) {
             $stdDev = Calculator::stdDev($resultLog);
-            var_dump(sqrt(count($tradeLog)), $avgProfit, $stdDev);
             $sharpeRatio = Calculator::calculate('sqrt($1) * $2 / $3', count($tradeLog), $avgProfit, $stdDev);
         }
 
@@ -226,23 +211,26 @@ class Backtester
         }
         $this->assets = $assets;
         $this->strategy->setLogger($this->logger);
+        $this->strategy->setStartDate($startTime);
         $this->backtestStartTime = $startTime;
         $this->backtestEndTime = $endTime;
         $this->backtestStarted = microtime(true);
 
+        $backtestStartTime = $this->strategy->getStartDateForCalculations();
+
         $onOpenExists = (new ReflectionMethod($this->strategy, 'onOpen'))->getDeclaringClass()->getName() !== BaseStrategy::class;
         $onCloseExists = (new ReflectionMethod($this->strategy, 'onClose'))->getDeclaringClass()->getName() !== BaseStrategy::class;
 
-        $this->logger?->log(Level::Debug, 'Starting the backtest');
+        $this->logger?->logInfo('Starting the backtest. Start date: ' . $startTime->getDateTime() . ', end date: ' . ($endTime ? $endTime->getDateTime() : 'none'));
         while ($endTime === null || $startTime->getCurrentDateTime() <= $endTime->getDateTime()) {
-            $this->logger?->log(Level::Debug, 'Backtest day: ' . $startTime->getCurrentDateTime());
+            $this->logger?->logDebug('Backtest day: ' . $startTime->getCurrentDateTime());
             $currentDateTime = new DateTime($startTime->getCurrentDateTime());
 
             if ($onOpenExists) {
-                $this->strategy->onOpen($this->assets->getAssetsForDates($startTime, $currentDateTime, Event::OnOpen), $currentDateTime);
+                $this->strategy->onOpen($this->assets->getAssetsForDates($backtestStartTime, $currentDateTime, Event::OnOpen), $currentDateTime);
             }
             if ($onCloseExists) {
-                $this->strategy->onClose($this->assets->getAssetsForDates($startTime, $currentDateTime, Event::OnClose), $currentDateTime);
+                $this->strategy->onClose($this->assets->getAssetsForDates($backtestStartTime, $currentDateTime, Event::OnClose), $currentDateTime);
             }
             /** @var Position $position */
             foreach ($this->strategy->getOpenTrades() as $position) {
@@ -252,7 +240,7 @@ class Backtester
             // TODO
         }
         $currentDateTime = new DateTime($startTime->getCurrentDateTime());
-        $this->strategy->onStrategyEnd($assets->getAssetsForDates($startTime, $currentDateTime, Event::OnClose), $currentDateTime);
+        $this->strategy->onStrategyEnd($assets->getAssetsForDates($backtestStartTime, $currentDateTime, Event::OnClose), $currentDateTime);
 
         $this->backtestFinished = microtime(true);
         $this->lastBacktestTime = $this->backtestFinished - $this->backtestStarted;

@@ -18,9 +18,10 @@ class Position
     protected string $closePrice;
     protected string $openPositionSize;
     protected string $closePositionSize;
+    protected string $peakValue = '0';
     protected ?string $portfolioBalance = null;
-    protected ?string $portfolioDrawdownValue = null;
-    protected ?string $portfolioDrawdownPercent = null;
+    protected string $maxDrawdownValue = '0';
+    protected ?string $maxDrawdownPercent = null;
 
 
     public function __construct(DateTime $currentTime, protected Side $side, protected string $ticker,
@@ -108,23 +109,40 @@ class Position
         return $this->portfolioBalance;
     }
 
-    public function setPortfolioDrawdown(string $drawdownValue, string $drawdownPercent): void
+    public function calculateDrawdown(Ohlc $ohlc)
     {
-        if ($this->portfolioDrawdownValue !== null) {
-            throw new BacktesterException('Portfolio drawdown is already set for this position: ' . $this->getId());
+        $maxValue = Calculator::calculate('$1 * $2',
+            max((float) $ohlc->getOpen(), (float) $ohlc->getLow(), (float) $ohlc->getHigh(), (float) $ohlc->getClose()),
+            $this->quantity
+        );
+        $minValue = Calculator::calculate('$1 * $2',
+            min((float) $ohlc->getOpen(), (float) $ohlc->getLow(), (float) $ohlc->getHigh(), (float) $ohlc->getClose()),
+            $this->quantity
+        );
+        if (Calculator::compare($maxValue, $this->peakValue) > 0) {
+            $this->peakValue = $maxValue;
         }
-        $this->portfolioDrawdownValue = $drawdownValue;
-        $this->portfolioDrawdownPercent = $drawdownPercent;
+        if (Calculator::compare($minValue, $this->peakValue) < 0) {
+            $currentDrawdownValue = Calculator::calculate('$1 - $2', $this->peakValue, $minValue);
+            $currentDrawdownPercent = Calculator::calculate('$1 * 100 / $2', $currentDrawdownValue, $this->peakValue);
+        } else {
+            $currentDrawdownValue = '0';
+            $currentDrawdownPercent = '0';
+        }
+        if (Calculator::compare($currentDrawdownValue, $this->maxDrawdownValue) > 0) {
+            $this->maxDrawdownValue = $currentDrawdownValue;
+            $this->maxDrawdownPercent = $currentDrawdownPercent;
+        }
     }
 
-    public function getPortfolioDrawdownValue(): ?string
+    public function getMaxDrawdownValue(): ?string
     {
-        return $this->portfolioDrawdownValue;
+        return $this->maxDrawdownValue;
     }
 
-    public function getPortfolioDrawdownPercent(): ?string
+    public function getMaxDrawdownPercent(): ?string
     {
-        return $this->portfolioDrawdownPercent;
+        return $this->maxDrawdownPercent;
     }
 
     public function updatePosition(string $price, string $positionSize): void

@@ -16,6 +16,7 @@ class BaseStrategy
     private bool $parentOnOpenCalled = false;
     private bool $parentOnCloseCalled = false;
     protected ?LoggerInterface $logger = null;
+    protected DateTime $startDate;
     protected DateTime $currentDateTime;
     protected Assets $currentAssets;
     protected array $tradeLog = [];
@@ -45,6 +46,16 @@ class BaseStrategy
         if ($override || $this->logger === null) {
             $this->logger = $logger;
         }
+    }
+
+    public function setStartDate(DateTime $dateTime): void
+    {
+        $this->startDate = $dateTime;
+    }
+
+    public function getStartDateForCalculations(): DateTime
+    {
+        return $this->startDate;
     }
 
     /**
@@ -91,18 +102,21 @@ class BaseStrategy
     {
         $this->currentAssets = $assets;
         $this->currentDateTime = $dateTime;
+        $this->updateDrawdown();
     }
 
     public function onClose(Assets $assets, DateTime $dateTime): void
     {
         $this->currentAssets = $assets;
         $this->currentDateTime = $dateTime;
+        $this->updateDrawdown();
     }
 
     public function onStrategyEnd(Assets $assets, DateTime $dateTime): void
     {
         $this->currentAssets = $assets;
         $this->currentDateTime = $dateTime;
+        $this->updateDrawdown();
     }
 
     /**
@@ -180,7 +194,7 @@ class BaseStrategy
 
             $this->logger->logInfo(
                 '[' . $this->currentDateTime->getDateTime() . '][' . $position->getId() . '] CLOSE @ ' . $currentPrice . ', ' .
-                'profit: ' . $position->getProfitPercent() . '% == ' . $position->getProfitAmount() . ', equity: ' . $this->getCapital() .
+                'profit: ' . $position->getProfitPercent() . '%' /*. '% == ' . $position->getProfitAmount() . ', equity: ' . $this->getCapital()*/ .
                 ($comment ? ' (' . $comment . ')' : '')
             );
         }
@@ -264,5 +278,17 @@ class BaseStrategy
             QuantityType::Units => Calculator::calculate('$1 * $2', $price, $qty),
             default => throw new StrategyException('Unknown QuantityType'),
         };
+    }
+
+    protected function updateDrawdown()
+    {
+        /** @var Position $position */
+        foreach ($this->openTrades as $position) {
+            $asset = $this->currentAssets->getAsset($position->getTicker());
+            if ($asset === null) {
+                throw new StrategyException('Asset not found in the asset list for an open position: ' . $position->getTicker());
+            }
+            $position->calculateDrawdown($asset->getLatestValues());
+        }
     }
 }

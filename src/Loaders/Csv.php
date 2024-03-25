@@ -61,6 +61,11 @@ class Csv extends BaseLoader implements LoaderInterface
         return true;
     }
 
+    public function getColumns(): array
+    {
+        return $this->columns;
+    }
+
     public function getData(?string $column = null): array
     {
         if ($column !== null) {
@@ -102,8 +107,10 @@ class Csv extends BaseLoader implements LoaderInterface
         }
         while (($line = fgetcsv($handle)) !== false) {
             if (empty($this->data)) {
-                $this->columns = $line;
+                $this->columns = [];
                 foreach ($line as $column) {
+                    $column = trim($column);
+                    $this->columns[] = $column;
                     $this->data[$column] = [];
                 }
                 continue;
