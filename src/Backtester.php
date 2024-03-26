@@ -86,6 +86,9 @@ class Backtester
         $capitalLog = [
             $currentCapital
         ];
+        $drawdownLog = [
+            '0.00'
+        ];
         $peakValue = $currentCapital;
         $troughValue = $currentCapital;
 
@@ -141,8 +144,9 @@ class Backtester
             }
             $capitalLog[] = $currentCapital;
             $position->setPortfolioBalance($currentCapital);
+            $drawdownLog[] = empty($position->getMaxDrawdownPercent()) ? '0' : '-' . number_format($position->getMaxDrawdownPercent(), 1);
 
-            if (Calculator::compare($position->getMaxDrawdownValue(), $maxDrawdownValue) > 0) {
+            if (Calculator::compare($position->getMaxDrawdownPercent(), $maxDrawdownPercent) > 0) {
                 $maxDrawdownValue = $position->getMaxDrawdownValue();
                 $maxDrawdownPercent = $position->getMaxDrawdownPercent();
             }
@@ -157,6 +161,7 @@ class Backtester
         $losingTransactions = $losingTransactionsLong + $losingTransactionsShort;
         return [
             'capital_log' => $capitalLog,
+            'drawdown_log' => $drawdownLog,
             'net_profit' => $netProfit,
             'avg_profit' => $avgProfit,
             'avg_profit_longs' => '0',

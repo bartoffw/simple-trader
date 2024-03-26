@@ -108,12 +108,34 @@
                 datasets: [{
                     label: 'Strategy capital log',
                     fill: true,
+                    yAxisID: 'y',
+                    order: 0,
                     data: ['%capital_data%']
+                }, {
+                    label: 'Strategy drawdown log',
+                    yAxisID: 'y1',
+                    order: 1,
+                    type: 'bar',
+                    data: ['%drawdown_data%']
                 }]
             },
             options: {
+                stacked: false,
+                responsive: true,
                 scales: {
-
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left'
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    },
                 }
             }
         });

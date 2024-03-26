@@ -43,6 +43,7 @@ class HtmlReport
             '%chart_js%' => $chartJs,
             "'%capital_labels%'" => implode(',', array_keys($tradeStats['capital_log'])),
             "'%capital_data%'" => implode(',', $tradeStats['capital_log']),
+            "'%drawdown_data%'" => implode(',', $tradeStats['drawdown_log']),
             '%net_profit%' => $netProfit,
             '%closed_transactions%' => number_format(count($tradeLog)),
             '%profitable_transactions%' => number_format((float)$tradeStats['profitable_transactions']),
