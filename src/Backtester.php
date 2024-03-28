@@ -7,11 +7,14 @@ use ReflectionMethod;
 use SimpleTrader\Exceptions\BacktesterException;
 use SimpleTrader\Exceptions\LoaderException;
 use SimpleTrader\Exceptions\StrategyException;
+use SimpleTrader\Helpers\Asset;
 use SimpleTrader\Helpers\Calculator;
 use SimpleTrader\Helpers\DateTime;
 use SimpleTrader\Helpers\Position;
 use SimpleTrader\Helpers\Resolution;
 use SimpleTrader\Helpers\Side;
+use SimpleTrader\Loaders\LoaderInterface;
+use SimpleTrader\Loaders\SQLite;
 use SimpleTrader\Loggers\Level;
 use SimpleTrader\Loggers\LoggerInterface;
 
@@ -20,6 +23,8 @@ class Backtester
     protected ?LoggerInterface $logger = null;
     protected BaseStrategy $strategy;
     protected Assets $assets;
+    protected ?Asset $benchmark = null;
+    protected SQLite $loader;
     protected DateTime $backtestStartTime;
     protected ?DateTime $backtestEndTime;
     protected string $backtestStarted;
@@ -40,9 +45,29 @@ class Backtester
         $this->strategy = $strategy;
     }
 
+    public function setBenchmark(Asset $asset): void
+    {
+        $this->benchmark = $asset;
+    }
+
+    public function setLoader(SQLite $loader): void
+    {
+        $this->loader = $loader;
+    }
+
+    public function getStrategy(): BaseStrategy
+    {
+        return $this->strategy;
+    }
+
     public function getStrategyName(): string
     {
         return $this->strategy->getStrategyName();
+    }
+
+    public function getBenchmarkTicker(): string
+    {
+        return $this->benchmark?->getTicker();
     }
 
     public function getBacktestStartTime(): DateTime
@@ -89,6 +114,14 @@ class Backtester
         $drawdownLog = [
             '0.00'
         ];
+        $benchmarkLog = [
+            $currentCapital
+        ];
+        if ($this->benchmark !== null) {
+            $benchmarkLoaded = $this->loader->loadAsset($this->benchmark, $this->strategy->getStartDateForCalculations(), $this->strategy->getStartDate(), Event::OnClose);
+            $benchmarkValue = $benchmarkLoaded->getCurrentValue();
+            $benchmarkQty = $benchmarkValue ? $currentCapital / $benchmarkValue : 0;
+        }
         $peakValue = $currentCapital;
         $troughValue = $currentCapital;
 
@@ -142,11 +175,19 @@ class Backtester
                 $losses = Calculator::calculate('$1 + $2', $losses, $loss);
                 $currentCapital = Calculator::calculate('$1 - $2', $currentCapital, $loss);
             }
-            $capitalLog[] = $currentCapital;
             $position->setPortfolioBalance($currentCapital);
-            $drawdownLog[] = empty($position->getMaxDrawdownPercent()) ? '0' : '-' . number_format($position->getMaxDrawdownPercent(), 1);
+
+            $capitalLog[] = $currentCapital;
+            $drawdownLog[] = empty($position->getMaxDrawdownPercent()) ? '0' : '-' . round($position->getMaxDrawdownPercent(), 1);
+            if ($this->benchmark !== null) {
+                $benchmarkLoaded = $this->loader->loadAsset($this->benchmark, $this->strategy->getStartDate(), $position->getCloseTime(), Event::OnClose);
+                $benchmarkValue = $benchmarkLoaded->getCurrentValue();
+                $benchmarkLog[] = round($benchmarkValue * $benchmarkQty, 2);
+//                echo "{$position->getCloseTime()}: $benchmarkValue\n";
+            }
 
             if (Calculator::compare($position->getMaxDrawdownPercent(), $maxDrawdownPercent) > 0) {
+                // todo: max drawdown pozycji to nie jest max drawdown całego testu!!!
                 $maxDrawdownValue = $position->getMaxDrawdownValue();
                 $maxDrawdownPercent = $position->getMaxDrawdownPercent();
             }
@@ -159,7 +200,7 @@ class Backtester
 
         $profitableTransactions = $profitableTransactionsLong + $profitableTransactionsShort;
         $losingTransactions = $losingTransactionsLong + $losingTransactionsShort;
-        return [
+        $params = [
             'capital_log' => $capitalLog,
             'drawdown_log' => $drawdownLog,
             'net_profit' => $netProfit,
@@ -195,6 +236,10 @@ class Backtester
             'avg_losing_transaction_longs' => Calculator::compare($losingTransactionsLong, '0') > 0 ? Calculator::calculate('$1 / $2', $this->strategy->getGrossLossLongs(), $losingTransactionsLong) : '0',
             'avg_losing_transaction_shorts' => Calculator::compare($losingTransactionsShort, '0') > 0 ? Calculator::calculate('$1 / $2', $this->strategy->getGrossLossShorts(), $losingTransactionsShort) : '0',
         ];
+        if ($this->benchmark !== null) {
+            $params['benchmark_log'] = $benchmarkLog;
+        }
+        return $params;
     }
 
     /**
@@ -241,7 +286,7 @@ class Backtester
             foreach ($this->strategy->getOpenTrades() as $position) {
                 $position->incrementOpenBars();
             }
-            $startTime->increaseByStep($this->resolution);
+            $startTime->increaseByStep();
             // TODO
         }
         $currentDateTime = new DateTime($startTime->getCurrentDateTime());

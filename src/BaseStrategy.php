@@ -53,6 +53,11 @@ class BaseStrategy
         $this->startDate = $dateTime;
     }
 
+    public function getStartDate(): DateTime
+    {
+        return $this->startDate;
+    }
+
     public function getStartDateForCalculations(): DateTime
     {
         return $this->startDate;

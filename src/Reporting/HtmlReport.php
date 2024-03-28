@@ -36,7 +36,7 @@ class HtmlReport
             }
         }
 
-        $output = strtr($html, [
+        $params = [
             '%title%' => $title,
             '%backtest_date%' => $date,
             '%styles%' => $styles,
@@ -56,7 +56,16 @@ class HtmlReport
 
             '%detailed_stats%' => $this->formatDetailedStats($tradeStats),
             '%transactions_history%' => $this->formatTransactionHistory($tradeLog, $tradeStats)
-        ]);
+        ];
+        if (!empty($tradeStats['benchmark_log'])) {
+            $params["'%benchmark_data%'"] = "{
+                    label: 'Benchmark capital log - {$backtester->getBenchmarkTicker()} ($)',
+                    yAxisID: 'y',
+                    order: 2,
+                    data: [" . implode(',', $tradeStats['benchmark_log']) . "]
+                }";
+        }
+        $output = strtr($html, $params);
         file_put_contents($this->reportPath . '/report.html', $output);
     }
 
@@ -159,7 +168,7 @@ class HtmlReport
             $row = '<tr>' .
                     '<td rowspan="2" class="text-right"><strong>' . $i . '</strong></td>' .
                     '<td rowspan="2">' . $position->getTicker() . '</td>' .
-                    '<td class="text-right">' . $position->getOpenTime()->getDate() . '</td>' .
+                    '<td class="text-right">' . $position->getOpenTime()->getDateTime() . '</td>' .
                     '<td>' . $position->getSide()->value . ' OPEN' . ($position->getOpenComment() ? ' - ' . $position->getOpenComment() : '') . '</td>' .
                     '<td class="text-right">' . number_format($position->getOpenPrice(), 2) . '</td>' .
                     '<td rowspan="2" class="text-right">' . $position->getQuantity() . '</td>' .
@@ -176,7 +185,7 @@ class HtmlReport
                     '</td>' .
                 '</tr>';
             $row .= '<tr>' .
-                    '<td class="text-right">' . $position->getCloseTime()->getDate() . '</td>' .
+                    '<td class="text-right">' . $position->getCloseTime()->getDateTime() . '</td>' .
                     '<td>' . $position->getSide()->value . ' CLOSE' . ($position->getCloseComment() ? ' - ' . $position->getCloseComment() : '') . '</td>' .
                     '<td class="text-right">' . number_format($position->getClosePrice(), 2) . '</td>' .
                 '</tr>';

@@ -116,7 +116,7 @@ class Position
 
         if ($this->side == Side::Long) {
             if (Calculator::compare($maxValue, $this->peakValue) > 0) {
-//                echo "[" . $ohlc->getDateTime()->getDate() . "] PEAK: {$maxValue}\n";
+//                echo "[" . $ohlc->getDateTime()->getDateTime() . "] PEAK: {$maxValue}\n";
                 $this->peakValue = $maxValue;
             }
             if (Calculator::compare($minValue, $this->peakValue) < 0) {
@@ -127,7 +127,7 @@ class Position
                 $currentDrawdownPercent = '0';
             }
             if (Calculator::compare($currentDrawdownValue, $this->maxDrawdownValue) > 0) {
-//                echo "[" . $ohlc->getDateTime()->getDate() . "] TROUGH: {$currentDrawdownValue}\n";
+//                echo "[" . $ohlc->getDateTime()->getDateTime() . "] TROUGH: {$currentDrawdownValue}\n";
                 $this->maxDrawdownValue = $currentDrawdownValue;
                 $this->maxDrawdownPercent = $currentDrawdownPercent;
             }

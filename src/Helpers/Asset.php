@@ -52,6 +52,15 @@ class Asset
         return $this->isLoaded() && count($this->data) >= $minLength;
     }
 
+    public function getValueForDate(DateTime $dateTime, Event $event = Event::OnClose): ?string
+    {
+        if ($this->isLoaded() && isset($this->data[$dateTime->getDateTime()])) {
+            $field = $event === Event::OnClose ? 'close' : 'open';
+            return $this->data[$dateTime->getDateTime()][$field];
+        }
+        return null;
+    }
+
     public function getLatestValues(): ?Ohlc
     {
         if ($this->isLoaded()) {

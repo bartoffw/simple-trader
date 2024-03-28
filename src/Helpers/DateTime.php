@@ -8,9 +8,11 @@ class DateTime
     protected string $currentDateTime;
 
 
-    public function __construct(string $dateTime)
+    public function __construct(string $dateTime, protected Resolution $resolution = Resolution::Daily)
     {
-        $this->dateTime = date('Y-m-d H:i:s', strtotime($dateTime));
+        $this->dateTime = $this->resolution === Resolution::Daily ?
+            date('Y-m-d', strtotime($dateTime)) :
+            date('Y-m-d H:i:s', strtotime($dateTime));
         $this->currentDateTime = $this->dateTime;
     }
 
@@ -19,19 +21,14 @@ class DateTime
         return $this->dateTime;
     }
 
-    public function getDate(): string
-    {
-        return date('Y-m-d', strtotime($this->dateTime));
-    }
-
     public function getCurrentDateTime():string
     {
         return $this->currentDateTime;
     }
 
-    public function increaseByStep(Resolution $resolution):string
+    public function increaseByStep():string
     {
-        $this->currentDateTime = match ($resolution) {
+        $this->currentDateTime = match ($this->resolution) {
             Resolution::Daily => date('Y-m-d', strtotime('+1 day', strtotime($this->currentDateTime))),
             Resolution::Weekly => date('Y-m-d', strtotime('+1 week', strtotime($this->currentDateTime))),
         };

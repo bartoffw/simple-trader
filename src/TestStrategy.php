@@ -23,7 +23,7 @@ class TestStrategy extends BaseStrategy
         foreach ($assets->getAssets() as $asset) {
             $this->logger?->log(Level::Debug, '[CLOSE] ' .
                 'Asset: ' . $asset->getTicker() . ', ' .
-                'date: ' . $dateTime->getDate() . ', ' .
+                'date: ' . $dateTime->getDateTime() . ', ' .
                 $asset->getLatestValues()?->toString() . ', ' .
                 'capital: ' . $this->getCapital(true)
             );

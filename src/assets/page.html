@@ -106,18 +106,18 @@
             data: {
                 labels: ['%capital_labels%'],
                 datasets: [{
-                    label: 'Strategy capital log',
+                    label: 'Strategy capital log ($)',
                     fill: true,
                     yAxisID: 'y',
                     order: 0,
                     data: ['%capital_data%']
                 }, {
-                    label: 'Strategy drawdown log',
+                    label: 'Strategy drawdown log (%)',
                     yAxisID: 'y1',
                     order: 1,
                     type: 'bar',
                     data: ['%drawdown_data%']
-                }]
+                }, '%benchmark_data%']
             },
             options: {
                 stacked: false,
