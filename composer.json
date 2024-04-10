@@ -20,6 +20,8 @@
     "ext-bcmath": "*",
     "ext-gd": "*",
     "lupecode/php-trader-native": "^2.1",
-    "mitoteam/jpgraph": "^10.4"
-  }
+    "mitoteam/jpgraph": "^10.4",
+    "mammothphp/woollym": "dev-master"
+  },
+  "minimum-stability": "dev"
 }

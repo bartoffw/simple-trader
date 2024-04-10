@@ -2,48 +2,44 @@
 
 namespace SimpleTrader;
 
+use MammothPHP\WoollyM\DataFrame;
 use SimpleTrader\Exceptions\LoaderException;
 use SimpleTrader\Helpers\DateTime;
-use SimpleTrader\Helpers\Asset;
-use SimpleTrader\Loaders\SQLite;
+use SimpleTrader\Helpers\Ohlc;
 
 class Assets
 {
+    protected static array $columns = [
+        'date', 'open', 'high', 'low', 'close', 'volume'
+    ];
     protected array $assetList = [];
-    protected SQLite $loader;
 
 
     public function __construct()
     {
-
     }
 
-    public function setLoader(SQLite $loader): void
+    public function addAsset(DataFrame $asset, string $ticker, bool $replace = false): void
     {
-        $this->loader = $loader;
-    }
-
-    public function addAsset(Asset $asset, $replace = false): void
-    {
-        $ticker = $asset->getTicker();
         if (isset($this->assetList[$ticker]) && !$replace) {
             throw new LoaderException('This asset is already loaded: ' . $ticker);
         }
-        $this->assetList[$ticker] = $asset;
+        // check required columns
+        $columns = $asset->columnsNames();
+        foreach ($columns as $colName) {
+            if (!in_array($colName, self::$columns)) {
+                throw new LoaderException('Column name invalid: ' . $colName . '. Allowed columns: ' . implode(', ', self::$columns));
+            }
+        }
+        if (count($columns) !== count(self::$columns)) {
+            throw new LoaderException('Column count does not match: ' . count($columns) . ' vs ' . count(self::$columns));
+        }
+        $this->assetList[$ticker] = $asset->sortRecordsByColumns(by: 'date', ascending: false);
     }
 
-    public function getAsset(string $ticker, ?DateTime $loadFromDate = null): ?Asset
+    public function getAsset(string $ticker): ?DataFrame
     {
-        /** @var Asset $asset */
-        if (array_key_exists($ticker, $this->assetList)) {
-            $asset = $this->assetList[$ticker];
-            if ($loadFromDate !== null && !$asset->isLoaded()) {
-                // TODO: optimize this to just use one instance
-                return $this->loader->loadAsset($asset, $loadFromDate);
-            }
-            return $asset;
-        }
-        return null;
+        return $this->hasAsset($ticker) ? $this->assetList[$ticker] : null;
     }
 
     public function getAssets(): array
@@ -51,21 +47,38 @@ class Assets
         return $this->assetList;
     }
 
+    public function hasAsset(string $ticker): bool
+    {
+        return array_key_exists($ticker, $this->assetList);
+    }
+
     public function isEmpty(): bool
     {
         return empty($this->assetList);
     }
 
-    /**
-     * @throws LoaderException
-     */
-    public function getAssetsForDates(DateTime $startTime, DateTime $endTime, Event $event): Assets
+    public function getLatestOhlc(string $ticker, ?DateTime $forDate = null): ?Ohlc
     {
-        $limitedAssets = new Assets();
-        /** @var Asset $asset */
-        foreach ($this->assetList as $asset) {
-            $limitedAssets->addAsset($this->loader->loadAsset($asset, $startTime, $endTime, $event));
+        $asset = $this->getAsset($ticker);
+        if ($asset === null) {
+            throw new LoaderException('Asset not found in the asset list for an open position: ' . $ticker);
         }
-        return $limitedAssets;
+        $latestFrame = $forDate ?
+            $asset->selectAll()->where(fn($record, $recordKey) => $record['date'] <= $forDate->getDateTime())->limit(1) :
+            $asset->head(1);
+        return $latestFrame ?
+            new Ohlc(new DateTime($latestFrame['date']), $latestFrame['open'], $latestFrame['high'], $latestFrame['low'], $latestFrame['close'], $latestFrame['volume']) :
+            null;
+    }
+
+    public function getCurrentValue(string $ticker, ?DateTime $forDate = null, Event $event = Event::OnClose): ?string
+    {
+        $ohlc = $this->getLatestOhlc($ticker, $forDate);
+        return $ohlc ?
+            match($event) {
+                Event::OnOpen => $ohlc['open'],
+                Event::OnClose => $ohlc['close']
+            } :
+            null;
     }
 }

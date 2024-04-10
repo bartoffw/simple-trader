@@ -2,20 +2,18 @@
 
 namespace SimpleTrader;
 
+use MammothPHP\WoollyM\DataFrame;
 use ReflectionException;
 use ReflectionMethod;
 use SimpleTrader\Exceptions\BacktesterException;
 use SimpleTrader\Exceptions\LoaderException;
 use SimpleTrader\Exceptions\StrategyException;
-use SimpleTrader\Helpers\Asset;
 use SimpleTrader\Helpers\Calculator;
 use SimpleTrader\Helpers\DateTime;
 use SimpleTrader\Helpers\Position;
 use SimpleTrader\Helpers\Resolution;
 use SimpleTrader\Helpers\Side;
-use SimpleTrader\Loaders\LoaderInterface;
 use SimpleTrader\Loaders\SQLite;
-use SimpleTrader\Loggers\Level;
 use SimpleTrader\Loggers\LoggerInterface;
 
 class Backtester
@@ -23,7 +21,7 @@ class Backtester
     protected ?LoggerInterface $logger = null;
     protected BaseStrategy $strategy;
     protected Assets $assets;
-    protected ?Asset $benchmark = null;
+    protected ?DataFrame $benchmark = null;
     protected SQLite $loader;
     protected DateTime $backtestStartTime;
     protected ?DateTime $backtestEndTime;
@@ -45,7 +43,7 @@ class Backtester
         $this->strategy = $strategy;
     }
 
-    public function setBenchmark(Asset $asset): void
+    public function setBenchmark(DataFrame $asset): void
     {
         $this->benchmark = $asset;
     }
@@ -270,6 +268,7 @@ class Backtester
 
         $onOpenExists = (new ReflectionMethod($this->strategy, 'onOpen'))->getDeclaringClass()->getName() !== BaseStrategy::class;
         $onCloseExists = (new ReflectionMethod($this->strategy, 'onClose'))->getDeclaringClass()->getName() !== BaseStrategy::class;
+        // TODO: check if the parent onOpen/onClose is called in the child
 
         $this->logger?->logInfo('Starting the backtest. Start date: ' . $startTime->getDateTime() . ', end date: ' . ($endTime ? $endTime->getDateTime() : 'none'));
         while ($endTime === null || $startTime->getCurrentDateTime() <= $endTime->getDateTime()) {
@@ -277,10 +276,10 @@ class Backtester
             $currentDateTime = new DateTime($startTime->getCurrentDateTime());
 
             if ($onOpenExists) {
-                $this->strategy->onOpen($this->assets->getAssetsForDates($backtestStartTime, $currentDateTime, Event::OnOpen), $currentDateTime);
+                $this->strategy->onOpen($this->assets, $currentDateTime);
             }
             if ($onCloseExists) {
-                $this->strategy->onClose($this->assets->getAssetsForDates($backtestStartTime, $currentDateTime, Event::OnClose), $currentDateTime);
+                $this->strategy->onClose($this->assets, $currentDateTime);
             }
             /** @var Position $position */
             foreach ($this->strategy->getOpenTrades() as $position) {
@@ -290,7 +289,7 @@ class Backtester
             // TODO
         }
         $currentDateTime = new DateTime($startTime->getCurrentDateTime());
-        $this->strategy->onStrategyEnd($assets->getAssetsForDates($backtestStartTime, $currentDateTime, Event::OnClose), $currentDateTime);
+        $this->strategy->onStrategyEnd($this->assets, $currentDateTime);
 
         $this->backtestFinished = microtime(true);
         $this->lastBacktestTime = $this->backtestFinished - $this->backtestStarted;

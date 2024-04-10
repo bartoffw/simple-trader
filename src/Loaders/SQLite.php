@@ -3,9 +3,7 @@
 namespace SimpleTrader\Loaders;
 
 use SimpleTrader\Event;
-use SimpleTrader\Exceptions\LoaderException;
 use SimpleTrader\Helpers\DateTime;
-use SimpleTrader\Helpers\Ohlc;
 use SimpleTrader\Helpers\Asset;
 use SQLite3;
 

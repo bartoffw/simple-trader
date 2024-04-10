@@ -19,6 +19,7 @@ class BaseStrategy
     protected DateTime $startDate;
     protected DateTime $currentDateTime;
     protected Assets $currentAssets;
+    protected ?Event $currentEvent = null;
     protected array $tradeLog = [];
     protected array $openTrades = [];
     protected string $openPositionSize = '0';
@@ -66,7 +67,7 @@ class BaseStrategy
     /**
      * @throws StrategyException
      */
-    public function setCapital(string $capital, int $precision = 2): void
+    public function setCapital(float $capital, int $precision = 2): void
     {
         if ($this->capital !== null) {
             throw new StrategyException('Capital already set to: ' . $this->capital);
@@ -75,7 +76,7 @@ class BaseStrategy
         $this->capital = $capital;
         $this->capitalAvailable = $capital;
         $this->initialCapital = $capital;
-        bcscale($precision);
+//        bcscale($precision);
     }
 
     public function getCapital($formatted = false): ?string
@@ -93,11 +94,13 @@ class BaseStrategy
      */
     public function getOpenProfitPercent(Position $position): string
     {
-        $asset = $this->currentAssets->getAsset($position->getTicker());
-        if ($asset === null) {
+        if ($this->currentEvent === null) {
+            throw new StrategyException('Current event not known. Are you calling parent onOpen/onClose/onStrategyEnd in your strategy?');
+        }
+        if (!$this->currentAssets->hasAsset($position->getTicker())) {
             throw new StrategyException('Asset not found in the asset list for an open position: ' . $position->getTicker());
         }
-        $currentPrice = $asset->getCurrentValue();
+        $currentPrice = $this->currentAssets->getCurrentValue($position->getTicker(), $this->currentDateTime, $this->currentEvent);
         $calculatedSize = $this->calculatePositionSize($currentPrice, $position->getQuantity(), QuantityType::Units);
         $position->updatePosition($currentPrice, $calculatedSize);
         return $position->getProfitPercent();
@@ -105,6 +108,7 @@ class BaseStrategy
 
     public function onOpen(Assets $assets, DateTime $dateTime): void
     {
+        $this->currentEvent = Event::OnOpen;
         $this->currentAssets = $assets;
         $this->currentDateTime = $dateTime;
         $this->updateDrawdown();
@@ -112,6 +116,7 @@ class BaseStrategy
 
     public function onClose(Assets $assets, DateTime $dateTime): void
     {
+        $this->currentEvent = Event::OnClose;
         $this->currentAssets = $assets;
         $this->currentDateTime = $dateTime;
         $this->updateDrawdown();
@@ -119,6 +124,7 @@ class BaseStrategy
 
     public function onStrategyEnd(Assets $assets, DateTime $dateTime): void
     {
+        $this->currentEvent = Event::OnClose;
         $this->currentAssets = $assets;
         $this->currentDateTime = $dateTime;
         $this->updateDrawdown();
@@ -129,11 +135,13 @@ class BaseStrategy
      */
     public function entry(Side $side, string $ticker, string $positionSize = '100', string $comment = ''): Position
     {
-        $asset = $this->currentAssets->getAsset($ticker);
-        if ($asset === null) {
+        if ($this->currentEvent === null) {
+            throw new StrategyException('Current event not known. Are you calling parent onOpen/onClose/onStrategyEnd in your strategy?');
+        }
+        if (!$this->currentAssets->hasAsset($ticker)) {
             throw new StrategyException('Asset not found in the asset list for an open position: ' . $ticker);
         }
-        $currentPrice = $asset->getCurrentValue();
+        $currentPrice = $this->currentAssets->getCurrentValue($ticker, $this->currentDateTime, $this->currentEvent);
         if (empty($currentPrice)) {
             throw new StrategyException("Price ($currentPrice) cannot be empty or zero");
         }
@@ -164,13 +172,15 @@ class BaseStrategy
      */
     public function closeAll(string $comment = '')
     {
+        if ($this->currentEvent === null) {
+            throw new StrategyException('Current event not known. Are you calling parent onOpen/onClose/onStrategyEnd in your strategy?');
+        }
         /** @var Position $position */
         foreach ($this->openTrades as $position) {
-            $asset = $this->currentAssets->getAsset($position->getTicker());
-            if ($asset === null) {
+            if (!$this->currentAssets->hasAsset($position->getTicker())) {
                 throw new StrategyException('Asset not found in the asset list for an open position: ' . $position->getTicker());
             }
-            $currentPrice = $asset->getCurrentValue();
+            $currentPrice = $this->currentAssets->getCurrentValue($position->getTicker(), $this->currentDateTime, $this->currentEvent);
             $calculatedSize = $this->calculatePositionSize($currentPrice, $position->getQuantity(), QuantityType::Units);
             $position->closePosition($this->currentDateTime, $currentPrice, $calculatedSize, $comment);
 
@@ -285,15 +295,11 @@ class BaseStrategy
         };
     }
 
-    protected function updateDrawdown()
+    protected function updateDrawdown(): void
     {
         /** @var Position $position */
         foreach ($this->openTrades as $position) {
-            $asset = $this->currentAssets->getAsset($position->getTicker());
-            if ($asset === null) {
-                throw new StrategyException('Asset not found in the asset list for an open position: ' . $position->getTicker());
-            }
-            $position->calculateDrawdown($asset->getLatestValues());
+            $position->calculateDrawdown($this->currentAssets->getLatestOhlc($position->getTicker(), $this->currentDateTime));
         }
     }
 }
