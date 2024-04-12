@@ -57,14 +57,12 @@ class HtmlReport
             '%detailed_stats%' => $this->formatDetailedStats($tradeStats),
             '%transactions_history%' => $this->formatTransactionHistory($tradeLog, $tradeStats)
         ];
-        if (!empty($tradeStats['benchmark_log'])) {
-            $params["'%benchmark_data%'"] = "{
-                    label: 'Benchmark capital log - {$backtester->getBenchmarkTicker()} ($)',
-                    yAxisID: 'y',
-                    order: 2,
-                    data: [" . implode(',', $tradeStats['benchmark_log']) . "]
-                }";
-        }
+        $params["'%benchmark_data%'"] = empty($tradeStats['benchmark_log']) ? '' : ", {
+                label: 'Benchmark capital log - {$backtester->getBenchmarkTicker()} ($)',
+                yAxisID: 'y',
+                order: 2,
+                data: [" . implode(',', $tradeStats['benchmark_log']) . "]
+            }";
         $output = strtr($html, $params);
         file_put_contents($this->reportPath . '/report.html', $output);
     }

@@ -28,11 +28,11 @@ class Assets
         $columns = $asset->columnsNames();
         foreach ($columns as $colName) {
             if (!in_array($colName, self::$columns)) {
-                throw new LoaderException('Column name invalid: ' . $colName . '. Allowed columns: ' . implode(', ', self::$columns));
+                throw new LoaderException('Column name invalid for ' . $ticker . ': ' . $colName . '. Allowed columns: ' . implode(', ', self::$columns));
             }
         }
         if (count($columns) !== count(self::$columns)) {
-            throw new LoaderException('Column count does not match: ' . count($columns) . ' vs ' . count(self::$columns));
+            throw new LoaderException('Column count does not match for ' . $ticker . ': ' . count($columns) . ' vs ' . count(self::$columns));
         }
         $this->assetList[$ticker] = $asset->sortRecordsByColumns(by: 'date', ascending: false);
     }
@@ -57,6 +57,24 @@ class Assets
         return empty($this->assetList);
     }
 
+    public function cloneToDate(DateTime $fromDate, DateTime $toDate, ?Assets $existingAssets = null): Assets
+    {
+        $assets = new Assets();
+        foreach ($this->assetList as $ticker => $df) {
+//            if ($existingAssets) {
+//                $latestExistingDate = $existingAssets->getLatestDate($ticker);
+//                if ($latestExistingDate->getDateTime() === $da)
+//            }
+            $assets->addAsset(
+                $df->selectAll()
+                    ->where(fn($record, $recordKey) => $record['date'] >= $fromDate->getDateTime() && $record['date'] <= $toDate->getDateTime())
+                    ->export(),
+                $ticker
+            );
+        }
+        return $assets;
+    }
+
     public function getLatestOhlc(string $ticker, ?DateTime $forDate = null): ?Ohlc
     {
         $asset = $this->getAsset($ticker);
@@ -64,10 +82,10 @@ class Assets
             throw new LoaderException('Asset not found in the asset list for an open position: ' . $ticker);
         }
         $latestFrame = $forDate ?
-            $asset->selectAll()->where(fn($record, $recordKey) => $record['date'] <= $forDate->getDateTime())->limit(1) :
+            $asset->selectAll()->where(fn($record, $recordKey) => $record['date'] <= $forDate->getDateTime())->limit(1)->toArray() :
             $asset->head(1);
         return $latestFrame ?
-            new Ohlc(new DateTime($latestFrame['date']), $latestFrame['open'], $latestFrame['high'], $latestFrame['low'], $latestFrame['close'], $latestFrame['volume']) :
+            new Ohlc(new DateTime($latestFrame[0]['date']), $latestFrame[0]['open'], $latestFrame[0]['high'], $latestFrame[0]['low'], $latestFrame[0]['close'], $latestFrame[0]['volume']) :
             null;
     }
 
@@ -76,9 +94,19 @@ class Assets
         $ohlc = $this->getLatestOhlc($ticker, $forDate);
         return $ohlc ?
             match($event) {
-                Event::OnOpen => $ohlc['open'],
-                Event::OnClose => $ohlc['close']
+                Event::OnOpen => $ohlc->getOpen(),
+                Event::OnClose => $ohlc->getClose()
             } :
             null;
+    }
+
+    public function getLatestDate(string $ticker): ?DateTime
+    {
+        $asset = $this->getAsset($ticker);
+        if ($asset === null) {
+            throw new LoaderException('Asset not found in the asset list for an open position: ' . $ticker);
+        }
+        $df = $asset->head(1);
+        return $df ? new DateTime($df[0]['date']) : null;
     }
 }

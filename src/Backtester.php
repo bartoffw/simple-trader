@@ -13,7 +13,6 @@ use SimpleTrader\Helpers\DateTime;
 use SimpleTrader\Helpers\Position;
 use SimpleTrader\Helpers\Resolution;
 use SimpleTrader\Helpers\Side;
-use SimpleTrader\Loaders\SQLite;
 use SimpleTrader\Loggers\LoggerInterface;
 
 class Backtester
@@ -22,7 +21,6 @@ class Backtester
     protected BaseStrategy $strategy;
     protected Assets $assets;
     protected ?DataFrame $benchmark = null;
-    protected SQLite $loader;
     protected DateTime $backtestStartTime;
     protected ?DateTime $backtestEndTime;
     protected string $backtestStarted;
@@ -46,11 +44,6 @@ class Backtester
     public function setBenchmark(DataFrame $asset): void
     {
         $this->benchmark = $asset;
-    }
-
-    public function setLoader(SQLite $loader): void
-    {
-        $this->loader = $loader;
     }
 
     public function getStrategy(): BaseStrategy
@@ -115,11 +108,11 @@ class Backtester
         $benchmarkLog = [
             $currentCapital
         ];
-        if ($this->benchmark !== null) {
-            $benchmarkLoaded = $this->loader->loadAsset($this->benchmark, $this->strategy->getStartDateForCalculations(), $this->strategy->getStartDate(), Event::OnClose);
-            $benchmarkValue = $benchmarkLoaded->getCurrentValue();
-            $benchmarkQty = $benchmarkValue ? $currentCapital / $benchmarkValue : 0;
-        }
+//        if ($this->benchmark !== null) {
+//            $benchmarkLoaded = $this->loader->loadAsset($this->benchmark, $this->strategy->getStartDateForCalculations(), $this->strategy->getStartDate(), Event::OnClose);
+//            $benchmarkValue = $benchmarkLoaded->getCurrentValue();
+//            $benchmarkQty = $benchmarkValue ? $currentCapital / $benchmarkValue : 0;
+//        }
         $peakValue = $currentCapital;
         $troughValue = $currentCapital;
 
@@ -177,12 +170,12 @@ class Backtester
 
             $capitalLog[] = $currentCapital;
             $drawdownLog[] = empty($position->getMaxDrawdownPercent()) ? '0' : '-' . round($position->getMaxDrawdownPercent(), 1);
-            if ($this->benchmark !== null) {
-                $benchmarkLoaded = $this->loader->loadAsset($this->benchmark, $this->strategy->getStartDate(), $position->getCloseTime(), Event::OnClose);
-                $benchmarkValue = $benchmarkLoaded->getCurrentValue();
-                $benchmarkLog[] = round($benchmarkValue * $benchmarkQty, 2);
-//                echo "{$position->getCloseTime()}: $benchmarkValue\n";
-            }
+//            if ($this->benchmark !== null) {
+//                $benchmarkLoaded = $this->loader->loadAsset($this->benchmark, $this->strategy->getStartDate(), $position->getCloseTime(), Event::OnClose);
+//                $benchmarkValue = $benchmarkLoaded->getCurrentValue();
+//                $benchmarkLog[] = round($benchmarkValue * $benchmarkQty, 2);
+////                echo "{$position->getCloseTime()}: $benchmarkValue\n";
+//            }
 
             if (Calculator::compare($position->getMaxDrawdownPercent(), $maxDrawdownPercent) > 0) {
                 // todo: max drawdown pozycji to nie jest max drawdown całego testu!!!
@@ -264,22 +257,24 @@ class Backtester
         $this->backtestEndTime = $endTime;
         $this->backtestStarted = microtime(true);
 
-        $backtestStartTime = $this->strategy->getStartDateForCalculations();
+        $backtestStartTime = $this->strategy->getStartDateForCalculations($this->assets, $startTime);
 
         $onOpenExists = (new ReflectionMethod($this->strategy, 'onOpen'))->getDeclaringClass()->getName() !== BaseStrategy::class;
         $onCloseExists = (new ReflectionMethod($this->strategy, 'onClose'))->getDeclaringClass()->getName() !== BaseStrategy::class;
         // TODO: check if the parent onOpen/onClose is called in the child
 
         $this->logger?->logInfo('Starting the backtest. Start date: ' . $startTime->getDateTime() . ', end date: ' . ($endTime ? $endTime->getDateTime() : 'none'));
+        $currentAssets = null;
         while ($endTime === null || $startTime->getCurrentDateTime() <= $endTime->getDateTime()) {
             $this->logger?->logDebug('Backtest day: ' . $startTime->getCurrentDateTime());
             $currentDateTime = new DateTime($startTime->getCurrentDateTime());
+            $currentAssets = $this->assets->cloneToDate($backtestStartTime, $currentDateTime);
 
             if ($onOpenExists) {
-                $this->strategy->onOpen($this->assets, $currentDateTime);
+                $this->strategy->onOpen($currentAssets, $currentDateTime);
             }
             if ($onCloseExists) {
-                $this->strategy->onClose($this->assets, $currentDateTime);
+                $this->strategy->onClose($currentAssets, $currentDateTime);
             }
             /** @var Position $position */
             foreach ($this->strategy->getOpenTrades() as $position) {
@@ -289,7 +284,7 @@ class Backtester
             // TODO
         }
         $currentDateTime = new DateTime($startTime->getCurrentDateTime());
-        $this->strategy->onStrategyEnd($this->assets, $currentDateTime);
+        $this->strategy->onStrategyEnd($this->assets->cloneToDate($backtestStartTime, $currentDateTime), $currentDateTime);
 
         $this->backtestFinished = microtime(true);
         $this->lastBacktestTime = $this->backtestFinished - $this->backtestStarted;

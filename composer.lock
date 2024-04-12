@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9a79976388ff5b8712ce82ff830035d3",
+    "content-hash": "cb84867e1ae89526e8f2b599a797a84e",
     "packages": [
         {
             "name": "halaxa/json-machine",
@@ -71,12 +71,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/csv.git",
-                "reference": "3930f45e10541591fe6494eac187bec25dfc2579"
+                "reference": "831f8dd9e0f336f7e0cfd939ff7ebedbe0d46093"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/csv/zipball/3930f45e10541591fe6494eac187bec25dfc2579",
-                "reference": "3930f45e10541591fe6494eac187bec25dfc2579",
+                "url": "https://api.github.com/repos/thephpleague/csv/zipball/831f8dd9e0f336f7e0cfd939ff7ebedbe0d46093",
+                "reference": "831f8dd9e0f336f7e0cfd939ff7ebedbe0d46093",
                 "shasum": ""
             },
             "require": {
@@ -87,13 +87,13 @@
                 "doctrine/collections": "^2.2.1",
                 "ext-dom": "*",
                 "ext-xdebug": "*",
-                "friendsofphp/php-cs-fixer": "^3.52.1",
+                "friendsofphp/php-cs-fixer": "^3.53.0",
                 "phpbench/phpbench": "^1.2.15",
                 "phpstan/phpstan": "^1.10.66",
                 "phpstan/phpstan-deprecation-rules": "^1.1.4",
                 "phpstan/phpstan-phpunit": "^1.3.16",
-                "phpstan/phpstan-strict-rules": "^1.5.2",
-                "phpunit/phpunit": "^10.5.16",
+                "phpstan/phpstan-strict-rules": "^1.5.3",
+                "phpunit/phpunit": "^10.5.16 || ^11.1.1",
                 "symfony/var-dumper": "^6.4.6 || ^7.0.6"
             },
             "suggest": {
@@ -152,59 +152,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2024-04-06T09:44:16+00:00"
-        },
-        {
-            "name": "lupecode/php-trader-native",
-            "version": "v2.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/LupeCode/phpTraderNative.git",
-                "reference": "7548d4d1b2bab55cebcf38fc195fa460bcd7d70e"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/LupeCode/phpTraderNative/zipball/7548d4d1b2bab55cebcf38fc195fa460bcd7d70e",
-                "reference": "7548d4d1b2bab55cebcf38fc195fa460bcd7d70e",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=8.1.0"
-            },
-            "require-dev": {
-                "ext-ds": "*",
-                "ext-trader": ">=0.4.1",
-                "phpbench/phpbench": "~1.2.14",
-                "phpunit/phpunit": "~10.3.1"
-            },
-            "type": "library",
-            "autoload": {
-                "files": [
-                    "source/polyfill.php"
-                ],
-                "psr-4": {
-                    "LupeCode\\phpTraderNative\\": "source/",
-                    "LupeCode\\phpTraderNativeTest\\": "tests/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "GPL-3.0-or-later"
-            ],
-            "authors": [
-                {
-                    "name": "Joshua Lopez",
-                    "email": "joshua@lupecode.com",
-                    "homepage": "https://github.com/jb-lopez",
-                    "role": "Developer"
-                }
-            ],
-            "description": "An native version of the PHP Trader extension.",
-            "support": {
-                "issues": "https://github.com/LupeCode/phpTraderNative/issues",
-                "source": "https://github.com/LupeCode/phpTraderNative/tree/v2.1.0"
-            },
-            "time": "2023-11-26T19:16:53+00:00"
+            "time": "2024-04-11T08:02:01+00:00"
         },
         {
             "name": "maennchen/zipstream-php",
@@ -1500,7 +1448,8 @@
         "php": ">=8.3",
         "ext-sqlite3": "*",
         "ext-bcmath": "*",
-        "ext-gd": "*"
+        "ext-gd": "*",
+        "ext-trader": "*"
     },
     "platform-dev": [],
     "plugin-api-version": "2.2.0"

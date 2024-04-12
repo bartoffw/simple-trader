@@ -20,6 +20,7 @@ class BaseStrategy
     protected DateTime $currentDateTime;
     protected Assets $currentAssets;
     protected ?Event $currentEvent = null;
+    protected array $tickers = [];
     protected array $tradeLog = [];
     protected array $openTrades = [];
     protected string $openPositionSize = '0';
@@ -59,9 +60,30 @@ class BaseStrategy
         return $this->startDate;
     }
 
-    public function getStartDateForCalculations(): DateTime
+    public function getMaxLookbackPeriod(): int
     {
-        return $this->startDate;
+        return 0;
+    }
+
+    public function getStartDateForCalculations(Assets $assets, DateTime $startDate): DateTime
+    {
+        $oldestDate = null;
+        foreach ($this->tickers as $ticker) {
+            $asset = $assets->getAsset($ticker);
+            $record = $asset
+                ->select('date')
+                ->where(fn($record, $recordKey) => $record['date'] <= $startDate->getDateTime())
+                ->limit(1)
+                ->offset($this->getMaxLookbackPeriod())
+                ->toArray();
+            if (!empty($record)) {
+                $date = array_values($record)[0]['date'];
+                if ($oldestDate === null || $date < $oldestDate) {
+                    $oldestDate = $date;
+                }
+            }
+        }
+        return $oldestDate ? new DateTime($oldestDate) : $startDate;
     }
 
     /**

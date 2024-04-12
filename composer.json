@@ -19,7 +19,7 @@
     "ext-sqlite3": "*",
     "ext-bcmath": "*",
     "ext-gd": "*",
-    "lupecode/php-trader-native": "^2.1",
+    "ext-trader": "*",
     "mitoteam/jpgraph": "^10.4",
     "mammothphp/woollym": "dev-master"
   },
