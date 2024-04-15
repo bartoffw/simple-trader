@@ -3,7 +3,6 @@
 namespace SimpleTrader;
 
 use SimpleTrader\Exceptions\StrategyException;
-use SimpleTrader\Helpers\Calculator;
 use SimpleTrader\Helpers\DateTime;
 use SimpleTrader\Helpers\Position;
 use SimpleTrader\Helpers\QuantityType;
@@ -23,14 +22,14 @@ class BaseStrategy
     protected array $tickers = [];
     protected array $tradeLog = [];
     protected array $openTrades = [];
-    protected string $openPositionSize = '0';
-    protected ?string $initialCapital = null;
-    protected ?string $capital = null;
-    protected ?string $capitalAvailable = null;
-    protected string $grossProfitLongs = '0';
-    protected string $grossProfitShorts = '0';
-    protected string $grossLossLongs = '0';
-    protected string $grossLossShorts = '0';
+    protected float $openPositionSize = 0;
+    protected ?float $initialCapital = null;
+    protected ?float $capital = null;
+    protected ?float $capitalAvailable = null;
+    protected float $grossProfitLongs = 0;
+    protected float $grossProfitShorts = 0;
+    protected float $grossLossLongs = 0;
+    protected float $grossLossShorts = 0;
     protected int $precision = 2;
 
 
@@ -86,6 +85,11 @@ class BaseStrategy
         return $oldestDate ? new DateTime($oldestDate) : $startDate;
     }
 
+    public function getPrecision(): int
+    {
+        return $this->precision;
+    }
+
     /**
      * @throws StrategyException
      */
@@ -101,12 +105,12 @@ class BaseStrategy
 //        bcscale($precision);
     }
 
-    public function getCapital($formatted = false): ?string
+    public function getCapital($formatted = false): ?float
     {
-        return $formatted ? number_format($this->capital, $this->precision) : $this->capital;
+        return $formatted ? number_format($this->capital, $this->precision) : round($this->capital, $this->precision);
     }
 
-    public function getInitialCapital(): ?string
+    public function getInitialCapital(): ?float
     {
         return $this->initialCapital;
     }
@@ -114,7 +118,7 @@ class BaseStrategy
     /**
      * @throws StrategyException
      */
-    public function getOpenProfitPercent(Position $position): string
+    public function getOpenProfitPercent(Position $position): float
     {
         if ($this->currentEvent === null) {
             throw new StrategyException('Current event not known. Are you calling parent onOpen/onClose/onStrategyEnd in your strategy?');
@@ -168,17 +172,17 @@ class BaseStrategy
             throw new StrategyException("Price ($currentPrice) cannot be empty or zero");
         }
         $calculatedSize = $this->calculatePositionSize($currentPrice, $positionSize, $this->qtyType);
-        if ($calculatedSize > $this->capitalAvailable) {
+        if ($calculatedSize > $this->capitalAvailable + 0.00001) {
             throw new StrategyException("Position size ($calculatedSize) is greater than the available capital ($this->capitalAvailable)");
         }
-        $calculatedQty = Calculator::calculate('$1 / $2', $calculatedSize, $currentPrice);
+        $calculatedQty = $calculatedSize / $currentPrice;
 
         $position = new Position($this->currentDateTime, $side, $ticker, $currentPrice, $calculatedQty, $calculatedSize, $comment);
         $this->openTrades[$position->getId()] = $position;
         $this->tradeLog[$position->getId()] = $position;
 
-        $this->openPositionSize = Calculator::calculate('$1 + $2', $this->openPositionSize, $calculatedSize);
-        $this->capitalAvailable = Calculator::calculate('$1 - $2', $this->capitalAvailable, $calculatedSize);
+        $this->openPositionSize = $this->openPositionSize + $calculatedSize;
+        $this->capitalAvailable = $this->capitalAvailable - $calculatedSize;
 
         $this->logger->logInfo(
             '[' . $this->currentDateTime->getDateTime() . '][' . $position->getId() . '] ' . $side->value . ' @ ' . $currentPrice . ', ' .
@@ -209,23 +213,21 @@ class BaseStrategy
             $this->tradeLog[$position->getId()] = $position;
 
             $profit = $position->getProfitAmount();
-            $loss = Calculator::compare($profit, '0') > 0 ? null : trim($profit, '-');
+            $loss = $profit > 0.00001 ? null : abs($profit);
 
-            $this->capital = $loss === null ?
-                Calculator::calculate('$1 + $2', $this->capital, $profit) :
-                Calculator::calculate('$1 - $2', $this->capital, $loss);
+            $this->capital = $loss === null ? $this->capital + $profit : $this->capital - $loss;
 
             if ($position->getSide() === Side::Long) {
                 if ($loss === null) {
-                    $this->grossProfitLongs = Calculator::calculate('$1 + $2', $this->grossProfitLongs, $profit);
+                    $this->grossProfitLongs = $this->grossProfitLongs + $profit;
                 } else {
-                    $this->grossLossLongs = Calculator::calculate('$1 + $2', $this->grossLossLongs, $loss);
+                    $this->grossLossLongs = $this->grossLossLongs + $loss;
                 }
             } elseif ($position->getSide() === Side::Short) {
                 if ($loss === null) {
-                    $this->grossProfitShorts = Calculator::calculate('$1 + $2', $this->grossProfitShorts, $profit);
+                    $this->grossProfitShorts = $this->grossProfitShorts + $profit;
                 } else {
-                    $this->grossLossShorts = Calculator::calculate('$1 + $2', $this->grossLossShorts, $loss);
+                    $this->grossLossShorts = $this->grossLossShorts + $loss;
                 }
             }
 
@@ -258,34 +260,34 @@ class BaseStrategy
         return $this->openTrades;
     }
 
-    public function getGrossProfitLongs(): string
+    public function getGrossProfitLongs(): float
     {
         return $this->grossProfitLongs;
     }
 
-    public function getGrossProfitShorts(): string
+    public function getGrossProfitShorts(): float
     {
         return $this->grossProfitShorts;
     }
 
-    public function getGrossLossLongs(): string
+    public function getGrossLossLongs(): float
     {
         return $this->grossLossLongs;
     }
 
-    public function getGrossLossShorts(): string
+    public function getGrossLossShorts(): float
     {
         return $this->grossLossShorts;
     }
 
-    public function getNetProfitLongs(): string
+    public function getNetProfitLongs(): float
     {
-        return Calculator::calculate('$1 - $2', $this->grossProfitLongs, $this->grossLossLongs);
+        return $this->grossProfitLongs - $this->grossLossLongs;
     }
 
-    public function getNetProfitShorts(): string
+    public function getNetProfitShorts(): float
     {
-        return Calculator::calculate('$1 - $2', $this->grossProfitShorts, $this->grossLossShorts);
+        return $this->grossProfitShorts - $this->grossLossShorts;
     }
 
     public function getTradeLog(): array
@@ -305,14 +307,14 @@ class BaseStrategy
     /**
      * @throws StrategyException
      */
-    protected function calculatePositionSize(string $price, string $qty, QuantityType $qtyType): string
+    protected function calculatePositionSize(float $price, float $qty, QuantityType $qtyType): float
     {
-        if ($qtyType === QuantityType::Percent && ($qty > '100' || $qty <= '0')) {
+        if ($qtyType === QuantityType::Percent && ($qty > 100 || $qty <= 0)) {
             throw new StrategyException('Quantity percentage must be between 0 and 100');
         }
         return match ($qtyType) {
-            QuantityType::Percent => Calculator::calculate('$1 * $2 / 100', $this->capital, $qty),
-            QuantityType::Units => Calculator::calculate('$1 * $2', $price, $qty),
+            QuantityType::Percent => $this->capital * $qty / 100,
+            QuantityType::Units => $price * $qty,
             default => throw new StrategyException('Unknown QuantityType'),
         };
     }

@@ -14,19 +14,19 @@ class Position
     protected string $closeComment = '';
     protected DateTime $openTime;
     protected DateTime $closeTime;
-    protected string $openPrice;
-    protected string $closePrice;
-    protected string $openPositionSize;
-    protected string $closePositionSize;
-    protected string $peakValue = '0';
-    protected ?string $portfolioBalance = '0';
-    protected string $maxDrawdownValue = '0';
-    protected ?string $maxDrawdownPercent = '0';
+    protected float $openPrice;
+    protected float $closePrice;
+    protected float $openPositionSize;
+    protected float $closePositionSize;
+    protected float $peakValue = 0;
+    protected ?float $portfolioBalance = 0;
+    protected float $maxDrawdownValue = 0;
+    protected ?float $maxDrawdownPercent = 0;
 
 
     public function __construct(DateTime $currentTime, protected Side $side, protected string $ticker,
-                                protected string $price, protected string $quantity,
-                                protected string $positionSize, string $comment = '')
+                                protected float $price, protected float $quantity,
+                                protected float $positionSize, string $comment = '')
     {
         $this->id = uniqid($this->ticker . '-' . $this->side->value . '-');
         $this->status = PositionStatus::Open;
@@ -46,22 +46,22 @@ class Position
         return $this->ticker;
     }
 
-    public function getPrice(): string
+    public function getPrice(): float
     {
         return $this->price;
     }
 
-    public function getQuantity(): string
+    public function getQuantity(): float
     {
         return $this->quantity;
     }
 
-    public function getPositionSize(): string
+    public function getPositionSize(): float
     {
         return $this->positionSize;
     }
 
-    public function getOpenPrice(): string
+    public function getOpenPrice(): float
     {
         return $this->openPrice;
     }
@@ -81,7 +81,7 @@ class Position
         return $this->closeComment;
     }
 
-    public function getClosePrice(): string
+    public function getClosePrice(): float
     {
         return $this->closePrice;
     }
@@ -96,15 +96,15 @@ class Position
         return $this->closeTime;
     }
 
-    public function setPortfolioBalance(string $balance): void
+    public function setPortfolioBalance(float $balance): void
     {
-        if ($this->portfolioBalance !== '0') {
+        if (abs($this->portfolioBalance) > 0.00001) {
             throw new BacktesterException('Portfolio balance is already set for this position: ' . $this->getId());
         }
         $this->portfolioBalance = $balance;
     }
 
-    public function getPortfolioBalance(): ?string
+    public function getPortfolioBalance(): ?float
     {
         return $this->portfolioBalance;
     }
@@ -115,18 +115,18 @@ class Position
         $minValue = min((float) $ohlc->getOpen(), (float) $ohlc->getLow(), (float) $ohlc->getHigh(), (float) $ohlc->getClose());
 
         if ($this->side == Side::Long) {
-            if (Calculator::compare($maxValue, $this->peakValue) > 0) {
+            if ($maxValue > $this->peakValue) {
 //                echo "[" . $ohlc->getDateTime()->getDateTime() . "] PEAK: {$maxValue}\n";
                 $this->peakValue = $maxValue;
             }
-            if (Calculator::compare($minValue, $this->peakValue) < 0) {
+            if ($minValue < $this->peakValue) {
                 $currentDrawdownValue = $this->quantity * ($this->openPrice - $minValue);
                 $currentDrawdownPercent = $currentDrawdownValue * 100 / ($this->openPrice * $this->quantity);
             } else {
                 $currentDrawdownValue = '0';
                 $currentDrawdownPercent = '0';
             }
-            if (Calculator::compare($currentDrawdownValue, $this->maxDrawdownValue) > 0) {
+            if ($currentDrawdownValue > $this->maxDrawdownValue) {
 //                echo "[" . $ohlc->getDateTime()->getDateTime() . "] TROUGH: {$currentDrawdownValue}\n";
                 $this->maxDrawdownValue = $currentDrawdownValue;
                 $this->maxDrawdownPercent = $currentDrawdownPercent;
@@ -136,17 +136,17 @@ class Position
         }
     }
 
-    public function getMaxDrawdownValue(): ?string
+    public function getMaxDrawdownValue(): ?float
     {
         return $this->maxDrawdownValue;
     }
 
-    public function getMaxDrawdownPercent(): ?string
+    public function getMaxDrawdownPercent(): ?float
     {
         return $this->maxDrawdownPercent;
     }
 
-    public function updatePosition(string $price, string $positionSize): void
+    public function updatePosition(float $price, float $positionSize): void
     {
         $this->price = $price;
         $this->positionSize = $positionSize;
@@ -155,7 +155,7 @@ class Position
     /**
      * @throws StrategyException
      */
-    public function closePosition(DateTime $currentTime, string $price, string $positionSize, string $comment = ''): void
+    public function closePosition(DateTime $currentTime, float $price, float $positionSize, string $comment = ''): void
     {
         if ($this->status === PositionStatus::Closed) {
             throw new StrategyException('Position is already closed');
@@ -184,13 +184,15 @@ class Position
         return $this->openBars;
     }
 
-    public function getProfitPercent(): string
+    public function getProfitPercent(): float
     {
-        return Calculator::calculate('$1 * 100 / $2 - 100', $this->closePositionSize ?? $this->positionSize, $this->openPositionSize);
+        return ($this->closePositionSize ?? $this->positionSize) * 100 / $this->openPositionSize - 100;
+        //Calculator::calculate('$1 * 100 / $2 - 100', $this->closePositionSize ?? $this->positionSize, $this->openPositionSize);
     }
 
-    public function getProfitAmount(): string
+    public function getProfitAmount(): float
     {
-        return Calculator::calculate('$1 - $2', $this->closePositionSize ?? $this->positionSize, $this->openPositionSize);
+        return ($this->closePositionSize ?? $this->positionSize) - $this->openPositionSize;
+        //Calculator::calculate('$1 - $2', $this->closePositionSize ?? $this->positionSize, $this->openPositionSize);
     }
 }
