@@ -24,16 +24,7 @@ class Assets
         if (isset($this->assetList[$ticker]) && !$replace) {
             throw new LoaderException('This asset is already loaded: ' . $ticker);
         }
-        // check required columns
-        $columns = $asset->columnsNames();
-        foreach ($columns as $colName) {
-            if (!in_array($colName, self::$columns)) {
-                throw new LoaderException('Column name invalid for ' . $ticker . ': ' . $colName . '. Allowed columns: ' . implode(', ', self::$columns));
-            }
-        }
-        if (count($columns) !== count(self::$columns)) {
-            throw new LoaderException('Column count does not match for ' . $ticker . ': ' . count($columns) . ' vs ' . count(self::$columns));
-        }
+        self::validateAsset($asset, $ticker);
         $this->assetList[$ticker] = $asset->sortRecordsByColumns(by: 'date', ascending: false);
     }
 
@@ -65,12 +56,7 @@ class Assets
 //                $latestExistingDate = $existingAssets->getLatestDate($ticker);
 //                if ($latestExistingDate->getDateTime() === $da)
 //            }
-            $assets->addAsset(
-                $df->selectAll()
-                    ->where(fn($record, $recordKey) => $record['date'] >= $fromDate->getDateTime() && $record['date'] <= $toDate->getDateTime())
-                    ->export(),
-                $ticker
-            );
+            $assets->addAsset(self::cloneAssetToDate($df, $fromDate, $toDate), $ticker);
         }
         return $assets;
     }
@@ -108,5 +94,31 @@ class Assets
         }
         $df = $asset->head(1);
         return $df ? new DateTime($df[0]['date']) : null;
+    }
+
+    public static function getColumns(): array
+    {
+        return self::$columns;
+    }
+
+    public static function validateAsset(DataFrame $asset, $ticker)
+    {
+        // check required columns
+        $columns = $asset->columnsNames();
+        foreach ($columns as $colName) {
+            if (!in_array($colName, self::$columns)) {
+                throw new LoaderException('Column name invalid for ' . $ticker . ': ' . $colName . '. Allowed columns: ' . implode(', ', self::$columns));
+            }
+        }
+        if (count($columns) !== count(self::$columns)) {
+            throw new LoaderException('Column count does not match for ' . $ticker . ': ' . count($columns) . ' vs ' . count(self::$columns));
+        }
+    }
+
+    public static function cloneAssetToDate(DataFrame $df, DateTime $fromDate, DateTime $toDate): DataFrame
+    {
+        return $df->selectAll()
+            ->where(fn($record, $recordKey) => $record['date'] >= $fromDate->getDateTime() && $record['date'] <= $toDate->getDateTime())
+            ->export();
     }
 }

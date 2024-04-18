@@ -20,7 +20,8 @@ class Backtester
     protected ?LoggerInterface $logger = null;
     protected BaseStrategy $strategy;
     protected Assets $assets;
-    protected ?DataFrame $benchmark = null;
+    protected ?string $benchmarkTicker = null;
+    protected ?Assets $benchmark = null;
     protected DateTime $backtestStartTime;
     protected ?DateTime $backtestEndTime;
     protected string $backtestStarted;
@@ -41,9 +42,12 @@ class Backtester
         $this->strategy = $strategy;
     }
 
-    public function setBenchmark(DataFrame $asset): void
+    public function setBenchmark(DataFrame $asset, string $ticker): void
     {
-        $this->benchmark = $asset;
+        $assets = new Assets();
+        $assets->addAsset($asset, $ticker);
+        $this->benchmark = $assets;
+        $this->benchmarkTicker = $ticker;
     }
 
     public function getStrategy(): BaseStrategy
@@ -58,7 +62,7 @@ class Backtester
 
     public function getBenchmarkTicker(): string
     {
-        return $this->benchmark?->getTicker();
+        return $this->benchmarkTicker;
     }
 
     public function getBacktestStartTime(): DateTime
@@ -111,11 +115,15 @@ class Backtester
         $benchmarkLog = [
             $currentCapital
         ];
-//        if ($this->benchmark !== null) {
-//            $benchmarkLoaded = $this->loader->loadAsset($this->benchmark, $this->strategy->getStartDateForCalculations(), $this->strategy->getStartDate(), Event::OnClose);
-//            $benchmarkValue = $benchmarkLoaded->getCurrentValue();
-//            $benchmarkQty = $benchmarkValue ? $currentCapital / $benchmarkValue : 0;
-//        }
+        if ($this->benchmark !== null) {
+            $benchmarkLoaded = $this->benchmark->cloneToDate(
+                $this->strategy->getStartDateForCalculations($this->assets, $this->strategy->getStartDate()),
+                $this->strategy->getStartDate()
+            );
+            $benchmarkValue = $benchmarkLoaded->getCurrentValue($this->benchmarkTicker);
+            $benchmarkQty = $benchmarkValue ? $currentCapital / $benchmarkValue : 0;
+            unset($benchmarkLoaded);
+        }
         $peakValue = $currentCapital;
         $troughValue = $currentCapital;
 
@@ -173,12 +181,13 @@ class Backtester
 
             $capitalLog[] = $currentCapital;
             $drawdownLog[] = empty($position->getMaxDrawdownPercent()) ? 0 : 0 - round($position->getMaxDrawdownPercent(), 1);
-//            if ($this->benchmark !== null) {
-//                $benchmarkLoaded = $this->loader->loadAsset($this->benchmark, $this->strategy->getStartDate(), $position->getCloseTime(), Event::OnClose);
-//                $benchmarkValue = $benchmarkLoaded->getCurrentValue();
-//                $benchmarkLog[] = round($benchmarkValue * $benchmarkQty, 2);
-////                echo "{$position->getCloseTime()}: $benchmarkValue\n";
-//            }
+            if ($this->benchmark !== null) {
+                $benchmarkLoaded = $this->benchmark->cloneToDate($this->strategy->getStartDate(), $position->getCloseTime());
+                $benchmarkValue = $benchmarkLoaded->getCurrentValue($this->benchmarkTicker);
+                $benchmarkLog[] = round($benchmarkValue * $benchmarkQty, 2);
+                unset($benchmarkLoaded);
+//                echo "{$position->getCloseTime()}: $benchmarkValue\n";
+            }
 
             if ($position->getMaxDrawdownPercent() > $maxDrawdownPercent) {
                 // todo: max drawdown pozycji to nie jest max drawdown całego testu!!!
@@ -268,7 +277,7 @@ class Backtester
         // TODO: check if the parent onOpen/onClose is called in the child
 
         $this->logger?->logInfo('Starting the backtest. Start date: ' . $startTime->getDateTime() . ', end date: ' . ($endTime ? $endTime->getDateTime() : 'none'));
-        $currentAssets = null;
+//        $currentAssets = null;
         while ($endTime === null || $startTime->getCurrentDateTime() <= $endTime->getDateTime()) {
             $this->logger?->logDebug('Backtest day: ' . $startTime->getCurrentDateTime());
             $currentDateTime = new DateTime($startTime->getCurrentDateTime());
@@ -280,6 +289,7 @@ class Backtester
             if ($onCloseExists) {
                 $this->strategy->onClose($currentAssets, $currentDateTime);
             }
+            unset($currentAssets);
             /** @var Position $position */
             foreach ($this->strategy->getOpenTrades() as $position) {
                 $position->incrementOpenBars();

@@ -167,16 +167,16 @@ class HtmlReport
                     '<td class="text-right">' . $position->getOpenTime()->getDateTime() . '</td>' .
                     '<td>' . $position->getSide()->value . ' OPEN' . ($position->getOpenComment() ? ' - ' . $position->getOpenComment() : '') . '</td>' .
                     '<td class="text-right">' . number_format($position->getOpenPrice(), 2) . '</td>' .
-                    '<td rowspan="2" class="text-right">' . $position->getQuantity() . '</td>' .
-                    '<td rowspan="2" class="text-right">' . $position->getProfitAmount() . '<br/>' . $this->textColor(
-                        $position->getProfitPercent() . '%',
+                    '<td rowspan="2" class="text-right">' . number_format($position->getQuantity(), 2) . '</td>' .
+                    '<td rowspan="2" class="text-right">' . number_format($position->getProfitAmount(), 2) . '<br/>' . $this->textColor(
+                        number_format($position->getProfitPercent(), 2) . '%',
                     $position->getProfitPercent() < 0.00001 ? 'red' : 'green'
                     ) . '</td>' .
                     '<td rowspan="2" class="text-right">' . number_format($position->getPortfolioBalance(), 2) . '</td>' .
                     '<td rowspan="2" class="text-right">' . number_format($position->getMaxDrawdownValue(), 2) . '<br/>' .
                         $this->textColor(
                             number_format($position->getMaxDrawdownPercent(), 2) . '%',
-                            $position->getMaxDrawdownPercent() > 0 ? 'red' : null
+                            $position->getMaxDrawdownPercent() > 0.00001 ? 'red' : null
                         ) .
                     '</td>' .
                 '</tr>';
