@@ -15,7 +15,7 @@ class HtmlReport
         $this->graphs = new Graphs($this->reportPath);
     }
 
-    public function generateReport(Backtester $backtester, ?string $tickerForChart = null): void
+    public function generateReport(Backtester $backtester, array $tickers, ?string $tickerForChart = null): void
     {
         $styles = file_get_contents(__DIR__ . '/../assets/styles.min.css');
         $chartJs = file_get_contents(__DIR__ . '/../assets/chart.js');
@@ -25,19 +25,20 @@ class HtmlReport
 
         $tradeLog = $backtester->getTradeLog();
         $tradeStats = $backtester->getTradeStats($tradeLog);
-        $netProfit = number_format((float)$tradeStats['net_profit'], 2) . '<br/>' . $backtester->getProfitPercent() . '%';
+        $netProfit = number_format($tradeStats['net_profit'], 2) . '<br/>' . number_format($tradeStats['net_profit_percent'], 2) . '%';
         //$capitalGraph = '<img src="data:image/png;base64,' . base64_encode($this->graphs->generateCapitalGraph($tradeStats['capital_log'])) . '" />';
-        $stockChart = '<p>None</p>';
-        if ($tickerForChart !== null) {
-            $asset = $backtester->getAssets()->getAsset($tickerForChart, $backtester->getBacktestStartTime());
-            if ($asset) {
-                $stockChart = '<img src="data:image/png;base64,' . base64_encode($this->graphs->generateStockChart($asset->getRawData())) . '" />';
-            }
-        }
+//        $stockChart = '<p>None</p>';
+//        if ($tickerForChart !== null) {
+//            $asset = $backtester->getAssets()->getAsset($tickerForChart, $backtester->getBacktestStartTime());
+//            if ($asset) {
+//                $stockChart = '<img src="data:image/png;base64,' . base64_encode($this->graphs->generateStockChart($asset->getRawData())) . '" />';
+//            }
+//        }
 
         $params = [
             '%title%' => $title,
             '%backtest_date%' => $date,
+            '%tickers%' => implode(', ', $tickers),
             '%styles%' => $styles,
             '%chart_js%' => $chartJs,
             "'%capital_labels%'" => implode(',', array_keys($tradeStats['capital_log'])),
@@ -51,7 +52,7 @@ class HtmlReport
             '%avg_profit%' => number_format((float)$tradeStats['avg_profit'], 2),
             '%avg_bars%' => number_format(floor((float)$tradeStats['avg_bars'])),
             //'%capital_graph%' => $capitalGraph,
-            '%stock_chart%' => $stockChart,
+            //'%stock_chart%' => $stockChart,
 
             '%detailed_stats%' => $this->formatDetailedStats($tradeStats),
             '%transactions_history%' => $this->formatTransactionHistory($tradeLog, $tradeStats)

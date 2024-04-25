@@ -19,17 +19,32 @@ class BaseStrategy
     protected DateTime $currentDateTime;
     protected Assets $currentAssets;
     protected ?Event $currentEvent = null;
+
     protected array $tickers = [];
     protected array $tradeLog = [];
     protected array $openTrades = [];
     protected float $openPositionSize = 0;
+
     protected ?float $initialCapital = null;
     protected ?float $capital = null;
     protected ?float $capitalAvailable = null;
-    protected float $grossProfitLongs = 0;
-    protected float $grossProfitShorts = 0;
-    protected float $grossLossLongs = 0;
-    protected float $grossLossShorts = 0;
+
+    protected float $grossProfit = 0.00;
+    protected float $grossProfitLongs = 0.00;
+    protected float $grossProfitShorts = 0.00;
+
+    protected float $grossLoss = 0.00;
+    protected float $grossLossLongs = 0.00;
+    protected float $grossLossShorts = 0.00;
+
+    protected int $profitableTransactions = 0;
+    protected int $profitableTransactionsLongs = 0;
+    protected int $profitableTransactionsShorts = 0;
+
+    protected int $losingTransactions = 0;
+    protected int $losingTransactionsLongs = 0;
+    protected int $losingTransactionsShorts = 0;
+
     protected int $precision = 2;
 
 
@@ -213,21 +228,28 @@ class BaseStrategy
             $this->tradeLog[$position->getId()] = $position;
 
             $profit = $position->getProfitAmount();
-            $loss = $profit > 0.00001 ? null : abs($profit);
-
-            $this->capital = $loss === null ? $this->capital + $profit : $this->capital - $loss;
-
-            if ($position->getSide() === Side::Long) {
-                if ($loss === null) {
-                    $this->grossProfitLongs = $this->grossProfitLongs + $profit;
+            if ($profit > 0.00001) {
+                $this->grossProfit += $profit;
+                $this->capital += $profit;
+                $this->profitableTransactions++;
+                if ($position->getSide() === Side::Long) {
+                    $this->grossProfitLongs += $profit;
+                    $this->profitableTransactionsLongs++;
                 } else {
-                    $this->grossLossLongs = $this->grossLossLongs + $loss;
+                    $this->grossProfitShorts += $profit;
+                    $this->profitableTransactionsShorts++;
                 }
-            } elseif ($position->getSide() === Side::Short) {
-                if ($loss === null) {
-                    $this->grossProfitShorts = $this->grossProfitShorts + $profit;
+            } else {
+                $loss = abs($profit);
+                $this->grossLoss += $loss;
+                $this->capital -= $loss;
+                $this->losingTransactions++;
+                if ($position->getSide() === Side::Long) {
+                    $this->grossLossLongs += $loss;
+                    $this->losingTransactionsLongs++;
                 } else {
-                    $this->grossLossShorts = $this->grossLossShorts + $loss;
+                    $this->grossLossShorts += $loss;
+                    $this->losingTransactionsShorts++;
                 }
             }
 
@@ -260,6 +282,16 @@ class BaseStrategy
         return $this->openTrades;
     }
 
+    public function getGrossProfit(): float
+    {
+        return $this->grossProfit;
+    }
+
+    public function getGrossLoss(): float
+    {
+        return $this->grossLoss;
+    }
+
     public function getGrossProfitLongs(): float
     {
         return $this->grossProfitLongs;
@@ -288,6 +320,93 @@ class BaseStrategy
     public function getNetProfitShorts(): float
     {
         return $this->grossProfitShorts - $this->grossLossShorts;
+    }
+
+    public function getProfitFactor(): float
+    {
+        return $this->grossLoss > 0.00001 ? $this->grossProfit / $this->grossLoss : 0.00;
+    }
+
+    public function getProfitFactorLongs(): float
+    {
+        return $this->grossLossLongs > 0.00001 ? $this->grossProfitLongs / $this->grossLossLongs : 0.00;
+    }
+
+    public function getProfitFactorShorts(): float
+    {
+        return $this->grossLossShorts > 0.00001 ? $this->grossProfitShorts / $this->grossLossShorts : 0.00;
+    }
+
+    public function getProfitableTransactions(): int
+    {
+        return $this->profitableTransactions;
+    }
+
+    public function getProfitableTransactionsLongs(): int
+    {
+        return $this->profitableTransactionsLongs;
+    }
+
+    public function getProfitableTransactionsShorts(): int
+    {
+        return $this->profitableTransactionsShorts;
+    }
+
+    public function getLosingTransactions(): int
+    {
+        return $this->losingTransactions;
+    }
+
+    public function getLosingTransactionsLongs(): int
+    {
+        return $this->losingTransactionsLongs;
+    }
+
+    public function getLosingTransactionsShorts(): int
+    {
+        return $this->losingTransactionsShorts;
+    }
+
+    public function getAvgProfitableTransaction(): float
+    {
+        return $this->profitableTransactions > 0 ? $this->grossProfit / (float)$this->profitableTransactions : 0.00;
+    }
+
+    public function getAvgProfitableTransactionLongs(): float
+    {
+        return $this->profitableTransactionsLongs > 0 ? $this->grossProfitLongs / (float)$this->profitableTransactionsLongs : 0.00;
+    }
+
+    public function getAvgProfitableTransactionShorts(): float
+    {
+        return $this->profitableTransactionsShorts > 0 ? $this->grossProfitShorts / (float)$this->profitableTransactionsShorts : 0.00;
+    }
+
+    public function getAvgLosingTransaction(): float
+    {
+        return $this->losingTransactions > 0 ? $this->grossLoss / (float)$this->losingTransactions : 0.00;
+    }
+
+    public function getAvgLosingTransactionLongs(): float
+    {
+        return $this->losingTransactionsLongs > 0 ? $this->grossLossLongs / (float)$this->losingTransactionsLongs : 0.00;
+    }
+
+    public function getAvgLosingTransactionShorts(): float
+    {
+        return $this->losingTransactionsShorts > 0 ? $this->grossLossShorts / (float)$this->losingTransactionsShorts : 0.00;
+    }
+
+    public function getProfit(): float
+    {
+        return $this->capital - $this->initialCapital;
+        //Calculator::calculate('$1 - $2', $this->strategy->getCapital(), $this->strategy->getInitialCapital());
+    }
+
+    public function getProfitPercent(): float
+    {
+        return $this->capital * 100 / $this->initialCapital - 100;
+        //Calculator::calculate('$1 * 100 / $2 - 100', $this->strategy->getCapital(), $this->strategy->getInitialCapital());
     }
 
     public function getTradeLog(): array
