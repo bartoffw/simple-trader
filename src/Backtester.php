@@ -34,7 +34,6 @@ class Backtester
     protected float $maxDrawdownPercent = 0.00;
     protected array $capitalLog = [];
     protected array $drawdownLog = [];
-    protected array $benchmarkLog = [];
 
 
     public function __construct(protected Resolution $resolution)
@@ -87,12 +86,6 @@ class Backtester
     public function getTradeLog(): array
     {
         return $this->strategy->getTradeLog();
-    }
-
-    public function getAvgProfit(string $profit, int $transactionCount): float
-    {
-        return $transactionCount > 0 ? $profit / $transactionCount : 0;
-        //$transactionCount > 0 ? Calculator::calculate('$1 / $2', $profit, $transactionCount) : '0';
     }
 
     public function getAssets(): Assets
@@ -153,24 +146,35 @@ class Backtester
         }
     }
 
+    protected function calcStatBenchmarkProfit(array $benchmarkLog): float
+    {
+        return empty($benchmarkLog) ? 0.00 : $benchmarkLog[count($benchmarkLog) - 1] - $benchmarkLog[0];
+    }
+
+    protected function calcStatSharpeRatio(array $resultLog, float $avgProfit, int $tradeCount): float
+    {
+        if (count($resultLog) > 2) {
+            $stdDev = Calculator::stdDev($resultLog);
+            return sqrt($tradeCount) * $avgProfit / $stdDev;
+            //Calculator::calculate('sqrt($1) * $2 / $3', count($tradeLog), $avgProfit, $stdDev);
+        }
+        return 0.00;
+    }
+
     public function getTradeStats(array $tradeLog)
     {
         $currentCapital = $this->strategy->getInitialCapital();
 
         $this->capitalLog = [ $currentCapital ];
         $this->drawdownLog = [ 0.00 ];
-        $this->benchmarkLog = [ $currentCapital ];
+        $benchmarkLog = [ $currentCapital ];
 
         $benchmarkQty = $this->benchmark !== null ? $this->calcStatBenchmarkQty($currentCapital) : null;
         $peakValue = $currentCapital;
         $troughValue = $currentCapital;
 
-        $netProfit = $this->strategy->getProfit();
-        $avgProfit = $this->getAvgProfit($netProfit, count($tradeLog));
-
+        $avgProfit = $this->strategy->getAvgProfit();
         $totalOpenBars = 0;
-
-        $sharpeRatio = 0.00;
         $resultLog = [];
 
         /** @var Position $position */
@@ -187,45 +191,42 @@ class Backtester
             $this->capitalLog[] = $currentCapital;
             $this->drawdownLog[] = empty($position->getMaxDrawdownPercent()) ? 0 : 0 - round($position->getMaxDrawdownPercent(), 1);
             if ($this->benchmark !== null) {
-                $this->benchmarkLog[] = $this->calcStatBenchmarkLogEntry($position, $benchmarkQty);
+                $benchmarkLog[] = $this->calcStatBenchmarkLogEntry($position, $benchmarkQty);
             }
             $this->calcStatDrawdown($position);
-        }
-
-        if (count($resultLog) > 2) {
-            $stdDev = Calculator::stdDev($resultLog);
-            $sharpeRatio = sqrt(count($tradeLog)) * $avgProfit / $stdDev;
-            //Calculator::calculate('sqrt($1) * $2 / $3', count($tradeLog), $avgProfit, $stdDev);
         }
 
         $params = [
             'capital_log' => $this->capitalLog,
             'drawdown_log' => $this->drawdownLog,
-            'net_profit' => $netProfit,
+            'net_profit' => $this->strategy->getProfit(),
             'net_profit_percent' => $this->strategy->getProfitPercent(),
-            'avg_profit' => $avgProfit,
-            'avg_profit_longs' => '0', // TODO
-            'avg_profit_shorts' => '0', // TODO
             'net_profit_longs' => $this->strategy->getNetProfitLongs(),
             'net_profit_shorts' => $this->strategy->getNetProfitShorts(),
+            'avg_profit' => $avgProfit,
+            'avg_profit_longs' => $this->strategy->getAvgProfitLongs(),
+            'avg_profit_shorts' => $this->strategy->getAvgProfitShorts(),
+            'gross_profit' => $this->strategy->getGrossProfit(),
             'gross_profit_longs' => $this->strategy->getGrossProfitLongs(),
             'gross_profit_shorts' => $this->strategy->getGrossProfitShorts(),
+            'gross_loss' => $this->strategy->getGrossLoss(),
             'gross_loss_longs' => $this->strategy->getGrossLossLongs(),
             'gross_loss_shorts' => $this->strategy->getGrossLossShorts(),
             'profitable_transactions' => count($tradeLog) > 0 ? $this->strategy->getProfitableTransactions() * 100 / count($tradeLog) -1 : 0,
             'profit_factor' => $this->strategy->getProfitFactor(),
             'profit_factor_longs' => $this->strategy->getProfitFactorLongs(),
             'profit_factor_shorts' => $this->strategy->getProfitFactorShorts(),
-            'sharpe_ratio' => $sharpeRatio,
+            'sharpe_ratio' => $this->calcStatSharpeRatio($resultLog, $avgProfit, count($tradeLog)),
             'max_quantity_longs' => $this->maxQuantityLongs,
             'max_quantity_shorts' => $this->maxQuantityShorts,
             'max_drawdown_value' => $this->maxDrawdownValue,
             'max_drawdown_percent' => $this->maxDrawdownPercent,
-            'avg_bars' => $totalOpenBars / count($tradeLog),
             'peak_value' => $peakValue,
             'trough_value' => $troughValue,
+            'profitable_transactions_count' => $this->strategy->getProfitableTransactions(),
             'profitable_transactions_long_count' => $this->strategy->getProfitableTransactionsLongs(),
             'profitable_transactions_short_count' => $this->strategy->getProfitableTransactionsShorts(),
+            'losing_transactions_count' => $this->strategy->getLosingTransactions(),
             'losing_transactions_long_count' => $this->strategy->getLosingTransactionsLongs(),
             'losing_transactions_short_count' => $this->strategy->getLosingTransactionsShorts(),
             'avg_profitable_transaction' => $this->strategy->getAvgProfitableTransaction(),
@@ -234,9 +235,25 @@ class Backtester
             'avg_losing_transaction' => $this->strategy->getAvgLosingTransaction(),
             'avg_losing_transaction_longs' => $this->strategy->getAvgLosingTransactionLongs(),
             'avg_losing_transaction_shorts' => $this->strategy->getAvgLosingTransactionShorts(),
+            'max_profitable_transaction' => $this->strategy->getMaxProfitableTransaction(),
+            'max_profitable_transaction_longs' => $this->strategy->getMaxProfitableTransactionLongs(),
+            'max_profitable_transaction_shorts' => $this->strategy->getMaxProfitableTransactionShorts(),
+            'max_losing_transaction' => $this->strategy->getMaxLosingTransaction(),
+            'max_losing_transaction_longs' => $this->strategy->getMaxLosingTransactionLongs(),
+            'max_losing_transaction_shorts' => $this->strategy->getMaxLosingTransactionShorts(),
+            'avg_bars_transaction' => $this->strategy->getAvgOpenBars(),
+            'avg_bars_transaction_longs' => $this->strategy->getAvgOpenBarsLongs(),
+            'avg_bars_transaction_shorts' => $this->strategy->getAvgOpenBarsShorts(),
+            'avg_bars_profitable_transaction' => $this->strategy->getAvgProfitableOpenBars(),
+            'avg_bars_profitable_transaction_longs' => $this->strategy->getAvgProfitableOpenBarsLongs(),
+            'avg_bars_profitable_transaction_shorts' => $this->strategy->getAvgProfitableOpenBarsShorts(),
+            'avg_bars_losing_transaction' => $this->strategy->getAvgLosingOpenBars(),
+            'avg_bars_losing_transaction_longs' => $this->strategy->getAvgLosingOpenBarsLongs(),
+            'avg_bars_losing_transaction_shorts' => $this->strategy->getAvgLosingOpenBarsShorts()
         ];
         if ($this->benchmark !== null) {
-            $params['benchmark_log'] = $this->benchmarkLog;
+            $params['benchmark_log'] = $benchmarkLog;
+            $params['benchmark_profit'] = $this->calcStatBenchmarkProfit($benchmarkLog);
         }
         return $params;
     }

@@ -45,6 +45,22 @@ class BaseStrategy
     protected int $losingTransactionsLongs = 0;
     protected int $losingTransactionsShorts = 0;
 
+    protected int $barsProfitableTransactions = 0;
+    protected int $barsProfitableTransactionsLongs = 0;
+    protected int $barsProfitableTransactionsShorts = 0;
+
+    protected int $barsLosingTransactions = 0;
+    protected int $barsLosingTransactionsLongs = 0;
+    protected int $barsLosingTransactionsShorts = 0;
+
+    protected float $maxProfitableTransaction = 0.00;
+    protected float $maxProfitableTransactionLongs = 0.00;
+    protected float $maxProfitableTransactionShorts = 0.00;
+
+    protected float $maxLosingTransaction = 0.00;
+    protected float $maxLosingTransactionLongs = 0.00;
+    protected float $maxLosingTransactionShorts = 0.00;
+
     protected int $precision = 2;
 
 
@@ -228,28 +244,53 @@ class BaseStrategy
             $this->tradeLog[$position->getId()] = $position;
 
             $profit = $position->getProfitAmount();
+            $openBars = $position->getOpenBars();
             if ($profit > 0.00001) {
                 $this->grossProfit += $profit;
                 $this->capital += $profit;
                 $this->profitableTransactions++;
+                $this->barsProfitableTransactions += $openBars;
+                if ($profit > $this->maxProfitableTransaction) {
+                    $this->maxProfitableTransaction = $profit;
+                }
                 if ($position->getSide() === Side::Long) {
                     $this->grossProfitLongs += $profit;
                     $this->profitableTransactionsLongs++;
+                    $this->barsProfitableTransactionsLongs += $openBars;
+                    if ($profit > $this->maxProfitableTransactionLongs) {
+                        $this->maxProfitableTransactionLongs = $profit;
+                    }
                 } else {
                     $this->grossProfitShorts += $profit;
                     $this->profitableTransactionsShorts++;
+                    $this->barsProfitableTransactionsShorts += $openBars;
+                    if ($profit > $this->maxProfitableTransactionShorts) {
+                        $this->maxProfitableTransactionShorts = $profit;
+                    }
                 }
             } else {
                 $loss = abs($profit);
                 $this->grossLoss += $loss;
                 $this->capital -= $loss;
                 $this->losingTransactions++;
+                $this->barsLosingTransactions += $openBars;
+                if ($loss > $this->maxLosingTransaction) {
+                    $this->maxLosingTransaction = $loss;
+                }
                 if ($position->getSide() === Side::Long) {
                     $this->grossLossLongs += $loss;
                     $this->losingTransactionsLongs++;
+                    $this->barsLosingTransactionsLongs += $openBars;
+                    if ($loss > $this->maxLosingTransactionLongs) {
+                        $this->maxLosingTransactionLongs = $loss;
+                    }
                 } else {
                     $this->grossLossShorts += $loss;
                     $this->losingTransactionsShorts++;
+                    $this->barsLosingTransactionsShorts += $openBars;
+                    if ($loss > $this->maxLosingTransactionShorts) {
+                        $this->maxLosingTransactionShorts = $loss;
+                    }
                 }
             }
 
@@ -407,6 +448,120 @@ class BaseStrategy
     {
         return $this->capital * 100 / $this->initialCapital - 100;
         //Calculator::calculate('$1 * 100 / $2 - 100', $this->strategy->getCapital(), $this->strategy->getInitialCapital());
+    }
+
+    public function getAvgProfit(): float
+    {
+        $transactionCount = $this->profitableTransactions + $this->losingTransactions;
+        return $transactionCount > 0 ? $this->getNetProfitLongs() / (float)$transactionCount : 0.00;
+        //$transactionCount > 0 ? Calculator::calculate('$1 / $2', $profit, $transactionCount) : '0';
+    }
+
+    public function getAvgProfitLongs(): float
+    {
+        $transactionCount = $this->profitableTransactionsLongs + $this->losingTransactionsLongs;
+        return $transactionCount > 0 ? $this->getNetProfitLongs() / (float)$transactionCount : 0.00;
+        //$transactionCount > 0 ? Calculator::calculate('$1 / $2', $profit, $transactionCount) : '0';
+    }
+
+    public function getAvgProfitShorts(): float
+    {
+        $transactionCount = $this->profitableTransactionsShorts + $this->losingTransactionsShorts;
+        return $transactionCount > 0 ? $this->getNetProfitShorts() / (float)$transactionCount : 0.00;
+        //$transactionCount > 0 ? Calculator::calculate('$1 / $2', $profit, $transactionCount) : '0';
+    }
+
+    public function getMaxProfitableTransaction(): float
+    {
+        return $this->maxProfitableTransaction;
+    }
+
+    public function getMaxProfitableTransactionLongs(): float
+    {
+        return $this->maxProfitableTransactionLongs;
+    }
+
+    public function getMaxProfitableTransactionShorts(): float
+    {
+        return $this->maxProfitableTransactionShorts;
+    }
+
+    public function getMaxLosingTransaction(): float
+    {
+        return $this->maxLosingTransaction;
+    }
+
+    public function getMaxLosingTransactionLongs(): float
+    {
+        return $this->maxLosingTransactionLongs;
+    }
+
+    public function getMaxLosingTransactionShorts(): float
+    {
+        return $this->maxLosingTransactionShorts;
+    }
+
+    public function getAvgOpenBars(): int
+    {
+        $transactionCount = $this->profitableTransactions + $this->losingTransactions;
+        return $transactionCount > 0 ?
+            (int) (($this->barsProfitableTransactions + $this->barsLosingTransactions) / $transactionCount) : 0;
+    }
+
+    public function getAvgOpenBarsLongs(): int
+    {
+        $transactionCount = $this->profitableTransactionsLongs + $this->losingTransactionsLongs;
+        return $transactionCount > 0 ?
+            (int) (($this->barsProfitableTransactionsLongs + $this->barsLosingTransactionsLongs) / $transactionCount) : 0;
+    }
+
+    public function getAvgOpenBarsShorts(): int
+    {
+        $transactionCount = $this->profitableTransactionsShorts + $this->losingTransactionsShorts;
+        return $transactionCount > 0 ?
+            (int) (($this->barsProfitableTransactionsShorts + $this->barsLosingTransactionsShorts) / $transactionCount) : 0;
+    }
+
+    public function getAvgProfitableOpenBars(): int
+    {
+        $transactionCount = $this->profitableTransactions;
+        return $transactionCount > 0 ?
+            (int) ($this->barsProfitableTransactions / $transactionCount) : 0;
+    }
+
+    public function getAvgProfitableOpenBarsLongs(): int
+    {
+        $transactionCount = $this->profitableTransactionsLongs;
+        return $transactionCount > 0 ?
+            (int) ($this->barsProfitableTransactionsLongs / $transactionCount) : 0;
+    }
+
+    public function getAvgProfitableOpenBarsShorts(): int
+    {
+        $transactionCount = $this->profitableTransactionsShorts;
+        return $transactionCount > 0 ?
+            (int) ($this->barsProfitableTransactionsShorts / $transactionCount) : 0;
+    }
+
+    public function getAvgLosingOpenBars(): int
+    {
+        $transactionCount = $this->losingTransactions;
+        return $transactionCount > 0 ?
+            (int) ($this->barsLosingTransactions / $transactionCount) : 0;
+    }
+
+    public function getAvgLosingOpenBarsLongs(): int
+    {
+        $transactionCount = $this->losingTransactionsLongs;
+        return $transactionCount > 0 ?
+            (int) ($this->barsLosingTransactionsLongs / $transactionCount) : 0;
+    }
+
+    public function getAvgLosingOpenBarsShorts(): int
+    {
+        $transactionCount = $this->losingTransactionsShorts;
+        return $transactionCount > 0 ?
+            (int) ($this->barsLosingTransactionsShorts / $transactionCount) : 0;
     }
 
     public function getTradeLog(): array
