@@ -30,10 +30,13 @@ class Backtester
 
     protected float $maxQuantityLongs = 0.00;
     protected float $maxQuantityShorts = 0.00;
-    protected float $maxDrawdownValue = 0.00;
-    protected float $maxDrawdownPercent = 0.00;
+    protected float $peakValue = 0.00;
+    protected float $maxStrategyDrawdownValue = 0.00;
+    protected float $maxStrategyDrawdownPercent = 0.00;
+    protected float $maxPositionDrawdownValue = 0.00;
+    protected float $maxPositionDrawdownPercent = 0.00;
     protected array $capitalLog = [];
-    protected array $drawdownLog = [];
+    protected array $positionDrawdownLog = [];
 
 
     public function __construct(protected Resolution $resolution)
@@ -76,6 +79,11 @@ class Backtester
     public function getBacktestStartTime(): DateTime
     {
         return $this->backtestStartTime;
+    }
+
+    public function getBacktestEndTime(): DateTime
+    {
+        return $this->backtestEndTime;
     }
 
     public function getLastBacktestTime(): string
@@ -137,12 +145,30 @@ class Backtester
         return $currentCapital;
     }
 
-    protected function calcStatDrawdown(Position $position)
+    protected function calcStatStrategyDrawdown(float $currentCapital, Position $position)
     {
-        if ($position->getMaxDrawdownPercent() > $this->maxDrawdownPercent) {
-            // todo: max drawdown pozycji to nie jest max drawdown całego testu!!!
-            $this->maxDrawdownValue = $position->getMaxDrawdownValue();
-            $this->maxDrawdownPercent = $position->getMaxDrawdownPercent();
+        if ($currentCapital > $this->peakValue) {
+            $this->peakValue = $currentCapital;
+        }
+        if ($currentCapital < $this->peakValue) {
+            $currentDrawdownValue = $this->peakValue - $currentCapital;
+            $currentDrawdownPercent = ($this->peakValue - $currentCapital) * 100 / $this->peakValue;
+        } else {
+            $currentDrawdownValue = 0.00;
+            $currentDrawdownPercent = 0.00;
+        }
+        if ($currentDrawdownValue > $this->maxStrategyDrawdownValue) {
+            $this->maxStrategyDrawdownValue = $currentDrawdownValue;
+            $this->maxStrategyDrawdownPercent = $currentDrawdownPercent;
+        }
+        $position->setStrategyDrawdown($currentDrawdownValue, $currentDrawdownPercent);
+    }
+
+    protected function calcStatPositionDrawdown(Position $position)
+    {
+        if ($position->getMaxDrawdownValue() > $this->maxPositionDrawdownValue) {
+            $this->maxPositionDrawdownValue = $position->getMaxDrawdownValue();
+            $this->maxPositionDrawdownPercent = $position->getMaxDrawdownPercent();
         }
     }
 
@@ -166,7 +192,7 @@ class Backtester
         $currentCapital = $this->strategy->getInitialCapital();
 
         $this->capitalLog = [ $currentCapital ];
-        $this->drawdownLog = [ 0.00 ];
+        $this->positionDrawdownLog = [ 0.00 ];
         $benchmarkLog = [ $currentCapital ];
 
         $benchmarkQty = $this->benchmark !== null ? $this->calcStatBenchmarkQty($currentCapital) : null;
@@ -174,31 +200,29 @@ class Backtester
         $troughValue = $currentCapital;
 
         $avgProfit = $this->strategy->getAvgProfit();
-        $totalOpenBars = 0;
         $resultLog = [];
 
         /** @var Position $position */
         foreach ($tradeLog as $position) {
             $profit = $position->getProfitAmount();
 
-            $totalOpenBars += $position->getOpenBars();
             $this->calcStatMaxQty($position);
-
             $currentCapital = $this->calcStatProfitLoss($profit, $currentCapital);
             $position->setPortfolioBalance($currentCapital);
+            $this->calcStatStrategyDrawdown($currentCapital, $position);
+            $this->calcStatPositionDrawdown($position);
 
             $resultLog[] = $profit;
             $this->capitalLog[] = $currentCapital;
-            $this->drawdownLog[] = empty($position->getMaxDrawdownPercent()) ? 0 : 0 - round($position->getMaxDrawdownPercent(), 1);
+            $this->positionDrawdownLog[] = empty($position->getMaxDrawdownPercent()) ? 0 : 0 - round($position->getMaxDrawdownPercent(), 1);
             if ($this->benchmark !== null) {
                 $benchmarkLog[] = $this->calcStatBenchmarkLogEntry($position, $benchmarkQty);
             }
-            $this->calcStatDrawdown($position);
         }
 
         $params = [
             'capital_log' => $this->capitalLog,
-            'drawdown_log' => $this->drawdownLog,
+            'position_drawdown_log' => $this->positionDrawdownLog,
             'net_profit' => $this->strategy->getProfit(),
             'net_profit_percent' => $this->strategy->getProfitPercent(),
             'net_profit_longs' => $this->strategy->getNetProfitLongs(),
@@ -219,8 +243,10 @@ class Backtester
             'sharpe_ratio' => $this->calcStatSharpeRatio($resultLog, $avgProfit, count($tradeLog)),
             'max_quantity_longs' => $this->maxQuantityLongs,
             'max_quantity_shorts' => $this->maxQuantityShorts,
-            'max_drawdown_value' => $this->maxDrawdownValue,
-            'max_drawdown_percent' => $this->maxDrawdownPercent,
+            'max_strategy_drawdown_value' => $this->maxStrategyDrawdownValue,
+            'max_strategy_drawdown_percent' => $this->maxStrategyDrawdownPercent,
+            'max_position_drawdown_value' => $this->maxPositionDrawdownValue,
+            'max_position_drawdown_percent' => $this->maxPositionDrawdownPercent,
             'peak_value' => $peakValue,
             'trough_value' => $troughValue,
             'profitable_transactions_count' => $this->strategy->getProfitableTransactions(),
@@ -264,7 +290,7 @@ class Backtester
      * @throws BacktesterException
      * @throws StrategyException
      */
-    public function runBacktest(Assets $assets, DateTime $startTime, ?DateTime $endTime = null): void
+    public function runBacktest(Assets $assets, DateTime $startTime, ?DateTime $endTime = null, array $optimizationParameters = []): void
     {
         if (!isset($this->strategy)) {
             throw new BacktesterException('Strategy is not set');
@@ -286,7 +312,6 @@ class Backtester
 
         $onOpenExists = (new ReflectionMethod($this->strategy, 'onOpen'))->getDeclaringClass()->getName() !== BaseStrategy::class;
         $onCloseExists = (new ReflectionMethod($this->strategy, 'onClose'))->getDeclaringClass()->getName() !== BaseStrategy::class;
-        // TODO: check if the parent onOpen/onClose is called in the child
 
         $this->logger?->logInfo('Starting the backtest. Start date: ' . $startTime->getDateTime() . ', end date: ' . ($endTime ? $endTime->getDateTime() : 'none'));
 //        $currentAssets = null;

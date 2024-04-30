@@ -12,13 +12,12 @@ use SimpleTrader\Loggers\LoggerInterface;
 class BaseStrategy
 {
     protected string $strategyName = 'Base Strategy';
-    private bool $parentOnOpenCalled = false;
-    private bool $parentOnCloseCalled = false;
     protected ?LoggerInterface $logger = null;
     protected DateTime $startDate;
     protected DateTime $currentDateTime;
     protected Assets $currentAssets;
     protected ?Event $currentEvent = null;
+    protected array $strategyParameters = [];
 
     protected array $tickers = [];
     protected array $tradeLog = [];
@@ -93,6 +92,11 @@ class BaseStrategy
     public function getMaxLookbackPeriod(): int
     {
         return 0;
+    }
+
+    public function getParameters(): array
+    {
+        return $this->strategyParameters;
     }
 
     public function getStartDateForCalculations(Assets $assets, DateTime $startDate): DateTime
@@ -583,7 +587,7 @@ class BaseStrategy
      */
     protected function calculatePositionSize(float $price, float $qty, QuantityType $qtyType): float
     {
-        if ($qtyType === QuantityType::Percent && ($qty > 100 || $qty <= 0)) {
+        if ($qtyType === QuantityType::Percent && ($qty > 100 || $qty <= 0.00001)) {
             throw new StrategyException('Quantity percentage must be between 0 and 100');
         }
         return match ($qtyType) {

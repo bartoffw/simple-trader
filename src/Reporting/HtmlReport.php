@@ -15,7 +15,7 @@ class HtmlReport
         $this->graphs = new Graphs($this->reportPath);
     }
 
-    public function generateReport(Backtester $backtester, array $tickers, ?string $tickerForChart = null): void
+    public function generateReport(Backtester $backtester, array $tickers, string $customFileName = ''): void
     {
         $styles = file_get_contents(__DIR__ . '/../assets/styles.min.css');
         $chartJs = file_get_contents(__DIR__ . '/../assets/chart.js');
@@ -34,21 +34,32 @@ class HtmlReport
 //                $stockChart = '<img src="data:image/png;base64,' . base64_encode($this->graphs->generateStockChart($asset->getRawData())) . '" />';
 //            }
 //        }
+        $strategyParams = $backtester->getStrategy()->getParameters();
+        $strategyParamsFormatted = [];
+        if (empty($strategyParams)) {
+            $strategyParamsFormatted[] = '<tr><td colspan="2"><em>None</em></td></tr>';
+        } else {
+            foreach ($strategyParams as $name => $value) {
+                $strategyParamsFormatted[] = "<tr><td>{$name}</td><td class=\"text-right\"><strong>{$value}</strong></td></tr>";
+            }
+        }
 
         $params = [
             '%title%' => $title,
             '%backtest_date%' => $date,
             '%tickers%' => implode(', ', $tickers),
+            '%period%' => $backtester->getBacktestStartTime()->getDateTime() . ' to ' . $backtester->getBacktestEndTime()->getDateTime(),
+            '%backtest_parameters%' => implode('', $strategyParamsFormatted),
             '%styles%' => $styles,
             '%chart_js%' => $chartJs,
             "'%capital_labels%'" => implode(',', array_keys($tradeStats['capital_log'])),
             "'%capital_data%'" => implode(',', $tradeStats['capital_log']),
-            "'%drawdown_data%'" => implode(',', $tradeStats['drawdown_log']),
+            "'%drawdown_data%'" => implode(',', $tradeStats['position_drawdown_log']),
             '%net_profit%' => $netProfit,
             '%closed_transactions%' => number_format(count($tradeLog)),
             '%profitable_transactions%' => number_format((float)$tradeStats['profitable_transactions']),
             '%profit_factor%' => number_format($tradeStats['profit_factor'], 2),
-            '%max_drawdown%' => number_format((float)$tradeStats['max_drawdown_value'], 2) . '<br/>' . number_format((float)$tradeStats['max_drawdown_percent'], 2),
+            '%max_strategy_drawdown%' => number_format((float)$tradeStats['max_strategy_drawdown_value'], 2) . '<br/>' . number_format((float)$tradeStats['max_strategy_drawdown_percent'], 2),
             '%avg_profit%' => number_format((float)$tradeStats['avg_profit'], 2),
             '%avg_bars%' => number_format(floor((float)$tradeStats['avg_bars_transaction'])),
             //'%capital_graph%' => $capitalGraph,
@@ -58,16 +69,19 @@ class HtmlReport
             '%transactions_history%' => $this->formatTransactionHistory($tradeLog, $tradeStats)
         ];
         $params["'%benchmark_data%'"] = empty($tradeStats['benchmark_log']) ? '' : ", {
-                label: 'Benchmark capital log - {$backtester->getBenchmarkTicker()} ($)',
+                label: 'Benchmark capital - {$backtester->getBenchmarkTicker()} ($)',
                 yAxisID: 'y',
                 order: 2,
                 data: [" . implode(',', $tradeStats['benchmark_log']) . "]
             }";
         $output = strtr($html, $params);
-        file_put_contents($this->reportPath . '/report.html', $output);
+        file_put_contents(
+            $this->reportPath . '/' . ($customFileName ?: 'report-' . implode('-', $tickers) . (empty($strategyParams) ? '' : '-' . implode('-', $strategyParams))) . '.html',
+            $output
+        );
     }
 
-    protected function formatDetailedStats(array $tradeStats)
+    protected function formatDetailedStats(array $tradeStats): string
     {
         $stats = [];
         if (!empty($tradeStats['benchmark_profit'])) {
@@ -83,25 +97,19 @@ class HtmlReport
             '<td class="text-right">' . number_format($tradeStats['net_profit'], 2) . '</td>' .
             '<td class="text-right">' . number_format($tradeStats['net_profit_longs'], 2) . '</td>' .
             '<td class="text-right">' . number_format($tradeStats['net_profit_shorts'], 2) . '</td>' .
-        '</tr>';
+            '</tr>';
         $stats[] = '<tr>' .
             '<th>Gross profit</th>' .
             '<td class="text-right">' . number_format($tradeStats['gross_profit'], 2) . '</td>' .
             '<td class="text-right">' . number_format($tradeStats['gross_profit_longs'], 2) . '</td>' .
             '<td class="text-right">' . number_format($tradeStats['gross_profit_shorts'], 2) . '</td>' .
-        '</tr>';
+            '</tr>';
         $stats[] = '<tr>' .
             '<th>Gross loss</th>' .
             '<td class="text-right">' . number_format($tradeStats['gross_loss'], 2) . '</td>' .
             '<td class="text-right">' . number_format($tradeStats['gross_loss_longs'], 2) . '</td>' .
             '<td class="text-right">' . number_format($tradeStats['gross_loss_shorts'], 2) . '</td>' .
-        '</tr>';
-        $stats[] = '<tr>' .
-            '<th>Profit factor</th>' .
-            '<td class="text-right">' . number_format($tradeStats['profit_factor'], 2) . '</td>' .
-            '<td class="text-right">' . number_format($tradeStats['profit_factor_longs'], 2) . '</td>' .
-            '<td class="text-right">' . number_format($tradeStats['profit_factor_shorts'], 2) . '</td>' .
-        '</tr>';
+            '</tr>';
         $stats[] = '<tr>' .
             '<th>Profit factor</th>' .
             '<td class="text-right">' . number_format($tradeStats['profit_factor'], 2) . '</td>' .
@@ -121,8 +129,14 @@ class HtmlReport
             '<td class="text-right"></td>' .
             '</tr>';
         $stats[] = '<tr>' .
-            '<th>Max drawdown</th>' .
-            '<td class="text-right">' . number_format($tradeStats['max_drawdown_value'], 2) . '</td>' .
+            '<th>Max strategy drawdown</th>' .
+            '<td class="text-right">' . number_format($tradeStats['max_strategy_drawdown_value'], 2) . '</td>' .
+            '<td class="text-right"></td>' .
+            '<td class="text-right"></td>' .
+            '</tr>';
+        $stats[] = '<tr>' .
+            '<th>Max position drawdown</th>' .
+            '<td class="text-right">' . number_format($tradeStats['max_position_drawdown_value'], 2) . '</td>' .
             '<td class="text-right"></td>' .
             '<td class="text-right"></td>' .
             '</tr>';
@@ -131,15 +145,15 @@ class HtmlReport
             '<td class="text-right">' . number_format($tradeStats['max_quantity_longs'] + $tradeStats['max_quantity_shorts'], 2) . '</td>' .
             '<td class="text-right">' . number_format($tradeStats['max_quantity_longs'], 2) . '</td>' .
             '<td class="text-right">' . number_format($tradeStats['max_quantity_shorts'], 2) . '</td>' .
-        '</tr>';
+            '</tr>';
         $stats[] = '<tr>' .
             '<th>All transactions</th>' .
             '<td class="text-right">' . number_format(
-                    $tradeStats['profitable_transactions_long_count'] +
-                    $tradeStats['profitable_transactions_short_count'] +
-                    $tradeStats['losing_transactions_long_count'] +
-                    $tradeStats['losing_transactions_short_count']
-                ) . '</td>' .
+                $tradeStats['profitable_transactions_long_count'] +
+                $tradeStats['profitable_transactions_short_count'] +
+                $tradeStats['losing_transactions_long_count'] +
+                $tradeStats['losing_transactions_short_count']
+            ) . '</td>' .
             '<td class="text-right">' . number_format($tradeStats['profitable_transactions_long_count'] + $tradeStats['losing_transactions_long_count']) . '</td>' .
             '<td class="text-right">' . number_format($tradeStats['profitable_transactions_short_count'], $tradeStats['losing_transactions_short_count']) . '</td>' .
             '</tr>';
@@ -212,29 +226,29 @@ class HtmlReport
         $i = 1;
         /** @var Position $position */
         foreach ($tradeLog as $position) {
-            $row = '<tr>' .
-                    '<td rowspan="2" class="text-right"><strong>' . $i . '</strong></td>' .
-                    '<td rowspan="2">' . $position->getTicker() . '</td>' .
-                    '<td class="text-right">' . $position->getOpenTime()->getDateTime() . '</td>' .
-                    '<td>' . $position->getSide()->value . ' OPEN' . ($position->getOpenComment() ? ' - ' . $position->getOpenComment() : '') . '</td>' .
-                    '<td class="text-right">' . number_format($position->getOpenPrice(), 2) . '</td>' .
-                    '<td rowspan="2" class="text-right">' . number_format($position->getQuantity(), 2) . '</td>' .
-                    '<td rowspan="2" class="text-right">' . number_format($position->getProfitAmount(), 2) . '<br/>' . $this->textColor(
-                        number_format($position->getProfitPercent(), 2) . '%',
+            $row = '<tr class="row-' . ($i % 2 === 0 ? 'even' : 'odd') . '">' .
+                '<td rowspan="2" class="text-right"><strong>' . $i . '</strong></td>' .
+                '<td rowspan="2">' . $position->getTicker() . '</td>' .
+                '<td class="text-right">' . $position->getOpenTime()->getDateTime() . '</td>' .
+                '<td>' . $position->getSide()->value . ' OPEN' . ($position->getOpenComment() ? ' - ' . $position->getOpenComment() : '') . '</td>' .
+                '<td class="text-right">' . number_format($position->getOpenPrice(), 2) . '</td>' .
+                '<td rowspan="2" class="text-right">' . number_format($position->getQuantity(), 2) . '</td>' .
+                '<td rowspan="2" class="text-right">' . number_format($position->getProfitAmount(), 2) . '<br/>' . $this->textColor(
+                    number_format($position->getProfitPercent(), 2) . '%',
                     $position->getProfitPercent() < 0.00001 ? 'red' : 'green'
-                    ) . '</td>' .
-                    '<td rowspan="2" class="text-right">' . number_format($position->getPortfolioBalance(), 2) . '</td>' .
-                    '<td rowspan="2" class="text-right">' . number_format($position->getMaxDrawdownValue(), 2) . '<br/>' .
-                        $this->textColor(
-                            number_format($position->getMaxDrawdownPercent(), 2) . '%',
-                            $position->getMaxDrawdownPercent() > 0.00001 ? 'red' : null
-                        ) .
-                    '</td>' .
+                ) . '</td>' .
+                '<td rowspan="2" class="text-right">' . number_format($position->getPortfolioBalance(), 2) . '</td>' .
+                '<td rowspan="2" class="text-right">' . number_format($position->getMaxDrawdownValue(), 2) . '<br/>' .
+                $this->textColor(
+                    number_format($position->getMaxDrawdownPercent(), 2) . '%',
+                    $position->getMaxDrawdownPercent() > 0.00001 ? 'red' : null
+                ) .
+                '</td>' .
                 '</tr>';
-            $row .= '<tr>' .
-                    '<td class="text-right">' . $position->getCloseTime()->getDateTime() . '</td>' .
-                    '<td>' . $position->getSide()->value . ' CLOSE' . ($position->getCloseComment() ? ' - ' . $position->getCloseComment() : '') . '</td>' .
-                    '<td class="text-right">' . number_format($position->getClosePrice(), 2) . '</td>' .
+            $row .= '<tr class="row-' . ($i % 2 === 0 ? 'even' : 'odd') . '">' .
+                '<td class="text-right">' . $position->getCloseTime()->getDateTime() . '</td>' .
+                '<td>' . $position->getSide()->value . ' CLOSE' . ($position->getCloseComment() ? ' - ' . $position->getCloseComment() : '') . '</td>' .
+                '<td class="text-right">' . number_format($position->getClosePrice(), 2) . '</td>' .
                 '</tr>';
             $rows[] = $row;
             $i++;

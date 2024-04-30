@@ -12,6 +12,7 @@
         table th, table td { font-size: 80% }
         table thead th { text-align: center }
         table td:last-child, table th:last-child { padding-right: 1.5rem !important }
+        table.striped tbody tr:nth-child(even), table tbody .row-even { background-color: #f5f5f5 }
     </style>
     <script>
         %chart_js%
@@ -27,9 +28,25 @@
     <div class="container">
         <h1>%title%</h1>
         <blockquote>
-            <p>Backtest ran at: <strong>%backtest_date%</strong></p>
-            <p>Tickers tested: <strong>%tickers%</strong></p>
+            <p>
+                Backtest ran at: <strong>%backtest_date%</strong><br/>
+                Tickers tested: <strong>%tickers%</strong><br/>
+                Period tested: <strong>%period%</strong>
+            </p>
         </blockquote>
+
+        <h2>Backtest parameters</h2>
+        <table style="width: 50%">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Value</th>
+            </tr>
+            </thead>
+            <tbody>
+            %backtest_parameters%
+            </tbody>
+        </table>
 
         <h2>Backtest stats</h2>
         <table>
@@ -50,7 +67,7 @@
                 <td class="text-right">%closed_transactions%</td>
                 <td class="text-right">%profitable_transactions%%</td>
                 <td class="text-right">%profit_factor%</td>
-                <td class="text-right">%max_drawdown%%</td>
+                <td class="text-right">%max_strategy_drawdown%%</td>
                 <td class="text-right">%avg_profit%</td>
                 <td class="text-right">%avg_bars%</td>
             </tr>
@@ -63,7 +80,7 @@
         </div>
 
         <h2>Detailed stats</h2>
-        <table>
+        <table class="striped">
             <thead>
             <tr>
                 <th>Detail</th>
@@ -104,13 +121,13 @@
             data: {
                 labels: ['%capital_labels%'],
                 datasets: [{
-                    label: 'Strategy capital log ($)',
+                    label: 'Strategy capital ($)',
                     fill: true,
                     yAxisID: 'y',
                     order: 0,
                     data: ['%capital_data%']
                 }, {
-                    label: 'Strategy drawdown log (%)',
+                    label: 'Position drawdown (%)',
                     yAxisID: 'y1',
                     order: 1,
                     type: 'bar',

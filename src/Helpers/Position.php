@@ -19,9 +19,11 @@ class Position
     protected float $openPositionSize;
     protected float $closePositionSize;
     protected float $peakValue = 0;
-    protected ?float $portfolioBalance = 0;
+    protected float $portfolioBalance = 0;
     protected float $maxDrawdownValue = 0;
-    protected ?float $maxDrawdownPercent = 0;
+    protected float $maxDrawdownPercent = 0;
+    protected ?float $strategyDrawdownValue = null;
+    protected ?float $strategyDrawdownPercent = null;
 
 
     public function __construct(DateTime $currentTime, protected Side $side, protected string $ticker,
@@ -109,6 +111,25 @@ class Position
         return $this->portfolioBalance;
     }
 
+    public function setStrategyDrawdown(float $value, float $percent)
+    {
+        if ($this->strategyDrawdownValue !== null || $this->strategyDrawdownPercent !== null) {
+            throw new BacktesterException('Strategy drawdown already set for this position: ' . $this->getId());
+        }
+        $this->strategyDrawdownValue = $value;
+        $this->strategyDrawdownPercent = $percent;
+    }
+
+    public function getStrategyDrawdownValue(): float
+    {
+        return $this->strategyDrawdownValue;
+    }
+
+    public function getStrategyDrawdownPercent(): float
+    {
+        return $this->strategyDrawdownPercent;
+    }
+
     public function calculateDrawdown(Ohlc $ohlc)
     {
         $maxValue = max((float) $ohlc->getOpen(), (float) $ohlc->getLow(), (float) $ohlc->getHigh(), (float) $ohlc->getClose());
@@ -123,8 +144,8 @@ class Position
                 $currentDrawdownValue = $this->quantity * ($this->openPrice - $minValue);
                 $currentDrawdownPercent = $currentDrawdownValue * 100 / ($this->openPrice * $this->quantity);
             } else {
-                $currentDrawdownValue = '0';
-                $currentDrawdownPercent = '0';
+                $currentDrawdownValue = 0;
+                $currentDrawdownPercent = 0;
             }
             if ($currentDrawdownValue > $this->maxDrawdownValue) {
 //                echo "[" . $ohlc->getDateTime()->getDateTime() . "] TROUGH: {$currentDrawdownValue}\n";
