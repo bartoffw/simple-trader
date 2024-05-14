@@ -1,0 +1,122 @@
+<div class="tabs" id="tab_%i%">
+    <h3>Backtest parameters</h3>
+    <table class="condensed" style="width: 50%">
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>Value</th>
+        </tr>
+        </thead>
+        <tbody>
+        %backtest_parameters%
+        </tbody>
+    </table>
+
+    <h2>Backtest stats</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Net profit/loss</th>
+            <th>Number of closed transactions</th>
+            <th>Percent of profitable transactions</th>
+            <th>Profit factor</th>
+            <th>Max drawdown</th>
+            <th>Average profit/loss</th>
+            <th>Average bars in trade</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td class="text-right">%net_profit%</td>
+            <td class="text-right">%closed_transactions%</td>
+            <td class="text-right">%profitable_transactions%%</td>
+            <td class="text-right">%profit_factor%</td>
+            <td class="text-right">%max_strategy_drawdown%%</td>
+            <td class="text-right">%avg_profit%</td>
+            <td class="text-right">%avg_bars%</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>Capital graph</h2>
+    <div>
+        <canvas id="capital-graph_%i%"></canvas>
+    </div>
+
+    <h2>Detailed stats</h2>
+    <table class="striped">
+        <thead>
+        <tr>
+            <th>Detail</th>
+            <th>All</th>
+            <th>Longs</th>
+            <th>Shorts</th>
+        </tr>
+        </thead>
+        <tbody>
+        %detailed_stats%
+        </tbody>
+    </table>
+
+    <h2>Transactions history</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Asset</th>
+            <th>Time</th>
+            <th>Type</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Profit/loss</th>
+            <th>Balance</th>
+            <th>Drawdown</th>
+        </tr>
+        </thead>
+        <tbody>
+        %transactions_history%
+        </tbody>
+    </table>
+
+    <script>
+        const capitalCtx%i% = document.getElementById('capital-graph_%i%');
+        new Chart(capitalCtx%i%, {
+            type: 'line',
+            data: {
+                labels: ['%capital_labels%'],
+                datasets: [{
+                    label: 'Strategy capital ($)',
+                    fill: true,
+                    yAxisID: 'y',
+                    order: 0,
+                    data: ['%capital_data%']
+                }, {
+                    label: 'Max position drawdown (%)',
+                    yAxisID: 'y1',
+                    order: 1,
+                    type: 'bar',
+                    data: ['%drawdown_data%']
+                }'%benchmark_data%']
+            },
+            options: {
+                stacked: false,
+                responsive: true,
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left'
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    },
+                }
+            }
+        });
+    </script>
+</div>

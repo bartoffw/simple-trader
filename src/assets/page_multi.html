@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>%title%</title>
+    <style>
+        %styles%
+        .text-right { text-align: right }
+        .text-green { color: green }
+        .text-red { color: orangered }
+        table th, table td { font-size: 80% }
+        table thead th { text-align: center }
+        table td:last-child, table th:last-child { padding-right: 1.5rem !important }
+        table.striped tbody tr:nth-child(even), table tbody .row-even { background-color: #f5f5f5 }
+        table.condensed td { padding-top: 0.5rem; padding-bottom: 0.5rem }
+        .tabs h3 { margin: 2rem 0 0.5rem }
+    </style>
+    <script>
+        %scripts%
+    </script>
+</head>
+<body>
+<main class="wrapper">
+    <nav class="navigation" tabindex="-1">
+        <section class="container">
+            <a class="pagename" href="#">Backtest Report</a>
+        </section>
+    </nav>
+    <div class="container">
+        <h1>%title%</h1>
+        <blockquote>
+            <p>
+                Backtest ran at: <strong>%backtest_date%</strong><br/>
+                Tickers tested: <strong>%tickers%</strong><br/>
+                Period tested: <strong>%period%</strong>
+            </p>
+            <p>
+                Optimization of <strong>%param_count%</strong> parameters in <strong>%iteration_count%</strong> iterations.
+            </p>
+        </blockquote>
+
+        <ul data-tabs>
+            %page_tab_titles%
+        </ul>
+        %page_tabs%
+    </div>
+    <script>
+        const tabs = new Tabby('[data-tabs]');
+    </script>
+</main>
+</body>
+</html>

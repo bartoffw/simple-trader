@@ -2,9 +2,9 @@
 
 namespace SimpleTrader;
 
+use Carbon\Carbon;
 use MammothPHP\WoollyM\DataFrame;
 use SimpleTrader\Exceptions\LoaderException;
-use SimpleTrader\Helpers\DateTime;
 use SimpleTrader\Helpers\Ohlc;
 
 class Assets
@@ -48,34 +48,37 @@ class Assets
         return empty($this->assetList);
     }
 
-    public function cloneToDate(DateTime $fromDate, DateTime $toDate, ?Assets $existingAssets = null): Assets
+    public function cloneToDate(Carbon $fromDate, Carbon $toDate, ?Assets $existingAssets = null): Assets
     {
         $assets = new Assets();
         foreach ($this->assetList as $ticker => $df) {
 //            if ($existingAssets) {
 //                $latestExistingDate = $existingAssets->getLatestDate($ticker);
-//                if ($latestExistingDate->getDateTime() === $da)
+//                if ($latestExistingDate->toDateString() === $da)
 //            }
             $assets->addAsset(self::cloneAssetToDate($df, $fromDate, $toDate), $ticker);
         }
         return $assets;
     }
 
-    public function getLatestOhlc(string $ticker, ?DateTime $forDate = null): ?Ohlc
+    public function getLatestOhlc(string $ticker, ?Carbon $forDate = null): ?Ohlc
     {
         $asset = $this->getAsset($ticker);
         if ($asset === null) {
             throw new LoaderException('Asset not found in the asset list for an open position: ' . $ticker);
         }
         $latestFrame = $forDate ?
-            $asset->selectAll()->where(fn($record, $recordKey) => $record['date'] <= $forDate->getDateTime())->limit(1)->toArray() :
+            $asset->selectAll()
+                ->where(fn($record, $recordKey) => (new Carbon($record['date'])) <= $forDate)
+                ->limit(1)
+                ->toArray() :
             $asset->head(1);
         return $latestFrame ?
-            new Ohlc(new DateTime($latestFrame[0]['date']), $latestFrame[0]['open'], $latestFrame[0]['high'], $latestFrame[0]['low'], $latestFrame[0]['close'], $latestFrame[0]['volume']) :
+            new Ohlc(new Carbon($latestFrame[0]['date']), $latestFrame[0]['open'], $latestFrame[0]['high'], $latestFrame[0]['low'], $latestFrame[0]['close'], $latestFrame[0]['volume']) :
             null;
     }
 
-    public function getCurrentValue(string $ticker, ?DateTime $forDate = null, Event $event = Event::OnClose): ?string
+    public function getCurrentValue(string $ticker, ?Carbon $forDate = null, Event $event = Event::OnClose): ?string
     {
         $ohlc = $this->getLatestOhlc($ticker, $forDate);
         return $ohlc ?
@@ -86,14 +89,14 @@ class Assets
             null;
     }
 
-    public function getLatestDate(string $ticker): ?DateTime
+    public function getLatestDate(string $ticker): ?Carbon
     {
         $asset = $this->getAsset($ticker);
         if ($asset === null) {
             throw new LoaderException('Asset not found in the asset list for an open position: ' . $ticker);
         }
         $df = $asset->head(1);
-        return $df ? new DateTime($df[0]['date']) : null;
+        return $df ? new Carbon($df[0]['date']) : null;
     }
 
     public static function getColumns(): array
@@ -115,10 +118,9 @@ class Assets
         }
     }
 
-    public static function cloneAssetToDate(DataFrame $df, DateTime $fromDate, DateTime $toDate): DataFrame
+    public static function cloneAssetToDate(DataFrame $df, Carbon $fromDate, Carbon $toDate): DataFrame
     {
         return $df->selectAll()
-            ->where(fn($record, $recordKey) => $record['date'] >= $fromDate->getDateTime() && $record['date'] <= $toDate->getDateTime())
-            ->export();
+            ->where(fn($record, $recordKey) => (new Carbon($record['date']))->between($fromDate, $toDate))->export();
     }
 }

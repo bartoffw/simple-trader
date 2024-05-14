@@ -2,8 +2,8 @@
 
 namespace SimpleTrader;
 
+use Carbon\Carbon;
 use SimpleTrader\Exceptions\StrategyException;
-use SimpleTrader\Helpers\DateTime;
 use SimpleTrader\Helpers\Position;
 use SimpleTrader\Helpers\QuantityType;
 use SimpleTrader\Helpers\Side;
@@ -13,11 +13,12 @@ class BaseStrategy
 {
     protected string $strategyName = 'Base Strategy';
     protected ?LoggerInterface $logger = null;
-    protected DateTime $startDate;
-    protected DateTime $currentDateTime;
+    protected Carbon $startDate;
+    protected Carbon $currentDateTime;
     protected Assets $currentAssets;
     protected ?Event $currentEvent = null;
     protected array $strategyParameters = [];
+    protected ?array $optimizationParameters = null;
 
     protected array $tickers = [];
     protected array $tradeLog = [];
@@ -63,8 +64,11 @@ class BaseStrategy
     protected int $precision = 2;
 
 
-    public function __construct(protected QuantityType $qtyType = QuantityType::Percent)
+    public function __construct(protected QuantityType $qtyType = QuantityType::Percent, array $paramsOverrides = [])
     {
+        if (!empty($paramsOverrides)) {
+            $this->strategyParameters = array_merge($this->strategyParameters, $paramsOverrides);
+        }
     }
 
     public function getStrategyName(): string
@@ -79,12 +83,12 @@ class BaseStrategy
         }
     }
 
-    public function setStartDate(DateTime $dateTime): void
+    public function setStartDate(Carbon $dateTime): void
     {
         $this->startDate = $dateTime;
     }
 
-    public function getStartDate(): DateTime
+    public function getStartDate(): Carbon
     {
         return $this->startDate;
     }
@@ -99,14 +103,41 @@ class BaseStrategy
         return $this->strategyParameters;
     }
 
-    public function getStartDateForCalculations(Assets $assets, DateTime $startDate): DateTime
+    public function getOptimizationParameters(): ?array
+    {
+        return $this->optimizationParameters;
+    }
+
+    public function setParameters(array $newParameters)
+    {
+        $this->optimizationParameters = $newParameters;
+        foreach ($newParameters as $name => $value) {
+            if (isset($this->strategyParameters[$name])) {
+                $this->strategyParameters[$name] = $value;
+            } else {
+                throw new StrategyException('Invalid parameter name: ' . $name);
+            }
+        }
+    }
+
+    public function setTickers(array $tickers): void
+    {
+        $this->tickers = $tickers;
+    }
+
+    public function getTickers(): array
+    {
+        return $this->tickers;
+    }
+
+    public function getStartDateForCalculations(Assets $assets, Carbon $startDate): Carbon
     {
         $oldestDate = null;
         foreach ($this->tickers as $ticker) {
             $asset = $assets->getAsset($ticker);
             $record = $asset
                 ->select('date')
-                ->where(fn($record, $recordKey) => $record['date'] <= $startDate->getDateTime())
+                ->where(fn($record, $recordKey) => (new Carbon($record['date'])) <= $startDate)
                 ->limit(1)
                 ->offset($this->getMaxLookbackPeriod())
                 ->toArray();
@@ -117,7 +148,7 @@ class BaseStrategy
                 }
             }
         }
-        return $oldestDate ? new DateTime($oldestDate) : $startDate;
+        return $oldestDate ? new Carbon($oldestDate) : $startDate;
     }
 
     public function getPrecision(): int
@@ -167,7 +198,7 @@ class BaseStrategy
         return $position->getProfitPercent();
     }
 
-    public function onOpen(Assets $assets, DateTime $dateTime): void
+    public function onOpen(Assets $assets, Carbon $dateTime): void
     {
         $this->currentEvent = Event::OnOpen;
         $this->currentAssets = $assets;
@@ -175,7 +206,7 @@ class BaseStrategy
         $this->updateDrawdown();
     }
 
-    public function onClose(Assets $assets, DateTime $dateTime): void
+    public function onClose(Assets $assets, Carbon $dateTime): void
     {
         $this->currentEvent = Event::OnClose;
         $this->currentAssets = $assets;
@@ -183,7 +214,7 @@ class BaseStrategy
         $this->updateDrawdown();
     }
 
-    public function onStrategyEnd(Assets $assets, DateTime $dateTime): void
+    public function onStrategyEnd(Assets $assets, Carbon $dateTime): void
     {
         $this->currentEvent = Event::OnClose;
         $this->currentAssets = $assets;
@@ -220,7 +251,7 @@ class BaseStrategy
         $this->capitalAvailable = $this->capitalAvailable - $calculatedSize;
 
         $this->logger->logInfo(
-            '[' . $this->currentDateTime->getDateTime() . '][' . $position->getId() . '] ' . $side->value . ' @ ' . $currentPrice . ', ' .
+            '[' . $this->currentDateTime->toDateString() . '][' . $position->getId() . '] ' . $side->value . ' @ ' . $currentPrice . ', ' .
             'total size: ' . $calculatedSize . ', equity: ' . $this->getCapital() .
             ($comment ? ' (' . $comment . ')' : '')
         );
@@ -299,7 +330,7 @@ class BaseStrategy
             }
 
             $this->logger->logInfo(
-                '[' . $this->currentDateTime->getDateTime() . '][' . $position->getId() . '] CLOSE @ ' . $currentPrice . ', ' .
+                '[' . $this->currentDateTime->toDateString() . '][' . $position->getId() . '] CLOSE @ ' . $currentPrice . ', ' .
                 'profit: ' . $position->getProfitPercent() . '%' /*. '% == ' . $position->getProfitAmount() . ', equity: ' . $this->getCapital()*/ .
                 ($comment ? ' (' . $comment . ')' : '')
             );
@@ -575,8 +606,8 @@ class BaseStrategy
         uasort($tradeLog, function($a, $b) {
             /** @var Position $a */
             /** @var Position $b */
-            $closeTimeA = $a->getCloseTime()->getDateTime();
-            $closeTimeB = $b->getCloseTime()->getDateTime();
+            $closeTimeA = $a->getCloseTime()->toDateString();
+            $closeTimeB = $b->getCloseTime()->toDateString();
             return $closeTimeA <=> $closeTimeB;
         });
         return $tradeLog;

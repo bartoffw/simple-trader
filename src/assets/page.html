@@ -13,9 +13,10 @@
         table thead th { text-align: center }
         table td:last-child, table th:last-child { padding-right: 1.5rem !important }
         table.striped tbody tr:nth-child(even), table tbody .row-even { background-color: #f5f5f5 }
+        table.condensed td { padding-top: 0.5rem; padding-bottom: 0.5rem }
     </style>
     <script>
-        %chart_js%
+        %scripts%
     </script>
 </head>
 <body>
@@ -35,8 +36,8 @@
             </p>
         </blockquote>
 
-        <h2>Backtest parameters</h2>
-        <table style="width: 50%">
+        <h3>Backtest parameters</h3>
+        <table class="condensed" style="width: 50%">
             <thead>
             <tr>
                 <th>Name</th>
@@ -127,7 +128,7 @@
                     order: 0,
                     data: ['%capital_data%']
                 }, {
-                    label: 'Position drawdown (%)',
+                    label: 'Max position drawdown (%)',
                     yAxisID: 'y1',
                     order: 1,
                     type: 'bar',

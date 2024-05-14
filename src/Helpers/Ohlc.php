@@ -2,12 +2,14 @@
 
 namespace SimpleTrader\Helpers;
 
+use Carbon\Carbon;
+
 class Ohlc
 {
-    public function __construct(protected DateTime $dateTime, protected string $open, protected string $high,
+    public function __construct(protected Carbon $dateTime, protected string $open, protected string $high,
                                 protected string $low, protected string $close, protected ?int $volume = 0) {}
 
-    public function getDateTime(): DateTime
+    public function getDateTime(): Carbon
     {
         return $this->dateTime;
     }

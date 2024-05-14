@@ -2,28 +2,28 @@
 
 namespace SimpleTrader\Loaders;
 
+use Carbon\Carbon;
 use SimpleTrader\Event;
 use SimpleTrader\Exceptions\LoaderException;
-use SimpleTrader\Helpers\DateTime;
 use SimpleTrader\Helpers\Ohlc;
 
 class Csv extends BaseLoader implements LoaderInterface
 {
     protected array $columns = [];
     protected array $data = [];
-    protected ?DateTime $fromDate = null;
+    protected ?Carbon $fromDate = null;
 
 
     private function __construct(protected string $ticker, protected ?string $filePath = null,
                                  protected ?array $sourceData = null, protected string $dateField = 'Date',
-                                 protected ?DateTime $limitToDate = null, protected ?Event $event = null) {}
+                                 protected ?Carbon $limitToDate = null, protected ?Event $event = null) {}
 
     public static function fromFile(string $ticker, string $filePath, string $dateField = 'Date'): static
     {
         return new static($ticker, $filePath, null, $dateField);
     }
 
-    public static function fromLoaderLimited(LoaderInterface $loader, DateTime $limitToDate, Event $event): static
+    public static function fromLoaderLimited(LoaderInterface $loader, Carbon $limitToDate, Event $event): static
     {
         return new static($loader->getTicker(), null, $loader->getData(), $loader->getDateField(), $limitToDate, $event);
     }
@@ -34,7 +34,7 @@ class Csv extends BaseLoader implements LoaderInterface
         return $this->ticker;
     }
 
-    public function getFromDate(): ?DateTime
+    public function getFromDate(): ?Carbon
     {
         return $this->fromDate;
     }
@@ -47,7 +47,7 @@ class Csv extends BaseLoader implements LoaderInterface
     /**
      * @throws LoaderException
      */
-    public function loadData(?DateTime $fromDate = null): bool
+    public function loadData(?Carbon $fromDate = null): bool
     {
         if ($this->isLoaded) {
             return true;
@@ -74,12 +74,12 @@ class Csv extends BaseLoader implements LoaderInterface
         return $this->data;
     }
 
-    public function getCurrentValues(DateTime $dateTime): Ohlc
+    public function getCurrentValues(Carbon $dateTime): Ohlc
     {
-        $datePosition = array_search($dateTime->getDateTime(), $this->getData($this->getDateField()));
+        $datePosition = array_search($dateTime->toDateString(), $this->getData($this->getDateField()));
         if ($datePosition === false) {
             // TODO: add searching for the nearest date
-            throw new LoaderException('Date ' . $dateTime->getDateTime() . ' not found in ' . $this->getTicker());
+            throw new LoaderException('Date ' . $dateTime->toDateString() . ' not found in ' . $this->getTicker());
         }
         $open = array_slice($this->getData('Open'), $datePosition, 1)[0];
         return new Ohlc(
@@ -124,7 +124,7 @@ class Csv extends BaseLoader implements LoaderInterface
                 if ($colName !== $this->dateField && $parsedValue !== null) {
                     $hasData = true;
                 }
-                if ($fromDate !== null && $colName === $this->dateField && $parsedValue < $fromDate->getDateTime()) {
+                if ($fromDate !== null && $colName === $this->dateField && (new Carbon($parsedValue)) < $fromDate) {
                     continue 2;
                 }
                 // TODO
@@ -135,14 +135,14 @@ class Csv extends BaseLoader implements LoaderInterface
         $this->isLoaded = true;
     }
 
-    protected function loadDataLimited(DateTime $limitToDate): void
+    protected function loadDataLimited(Carbon $limitToDate): void
     {
         $this->columns = array_keys($this->sourceData);
         $dateColumnData = $this->sourceData[$this->getDateField()];
-        $datePosition = array_search($limitToDate->getDateTime(), $dateColumnData);
+        $datePosition = array_search($limitToDate->toDateString(), $dateColumnData);
         if ($datePosition === false) {
             // TODO: add searching for the nearest date
-            throw new LoaderException('Date ' . $limitToDate->getDateTime() . ' not found in ' . $this->getTicker());
+            throw new LoaderException('Date ' . $limitToDate->toDateString() . ' not found in ' . $this->getTicker());
         }
         foreach ($this->columns as $column) {
             $colData = $this->sourceData[$column];

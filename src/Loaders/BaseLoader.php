@@ -2,8 +2,8 @@
 
 namespace SimpleTrader\Loaders;
 
+use Carbon\Carbon;
 use SimpleTrader\Event;
-use SimpleTrader\Helpers\DateTime;
 use SimpleTrader\Helpers\Ohlc;
 
 class BaseLoader implements LoaderInterface
@@ -21,7 +21,7 @@ class BaseLoader implements LoaderInterface
         return '';
     }
 
-    public function getFromDate():?DateTime
+    public function getFromDate():?Carbon
     {
         return null;
     }
@@ -31,7 +31,7 @@ class BaseLoader implements LoaderInterface
         return $this->isLoaded;
     }
 
-    public function loadData(?DateTime $fromDate = null): bool
+    public function loadData(?Carbon $fromDate = null): bool
     {
         return false;
     }
@@ -41,7 +41,7 @@ class BaseLoader implements LoaderInterface
         return [];
     }
 
-    public static function fromLoaderLimited(LoaderInterface $loader, DateTime $limitToDate, Event $event): static
+    public static function fromLoaderLimited(LoaderInterface $loader, Carbon $limitToDate, Event $event): static
     {
         return new static();
     }
@@ -51,7 +51,7 @@ class BaseLoader implements LoaderInterface
         return '';
     }
 
-    public function getCurrentValues(DateTime $dateTime): Ohlc
+    public function getCurrentValues(Carbon $dateTime): Ohlc
     {
         return new Ohlc($dateTime, '0', '0', '0', '0');
     }

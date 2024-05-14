@@ -2,6 +2,7 @@
 
 namespace SimpleTrader\Helpers;
 
+use Carbon\Carbon;
 use SimpleTrader\Exceptions\BacktesterException;
 use SimpleTrader\Exceptions\StrategyException;
 
@@ -12,8 +13,8 @@ class Position
     protected int $openBars = 0;
     protected string $openComment = '';
     protected string $closeComment = '';
-    protected DateTime $openTime;
-    protected DateTime $closeTime;
+    protected Carbon $openTime;
+    protected Carbon $closeTime;
     protected float $openPrice;
     protected float $closePrice;
     protected float $openPositionSize;
@@ -26,13 +27,13 @@ class Position
     protected ?float $strategyDrawdownPercent = null;
 
 
-    public function __construct(DateTime $currentTime, protected Side $side, protected string $ticker,
+    public function __construct(Carbon $currentTime, protected Side $side, protected string $ticker,
                                 protected float $price, protected float $quantity,
                                 protected float $positionSize, string $comment = '')
     {
         $this->id = uniqid($this->ticker . '-' . $this->side->value . '-');
         $this->status = PositionStatus::Open;
-        $this->openTime = $currentTime;
+        $this->openTime = $currentTime->copy();
         $this->openPrice = $this->price;
         $this->openPositionSize = $this->positionSize;
         $this->openComment = $comment;
@@ -88,12 +89,12 @@ class Position
         return $this->closePrice;
     }
 
-    public function getOpenTime(): DateTime
+    public function getOpenTime(): Carbon
     {
         return $this->openTime;
     }
 
-    public function getCloseTime(): DateTime
+    public function getCloseTime(): Carbon
     {
         return $this->closeTime;
     }
@@ -176,14 +177,14 @@ class Position
     /**
      * @throws StrategyException
      */
-    public function closePosition(DateTime $currentTime, float $price, float $positionSize, string $comment = ''): void
+    public function closePosition(Carbon $currentTime, float $price, float $positionSize, string $comment = ''): void
     {
         if ($this->status === PositionStatus::Closed) {
             throw new StrategyException('Position is already closed');
         }
         $this->updatePosition($price, $positionSize);
         $this->closeComment = $comment;
-        $this->closeTime = $currentTime;
+        $this->closeTime = $currentTime->copy();
         $this->closePrice = $price;
         $this->closePositionSize = $positionSize;
         $this->status = PositionStatus::Closed;

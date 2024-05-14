@@ -21,7 +21,8 @@
     "ext-gd": "*",
     "ext-trader": "*",
     "mitoteam/jpgraph": "^10.4",
-    "mammothphp/woollym": "dev-master"
+    "mammothphp/woollym": "dev-master",
+    "nesbot/carbon": "^3.3"
   },
   "minimum-stability": "dev"
 }
