@@ -93,7 +93,8 @@ class HtmlReport
             //'%stock_chart%' => $stockChart,
 
             '%detailed_stats%' => $this->formatDetailedStats($tradeStats),
-            '%transactions_history%' => $this->formatTransactionHistory($tradeLog, $tradeStats)
+            '%transactions_history%' => $this->formatTransactionHistory($tradeLog, $tradeStats),
+            '%backtest_time%' => 'Backtest run in ' . number_format($backtester->getLastBacktestTime(), 2) . 's'
         ];
         $params["'%benchmark_data%'"] = empty($tradeStats['benchmark_log']) ? '' : ", {
                 label: 'Benchmark capital - {$backtester->getBenchmarkTicker()} ($)',
@@ -164,7 +165,8 @@ class HtmlReport
             '%styles%' => $styles,
             '%scripts%' => $scripts,
             '%page_tab_titles%' => implode('', $pageTabTitles),
-            '%page_tabs%' => implode('', $pageTabs)
+            '%page_tabs%' => implode('', $pageTabs),
+            '%backtest_time%' => 'Backtest run in ' . number_format($backtester->getLastBacktestTime(), 2) . 's'
         ];
         return strtr($html, $params);
     }

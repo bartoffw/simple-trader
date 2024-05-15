@@ -22,7 +22,8 @@
     "ext-trader": "*",
     "mitoteam/jpgraph": "^10.4",
     "mammothphp/woollym": "dev-master",
-    "nesbot/carbon": "^3.3"
+    "nesbot/carbon": "^3.3",
+    "textalk/websocket": "^1.6"
   },
   "minimum-stability": "dev"
 }
