@@ -1,0 +1,9 @@
+version: '3'
+services:
+  trader:
+    build: .
+    environment:
+      PHP_OPCACHE_VALIDATE_TIMESTAMPS: 1
+    volumes:
+      - .:/var/www
+      - ./docker/php.ini:/usr/local/etc/php/conf.d/local.ini
