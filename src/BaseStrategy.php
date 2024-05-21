@@ -3,6 +3,7 @@
 namespace SimpleTrader;
 
 use Carbon\Carbon;
+use Closure;
 use SimpleTrader\Exceptions\StrategyException;
 use SimpleTrader\Helpers\Position;
 use SimpleTrader\Helpers\QuantityType;
@@ -19,6 +20,9 @@ class BaseStrategy
     protected ?Event $currentEvent = null;
     protected array $strategyParameters = [];
     protected ?array $optimizationParameters = null;
+
+    protected ?Closure $onOpenEvent = null;
+    protected ?Closure $onCloseEvent = null;
 
     protected array $tickers = [];
     protected array $tradeLog = [];
@@ -81,6 +85,16 @@ class BaseStrategy
         if ($override || $this->logger === null) {
             $this->logger = $logger;
         }
+    }
+
+    public function setOnOpenEvent(Closure $callback): void
+    {
+        $this->onOpenEvent = $callback;
+    }
+
+    public function setOnCloseEvent(Closure $callback): void
+    {
+        $this->onCloseEvent = $callback;
     }
 
     public function setStartDate(Carbon $dateTime): void
@@ -255,6 +269,7 @@ class BaseStrategy
             'total size: ' . $calculatedSize . ', equity: ' . $this->getCapital() .
             ($comment ? ' (' . $comment . ')' : '')
         );
+        $this->onOpenEvent?->call($this, $position);
 
         return $position;
     }
@@ -334,6 +349,7 @@ class BaseStrategy
                 'profit: ' . $position->getProfitPercent() . '%' /*. '% == ' . $position->getProfitAmount() . ', equity: ' . $this->getCapital()*/ .
                 ($comment ? ' (' . $comment . ')' : '')
             );
+            $this->onCloseEvent?->call($this, $position);
         }
         $this->openPositionSize = 0;
         $this->openTrades = [];

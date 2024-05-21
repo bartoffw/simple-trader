@@ -2,9 +2,17 @@
 
 namespace SimpleTrader\Loaders;
 
+use Carbon\Carbon;
+use SimpleTrader\Exceptions\LoaderException;
+use SimpleTrader\Helpers\Ohlc;
 use WebSocket\Client;
 
-class TradingViewSource
+/**
+ * // TradingView
+ * // https://github.com/Textalk/websocket-php
+ * // https://github.com/0xrushi/tradingview-scraper/issues/1
+ */
+class TradingViewSource implements SourceInterface
 {
     protected Client $client;
     protected string $token = 'unauthorized_user_token';
@@ -39,20 +47,21 @@ class TradingViewSource
         return $prefix . substr(str_shuffle('0123456789abcdefghijklmnopqrstuvwxyz'), 1, 12);
     }
 
-    public function sendMessage($function, array $parameters)
+    protected function formatQuotes(array $rawData, $id = 'sds_1'): array
     {
-        $message = json_encode([
-            'm' => $function,
-            'p' => $parameters
-        ]);
-        $this->client->text('~m~' . strlen($message) . '~m~' . $message);
+        $result = [];
+        if (empty($rawData[1][$id]['s'])) {
+            return $result;
+        }
+        foreach ($rawData[1][$id]['s'] as $quote) {
+            $ohlc = $quote['v'];
+            $result[] = new Ohlc(Carbon::createFromTimestamp($ohlc[0]), $ohlc[1], $ohlc[2], $ohlc[3], $ohlc[4], $ohlc[5] ?? 0);
+        }
+        return $result;
     }
 
-    public function getQuotes(string $symbol, string $exchange, string $interval = '1D', int $barCount = 10)
+    protected function sendQuotesRequest(string $symbol, string $interval = '1D', int $barCount = 10)
     {
-        $this->client->receive();
-
-        $symbol = $exchange . ':' . $symbol;
         $this->sendMessage('set_auth_token', [$this->token]);
         $this->sendMessage('chart_create_session', [$this->chartSession, '']);
         $this->sendMessage('quote_create_session', [$this->session]);
@@ -82,17 +91,13 @@ class TradingViewSource
             'rchp',
             'rtc',
         ]);
-        $this->sendMessage('switch_timezone', [
-            $this->chartSession, "exchange"
-        ]);
+        $this->sendMessage('switch_timezone', [$this->chartSession, "exchange"]);
 
-        $this->sendMessage('quote_add_symbols', [
-            $this->session, $symbol
-        ]);
+        $this->sendMessage('quote_add_symbols', [$this->session, $symbol]);
         $this->sendMessage('quote_fast_symbols', [$this->session, $symbol]);
 
         $this->sendMessage("resolve_symbol", [
-            $this->chartSession, 'sds_sym_1', '={"symbol":"' . $symbol . '","adjustment":"splits","session":"regular"}',
+            $this->chartSession, 'sds_sym_1', '={"symbol":"' . $symbol . '","adjustment":"splits"}',
         ]);
         $this->sendMessage('create_series', [
             $this->chartSession, 'sds_1', 's1', 'sds_sym_1', $interval, $barCount, ''
@@ -100,6 +105,47 @@ class TradingViewSource
 
         $result = $this->client->receive();
         $this->client->close();
+        $formattedResult = [];
+        $size = null;
+        foreach (explode('~m~', $result) as $element) {
+            if (empty($element)) {
+                continue;
+            }
+            if (!$size) {
+                $size = (int)$element;
+            } else {
+                $data = json_decode($element, true);
+                if (!empty($data['m']) && !empty($data['p'])) {
+                    if (isset($formattedResult[$data['m']])) {
+                        throw new LoaderException("Field with name '{$data['m']}' already exists.");
+                    }
+                    $formattedResult[$data['m']] = $data['p'];
+                }
+                $size = null;
+            }
+        }
+
+        return empty($formattedResult['timescale_update']) ? [] : $this->formatQuotes($formattedResult['timescale_update']);
+    }
+
+    public function sendMessage($function, array $parameters)
+    {
+        $message = json_encode([
+            'm' => $function,
+            'p' => $parameters
+        ]);
+        $this->client->text('~m~' . strlen($message) . '~m~' . $message);
+    }
+
+    public function getQuotes(string $symbol, string $exchange, string $interval = '1D', int $barCount = 10): array
+    {
+        $this->client->receive();
+
+        $symbol = $exchange . ':' . $symbol;
+        $result = $this->sendQuotesRequest($symbol, $interval, $barCount);
+        if (empty($result)) {
+            $result = $this->sendQuotesRequest($symbol, $interval, $barCount);
+        }
         return $result;
     }
 }

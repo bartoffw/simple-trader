@@ -13,19 +13,36 @@ class Assets
         'date', 'open', 'high', 'low', 'close', 'volume'
     ];
     protected array $assetList = [];
+    protected array $exchanges = [];
+    protected array $paths = [];
 
 
     public function __construct()
     {
     }
 
-    public function addAsset(DataFrame $asset, string $ticker, bool $replace = false): void
+    public function addAsset(DataFrame $asset, string $ticker, bool $replace = false, string $exchange = '', string $path = ''): void
     {
         if (isset($this->assetList[$ticker]) && !$replace) {
             throw new LoaderException('This asset is already loaded: ' . $ticker);
         }
-        self::validateAsset($asset, $ticker);
-        $this->assetList[$ticker] = $asset->sortRecordsByColumns(by: 'date', ascending: false);
+        $this->assetList[$ticker] = self::validateAndSortAsset($asset, $ticker);
+        if (!empty($exchange)) {
+            $this->exchanges[$ticker] = $exchange;
+        }
+        if (!empty($path)) {
+            $this->paths[$ticker] = $path;
+        }
+    }
+
+    public function getExchange(string $ticker): string
+    {
+        return $this->exchanges[$ticker] ?? '';
+    }
+
+    public function getPath(string $ticker): string
+    {
+        return $this->paths[$ticker] ?? '';
     }
 
     public function getAsset(string $ticker): ?DataFrame
@@ -104,7 +121,7 @@ class Assets
         return self::$columns;
     }
 
-    public static function validateAsset(DataFrame $asset, $ticker)
+    public static function validateAndSortAsset(DataFrame $asset, string $ticker): DataFrame
     {
         // check required columns
         $columns = $asset->columnsNames();
@@ -116,6 +133,7 @@ class Assets
         if (count($columns) !== count(self::$columns)) {
             throw new LoaderException('Column count does not match for ' . $ticker . ': ' . count($columns) . ' vs ' . count(self::$columns));
         }
+        return $asset->sortRecordsByColumns(by: 'date', ascending: false);
     }
 
     public static function cloneAssetToDate(DataFrame $df, Carbon $fromDate, Carbon $toDate): DataFrame

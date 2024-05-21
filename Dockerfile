@@ -13,3 +13,5 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 
 ENV APACHE_DOCUMENT_ROOT /var/www
 #ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="0"
+
+WORKDIR /var/www
