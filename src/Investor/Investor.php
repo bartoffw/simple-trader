@@ -1,6 +1,6 @@
 <?php
 
-namespace SimpleTrader\Executor;
+namespace SimpleTrader\Investor;
 
 use Carbon\Carbon;
 use MammothPHP\WoollyM\DataDrivers\DriversExceptions\SortNotSupportedByDriverException;
@@ -10,27 +10,24 @@ use ReflectionMethod;
 use SimpleTrader\Assets;
 use SimpleTrader\BaseStrategy;
 use SimpleTrader\Event;
-use SimpleTrader\Exceptions\ExecutorException;
+use SimpleTrader\Exceptions\InvestorException;
 use SimpleTrader\Exceptions\LoaderException;
+use SimpleTrader\Exceptions\StrategyException;
 use SimpleTrader\Helpers\Ohlc;
 use SimpleTrader\Helpers\Position;
 use SimpleTrader\Loggers\LoggerInterface;
 
-class Executor
+class Investor
 {
     protected ?LoggerInterface $logger = null;
     protected ?NotifierInterface $notifier = null;
-    protected array $execList = [];
+    protected array $investmentsList = [];
     protected ?Carbon $now = null;
 
 
     public function __construct(protected string $stateFile, ?Carbon $now = null)
     {
         $this->now = null === $now ? Carbon::now() : $now;
-        // TODO: load current state
-        // - open trades
-        // - trade log
-        // - etc.
     }
 
     public function setLogger(LoggerInterface $logger)
@@ -43,21 +40,24 @@ class Executor
         $this->notifier = $notifier;
     }
 
-    public function addExecution(Execution $execution)
+    public function addInvestment(string $id, Investment $investment)
     {
-        $this->execList[] = $execution;
+        if (isset($this->investmentsList[$id])) {
+            throw new InvestorException('Investment already exists.');
+        }
+        $this->investmentsList[$id] = $investment;
     }
 
     /**
-     * @throws ExecutorException
+     * @throws InvestorException
      * @throws NotYetImplementedException
      * @throws SortNotSupportedByDriverException
      * @throws LoaderException
      */
     public function updateSources()
     {
-        /** @var Execution $execution */
-        foreach ($this->execList as $execution) {
+        /** @var Investment $execution */
+        foreach ($this->investmentsList as $execution) {
             $strategy = $execution->getStrategy();
             $source = $execution->getSource();
             $this->logger?->logInfo("Executing strategy: " . get_class($strategy));
@@ -76,12 +76,12 @@ class Executor
                     $latestDate = Carbon::parse($latestEntry[0]['date']);
                     $daysToGet = (int) floor($latestDate > $startDate ? $latestDate->diffInDays($this->now) - 1 : $startDate->diffInDays($this->now));
                 }
-                $this->logger?->logInfo('Days to get: ' . $daysToGet);
+                $this->logger?->logInfo("Days to get for {$tickerName}: {$daysToGet}");
 
                 if ($daysToGet > 0) {
                     $ohlcQuotes = $source->getQuotes($tickerName, $assets->getExchange($tickerName), '1D', $daysToGet);
                     if (empty($ohlcQuotes)) {
-                        throw new ExecutorException('Could not load any data from the source.');
+                        throw new InvestorException('Could not load any data from the source.');
                     }
                     $this->logger?->logInfo('Found ' . count($ohlcQuotes) . ' quotes');
                     /** @var Ohlc $quote */
@@ -102,20 +102,22 @@ class Executor
 
     /**
      * @throws \ReflectionException
-     * @throws ExecutorException
+     * @throws InvestorException
      */
     public function execute(Event $event)
     {
         if ($this->notifier === null) {
-            throw new ExecutorException('Notifier is not set.');
+            throw new InvestorException('Notifier is not set.');
         }
 
-        /** @var Execution $execution */
-        foreach ($this->execList as $execution) {
-            $strategy = $execution->getStrategy();
+        /** @var Investment $investment */
+        foreach ($this->investmentsList as $id => $investment) {
+            $strategy = $investment->getStrategy();
+            $this->logger?->logInfo("Executing the '{$id}' investment, starting capital: {$strategy->getCapital(true)}.");
+
             $onOpenExists = (new ReflectionMethod($strategy, 'onOpen'))->getDeclaringClass()->getName() !== BaseStrategy::class;
             $onCloseExists = (new ReflectionMethod($strategy, 'onClose'))->getDeclaringClass()->getName() !== BaseStrategy::class;
-            $assets = $execution->getAssets();
+            $assets = $investment->getAssets();
 
             $strategy->setOnOpenEvent(function(Position $position) {
                 $this->logger?->logInfo('Open event: ' . print_r($position, true));
@@ -132,6 +134,57 @@ class Executor
             }
         }
 
-        // TODO: save current state
+        // save current state
+        $this->saveCurrentState();
+    }
+
+    /**
+     * @throws InvestorException
+     * @throws StrategyException
+     */
+    public function loadCurrentState()
+    {
+        // load current state
+        // - open trades
+        // - trade log
+        // - etc.
+        $state = [];
+        if (file_exists($this->stateFile)) {
+            $stateData = file_get_contents($this->stateFile);
+            if (empty($stateData)) {
+                throw new InvestorException('Could not read state file.');
+            }
+            $state = json_decode($stateData, true);
+        }
+        $this->logger?->logInfo('Loading state for ' . count($state) . ' investments.');
+        foreach ($state as $id => $investmentState) {
+            if (isset($this->investmentsList[$id])) {
+                /** @var Investment $investment */
+                $investment = $this->investmentsList[$id];
+                $strategy = $investment->getStrategy();
+                if (!empty($investmentState['capital'])) {
+                    $strategy->setCapital($investmentState['capital']);
+                }
+                $strategy->setOpenTradesFromArray($investmentState['open_trades']);
+                $strategy->setTradeLogFromArray($investmentState['trade_log']);
+            }
+        }
+    }
+
+    public function saveCurrentState()
+    {
+        $state = [];
+        /** @var Investment $investment */
+        foreach ($this->investmentsList as $id => $investment) {
+            $strategy = $investment->getStrategy();
+            $state[$id] = [
+                'name' => get_class($strategy),
+                'capital' => $strategy->getCapital(),
+                'open_trades' => $strategy->getOpenTradesAsArray(),
+                'trade_log' => $strategy->getTradeLogAsArray(),
+            ];
+        }
+        $this->logger?->logInfo('Saving state for ' . count($state) . ' investments.');
+        file_put_contents($this->stateFile, json_encode($state));
     }
 }

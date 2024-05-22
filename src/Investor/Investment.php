@@ -1,12 +1,12 @@
 <?php
 
-namespace SimpleTrader\Executor;
+namespace SimpleTrader\Investor;
 
 use SimpleTrader\Assets;
 use SimpleTrader\BaseStrategy;
 use SimpleTrader\Loaders\SourceInterface;
 
-class Execution
+class Investment
 {
     public function __construct(protected BaseStrategy $strategy, protected SourceInterface $source, protected Assets $assets)
     {

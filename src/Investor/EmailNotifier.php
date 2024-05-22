@@ -1,6 +1,6 @@
 <?php
 
-namespace SimpleTrader\Executor;
+namespace SimpleTrader\Investor;
 
 use SimpleTrader\Loggers\Level;
 

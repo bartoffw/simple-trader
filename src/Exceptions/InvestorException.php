@@ -2,7 +2,7 @@
 
 namespace SimpleTrader\Exceptions;
 
-class ExecutorException extends \Exception
+class InvestorException extends \Exception
 {
 
 }

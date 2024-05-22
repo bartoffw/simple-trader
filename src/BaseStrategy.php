@@ -175,7 +175,7 @@ class BaseStrategy
      */
     public function setCapital(float $capital, int $precision = 2): void
     {
-        if ($this->capital !== null) {
+        if (!empty($this->capital)) {
             throw new StrategyException('Capital already set to: ' . $this->capital);
         }
         $this->precision = $precision;
@@ -372,6 +372,23 @@ class BaseStrategy
     public function getOpenTrades(): array
     {
         return $this->openTrades;
+    }
+
+    public function setOpenTradesFromArray(array $openTrades): void
+    {
+        foreach ($openTrades as $id => $position) {
+            $this->openTrades[$id] = unserialize($position);
+        }
+    }
+
+    public function getOpenTradesAsArray(): array
+    {
+        $result = [];
+        /** @var Position $position */
+        foreach ($this->openTrades as $position) {
+            $result[$position->getId()] = serialize($position);
+        }
+        return $result;
     }
 
     public function getGrossProfit(): float
@@ -627,6 +644,23 @@ class BaseStrategy
             return $closeTimeA <=> $closeTimeB;
         });
         return $tradeLog;
+    }
+
+    public function getTradeLogAsArray(): array
+    {
+        $result = [];
+        /** @var Position $position */
+        foreach ($this->getTradeLog() as $position) {
+            $result[$position->getId()] = serialize($position);
+        }
+        return $result;
+    }
+
+    public function setTradeLogFromArray(array $tradeLog): void
+    {
+        foreach ($tradeLog as $id => $position) {
+            $this->tradeLog[$id] = unserialize($position);
+        }
     }
 
     /**
