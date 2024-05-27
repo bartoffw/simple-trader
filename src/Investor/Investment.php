@@ -10,6 +10,7 @@ class Investment
 {
     public function __construct(protected BaseStrategy $strategy, protected SourceInterface $source, protected Assets $assets)
     {
+        $this->strategy->setTickers($this->assets->getTickers());
     }
 
     public function getStrategy(): BaseStrategy
@@ -25,5 +26,11 @@ class Investment
     public function getAssets(): Assets
     {
         return $this->assets;
+    }
+
+    public function setAssets(Assets $assets): void
+    {
+        $this->assets = $assets;
+        $this->strategy->setTickers($this->assets->getTickers());
     }
 }

@@ -2,6 +2,8 @@ version: '3'
 services:
   trader:
     build: .
+    env_file:
+      - .env
     environment:
       PHP_OPCACHE_VALIDATE_TIMESTAMPS: 1
     volumes:

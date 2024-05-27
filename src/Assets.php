@@ -65,6 +65,11 @@ class Assets
         return empty($this->assetList);
     }
 
+    public function getTickers(): array
+    {
+        return array_keys($this->assetList);
+    }
+
     public function cloneToDate(Carbon $fromDate, Carbon $toDate, ?Assets $existingAssets = null): Assets
     {
         $assets = new Assets();

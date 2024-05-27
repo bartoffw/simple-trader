@@ -20,6 +20,7 @@ class BaseStrategy
     protected ?Event $currentEvent = null;
     protected array $strategyParameters = [];
     protected ?array $optimizationParameters = null;
+    protected ?Position $currentPosition = null;
 
     protected ?Closure $onOpenEvent = null;
     protected ?Closure $onCloseEvent = null;
@@ -105,6 +106,19 @@ class BaseStrategy
     public function getStartDate(): Carbon
     {
         return $this->startDate;
+    }
+
+    public function setCurrentPosition(Position $position): void
+    {
+        if ($this->currentPosition !== null) {
+            throw new StrategyException('Current position already set.');
+        }
+        $this->currentPosition = $position;
+    }
+
+    public function getCurrentPosition(): ?Position
+    {
+        return $this->currentPosition;
     }
 
     public function getMaxLookbackPeriod(): int
@@ -212,7 +226,7 @@ class BaseStrategy
         return $position->getProfitPercent();
     }
 
-    public function onOpen(Assets $assets, Carbon $dateTime): void
+    public function onOpen(Assets $assets, Carbon $dateTime, bool $isLive = false): void
     {
         $this->currentEvent = Event::OnOpen;
         $this->currentAssets = $assets;
@@ -220,7 +234,7 @@ class BaseStrategy
         $this->updateDrawdown();
     }
 
-    public function onClose(Assets $assets, Carbon $dateTime): void
+    public function onClose(Assets $assets, Carbon $dateTime, bool $isLive = false): void
     {
         $this->currentEvent = Event::OnClose;
         $this->currentAssets = $assets;
@@ -228,7 +242,7 @@ class BaseStrategy
         $this->updateDrawdown();
     }
 
-    public function onStrategyEnd(Assets $assets, Carbon $dateTime): void
+    public function onStrategyEnd(Assets $assets, Carbon $dateTime, bool $isLive = false): void
     {
         $this->currentEvent = Event::OnClose;
         $this->currentAssets = $assets;
@@ -264,10 +278,8 @@ class BaseStrategy
         $this->openPositionSize = $this->openPositionSize + $calculatedSize;
         $this->capitalAvailable = $this->capitalAvailable - $calculatedSize;
 
-        $this->logger->logInfo(
-            '[' . $this->currentDateTime->toDateString() . '][' . $position->getId() . '] ' . $side->value . ' @ ' . $currentPrice . ', ' .
-            'total size: ' . $calculatedSize . ', equity: ' . $this->getCapital() .
-            ($comment ? ' (' . $comment . ')' : '')
+        $this->logger?->logInfo(
+            '[' . $this->currentDateTime->toDateString() . ']' . $position->toString() . ', equity: ' . $this->getCapital()
         );
         $this->onOpenEvent?->call($this, $position);
 
@@ -344,7 +356,7 @@ class BaseStrategy
                 }
             }
 
-            $this->logger->logInfo(
+            $this->logger?->logInfo(
                 '[' . $this->currentDateTime->toDateString() . '][' . $position->getId() . '] CLOSE @ ' . $currentPrice . ', ' .
                 'profit: ' . $position->getProfitPercent() . '%' /*. '% == ' . $position->getProfitAmount() . ', equity: ' . $this->getCapital()*/ .
                 ($comment ? ' (' . $comment . ')' : '')

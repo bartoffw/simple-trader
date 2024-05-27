@@ -365,6 +365,7 @@ class Backtester
         }
         $this->assets = $assets;
         $this->strategy->setLogger($this->logger);
+        $this->strategy->setTickers($assets->getTickers());
         $this->strategy->setStartDate($startTime);
         $this->backtestStartTime = $startTime;
         $this->backtestEndTime = $endTime;

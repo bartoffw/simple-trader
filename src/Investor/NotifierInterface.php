@@ -11,4 +11,5 @@ interface NotifierInterface
     public function notifyInfo(string $info): bool;
     public function notifyWarning(string $warning): bool;
     public function notifyError(string $error): bool;
+    public function sendAllNotifications(): bool;
 }

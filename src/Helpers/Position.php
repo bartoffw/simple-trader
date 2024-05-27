@@ -217,4 +217,16 @@ class Position
         return ($this->closePositionSize ?? $this->positionSize) - $this->openPositionSize;
         //Calculator::calculate('$1 - $2', $this->closePositionSize ?? $this->positionSize, $this->openPositionSize);
     }
+
+    public function toString(bool $onClose = false): string
+    {
+        $result = '[' . $this->getId() . '] ' . $this->getSide()->value . ' @ ' . $this->price . ', ' .
+            'total size: ' . $this->positionSize;
+        if ($onClose) {
+            $result .= $this->closeComment ? ' (' . $this->closeComment . ')' : '';
+        } else {
+            $result .= $this->openComment ? ' (' . $this->openComment . ')' : '';
+        }
+        return $result;
+    }
 }

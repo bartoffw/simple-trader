@@ -23,7 +23,8 @@
     "mitoteam/jpgraph": "^10.4",
     "mammothphp/woollym": "dev-master",
     "nesbot/carbon": "^3.3",
-    "textalk/websocket": "^1.6"
+    "textalk/websocket": "^1.6",
+    "phpmailer/phpmailer": "^6.9"
   },
   "minimum-stability": "dev"
 }
