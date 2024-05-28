@@ -15,6 +15,9 @@ class ShutdownScheduler
         register_shutdown_function(array($this, 'callRegisteredShutdown'));
     }
 
+    /**
+     * @throws ShutdownException
+     */
     public function registerShutdownEvent(): void
     {
         $callback = func_get_args();

@@ -2,8 +2,10 @@
 
 namespace SimpleTrader\Reporting;
 
+use MammothPHP\WoollyM\Exceptions\NotYetImplementedException;
 use SimpleTrader\Backtester;
 use SimpleTrader\BaseStrategy;
+use SimpleTrader\Exceptions\BacktesterException;
 use SimpleTrader\Helpers\Position;
 
 class HtmlReport
@@ -53,6 +55,10 @@ class HtmlReport
         return $strategyParamsFormatted;
     }
 
+    /**
+     * @throws NotYetImplementedException
+     * @throws BacktesterException
+     */
     protected function generateSimpleReport(string $date, string $title, array $tickers, Backtester $backtester,
                                             BaseStrategy $strategy): string
     {
@@ -61,7 +67,7 @@ class HtmlReport
         $html = file_get_contents(__DIR__ . '/../assets/page.html');
 
         $tradeLog = $strategy->getTradeLog();
-        $tradeStats = $backtester->getTradeStats($strategy, $tradeLog);
+        $tradeStats = $strategy->getTradeStats($tradeLog);
         //$capitalGraph = '<img src="data:image/png;base64,' . base64_encode($this->graphs->generateCapitalGraph($tradeStats['capital_log'])) . '" />';
 //        $stockChart = '<p>None</p>';
 //        if ($tickerForChart !== null) {
@@ -105,8 +111,12 @@ class HtmlReport
         return strtr($html, $params);
     }
 
+    /**
+     * @throws NotYetImplementedException
+     * @throws BacktesterException
+     */
     protected function generateOptimizationReport(string $date, string $title, array $tickers, Backtester $backtester,
-                                                  array $strategies): string
+                                                  array  $strategies): string
     {
         $styles =
             file_get_contents(__DIR__ . '/../assets/styles.min.css') .
@@ -122,7 +132,7 @@ class HtmlReport
         /** @var BaseStrategy $strategy */
         foreach ($strategies as $i => $strategy) {
             $tradeLog = $strategy->getTradeLog();
-            $tradeStats = $backtester->getTradeStats($strategy, $tradeLog);
+            $tradeStats = $strategy->getTradeStats($tradeLog);
 
             $idx = $i + 1;
             $tabParams = [
@@ -340,10 +350,10 @@ class HtmlReport
                     $position->getProfitPercent() < 0.00001 ? 'red' : 'green'
                 ) . '</td>' .
                 '<td rowspan="2" class="text-right">' . number_format($position->getPortfolioBalance(), 2) . '</td>' .
-                '<td rowspan="2" class="text-right">' . number_format($position->getMaxDrawdownValue(), 2) . '<br/>' .
+                '<td rowspan="2" class="text-right">' . number_format($position->getStrategyDrawdownValue(), 2) . '<br/>' .
                 $this->textColor(
-                    number_format($position->getMaxDrawdownPercent(), 2) . '%',
-                    $position->getMaxDrawdownPercent() > 0.00001 ? 'red' : null
+                    number_format($position->getStrategyDrawdownPercent(), 2) . '%',
+                    $position->getStrategyDrawdownPercent() > 0.00001 ? 'red' : null
                 ) .
                 '</td>' .
                 '</tr>';
