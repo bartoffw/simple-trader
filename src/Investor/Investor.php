@@ -175,6 +175,17 @@ class Investor
         $this->saveCurrentState();
     }
 
+    public function hasCurrentState(): bool
+    {
+        if (file_exists($this->stateFile)) {
+            $contents = file_get_contents($this->stateFile);
+            if (!empty($contents)) {
+                return !empty(json_decode($contents, true));
+            }
+        }
+        return false;
+    }
+
     /**
      * @throws StrategyException
      */
@@ -235,6 +246,6 @@ class Investor
 
     public function sendNotifications()
     {
-        $this->notifier->sendAllNotifications();
+        //$this->notifier->sendAllNotifications();
     }
 }
