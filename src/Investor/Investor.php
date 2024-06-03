@@ -107,21 +107,22 @@ class Investor
                 if ($daysToGet > 0) {
                     $ohlcQuotes = $source->getQuotes($tickerName, $assets->getExchange($tickerName), '1D', $daysToGet);
                     if (empty($ohlcQuotes)) {
-                        throw new InvestorException('Could not load any data from the source.');
-                    }
-                    $this->logAndNotify('Adding ' . count($ohlcQuotes) . ' quotes from the source');
-                    /** @var Ohlc $quote */
-                    foreach ($ohlcQuotes as $quote) {
-                        if ($latestDate && $quote->getDateTime()->toDateString() <= $latestDate->toDateString()) {
-                            continue;
+                        $this->logAndNotify('No new data available in the source.');
+                    } else {
+                        $this->logAndNotify('Adding ' . count($ohlcQuotes) . ' quotes from the source');
+                        /** @var Ohlc $quote */
+                        foreach ($ohlcQuotes as $quote) {
+                            if ($latestDate && $quote->getDateTime()->toDateString() <= $latestDate->toDateString()) {
+                                continue;
+                            }
+                            $tickerDf->addRecord($quote->toArray());
                         }
-                        $tickerDf->addRecord($quote->toArray());
-                    }
-                    $tickerDf = Assets::validateAndSortAsset($tickerDf, $tickerName);
-                    CSV::fromDataFrame($tickerDf->sortRecordsByColumns('date'))->toFile($assets->getPath($tickerName), true);
+                        $tickerDf = Assets::validateAndSortAsset($tickerDf, $tickerName);
+                        CSV::fromDataFrame($tickerDf->sortRecordsByColumns('date'))->toFile($assets->getPath($tickerName), true);
 
-                    $newAssets->addAsset(CSV::fromFilePath($assets->getPath($tickerName))->import(), $tickerName, false, $assets->getExchange($tickerName), $assets->getPath($tickerName));
-                    $updateAssets = true;
+                        $newAssets->addAsset(CSV::fromFilePath($assets->getPath($tickerName))->import(), $tickerName, false, $assets->getExchange($tickerName), $assets->getPath($tickerName));
+                        $updateAssets = true;
+                    }
                 }
             }
             if ($updateAssets) {
@@ -145,7 +146,8 @@ class Investor
             $that = $this;
             $strategy = $investment->getStrategy();
             $currentPosition = $strategy->getCurrentPosition();
-            $this->logAndNotify("== Executing the '{$id}' investment, starting capital: {$strategy->getCapital(true)}. ==");
+            $this->logAndNotify("== Executing the '{$id}' investment, starting capital: {$strategy->getCapital(true)} ==");
+            $this->logAndNotify("== parameters: " . implode(', ', $strategy->getParameters(true)) . " ==");
             $this->logAndNotify($currentPosition ? '== Open position: ' . $currentPosition->toString() . ' ==' : '== No open positions. ==');
 
             $onOpenExists = (new ReflectionMethod($strategy, 'onOpen'))->getDeclaringClass()->getName() !== BaseStrategy::class;

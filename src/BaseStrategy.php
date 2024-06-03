@@ -146,8 +146,15 @@ class BaseStrategy
         return 0;
     }
 
-    public function getParameters(): array
+    public function getParameters($formatted = false): array
     {
+        if ($formatted) {
+            $result = [];
+            array_walk($this->strategyParameters, function($value, $key) use (&$result) {
+                $result[] = "{$key}: {$value}";
+            });
+            return $result;
+        }
         return $this->strategyParameters;
     }
 

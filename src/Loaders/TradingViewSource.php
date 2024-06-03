@@ -51,7 +51,8 @@ class TradingViewSource implements SourceInterface
     protected function formatQuotes(array $rawData, $id = 'sds_1'): array
     {
         $result = [];
-        if (empty($rawData[1][$id]['s'])) {
+        if (empty($rawData[1][$id]['s']) ||
+            !empty($rawData[1][$id]['lbs']['bar_close_time']) && time() < $rawData[1][$id]['lbs']['bar_close_time']) {
             return $result;
         }
         foreach ($rawData[1][$id]['s'] as $quote) {
