@@ -220,7 +220,7 @@ class Position
 
     public function toString(bool $onClose = false): string
     {
-        $result = '[' . $this->getId() . '] ' . $this->getSide()->value . ' @ ' . $this->price . ', ' .
+        $result = '[' . $this->getId() . '-' . $this->openTime->toDateString() . '] ' . $this->getSide()->value . ' @ ' . $this->price . ', ' .
             'total size: ' . $this->positionSize;
         if ($onClose) {
             $result .= $this->closeComment ? ' (' . $this->closeComment . ')' : '';

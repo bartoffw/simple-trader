@@ -109,7 +109,7 @@ class Investor
                     if (empty($ohlcQuotes)) {
                         throw new InvestorException('Could not load any data from the source.');
                     }
-                    $this->logAndNotify('Found ' . count($ohlcQuotes) . ' quotes');
+                    $this->logAndNotify('Adding ' . count($ohlcQuotes) . ' quotes from the source');
                     /** @var Ohlc $quote */
                     foreach ($ohlcQuotes as $quote) {
                         if ($latestDate && $quote->getDateTime()->toDateString() <= $latestDate->toDateString()) {
@@ -145,31 +145,31 @@ class Investor
             $that = $this;
             $strategy = $investment->getStrategy();
             $currentPosition = $strategy->getCurrentPosition();
-            $this->logAndNotify("Executing the '{$id}' investment, starting capital: {$strategy->getCapital(true)}.");
-            $this->logAndNotify($currentPosition ? 'Open position: ' . $currentPosition->toString() : 'No open positions.');
+            $this->logAndNotify("== Executing the '{$id}' investment, starting capital: {$strategy->getCapital(true)}. ==");
+            $this->logAndNotify($currentPosition ? '== Open position: ' . $currentPosition->toString() . ' ==' : '== No open positions. ==');
 
             $onOpenExists = (new ReflectionMethod($strategy, 'onOpen'))->getDeclaringClass()->getName() !== BaseStrategy::class;
             $onCloseExists = (new ReflectionMethod($strategy, 'onClose'))->getDeclaringClass()->getName() !== BaseStrategy::class;
             $assets = $investment->getAssets();
 
             $strategy->setOnOpenEvent(function(Position $position) use ($that) {
-                $that->logAndNotify('Open event: ' . $position->toString());
+                $that->logAndNotify('==> Opening position: ' . $position->toString());
             });
             $strategy->setOnCloseEvent(function(Position $position) use ($that) {
-                $that->logAndNotify('Close event: ' . $position->toString(true));
+                $that->logAndNotify('==> Closing position: ' . $position->toString(true));
             });
 
             if ($event == Event::OnOpen && $onOpenExists) {
-                $this->logAndNotify("OnOpen event triggered for {$this->now->toDateString()}.");
+                $this->logAndNotify("== OnOpen event triggered for {$this->now->toDateString()}. ==");
                 $strategy->onOpen($assets, $this->now, true);
             }
             if ($event == Event::OnClose && $onCloseExists) {
-                $this->logAndNotify("OnClose event triggered for {$this->now->toDateString()}.");
+                $this->logAndNotify("== OnClose event triggered for {$this->now->toDateString()}. ==");
                 $strategy->onClose($assets, $this->now, true);
             }
         }
 
-        $this->notifier->notifyInfo("[$this->now] Investor script executed");
+        $this->notifier->notifyInfo("Investor script executed");
 
         // save current state
         $this->saveCurrentState();
@@ -246,6 +246,6 @@ class Investor
 
     public function sendNotifications()
     {
-        //$this->notifier->sendAllNotifications();
+        $this->notifier->sendAllNotifications();
     }
 }

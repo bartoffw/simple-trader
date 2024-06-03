@@ -16,6 +16,7 @@ class EmailNotifier implements NotifierInterface
     {
         $this->mail = new PHPMailer(true);
         $this->mail->isSMTP();
+        $this->mail->isHTML();
         $this->mail->Host = $smtpHost;
         $this->mail->SMTPAuth = true;
         $this->mail->Username = $smtpUsername;
@@ -27,7 +28,7 @@ class EmailNotifier implements NotifierInterface
 
     public function notify(Level $level, string $text): bool
     {
-        $this->notifications[$level->value][] = $text;
+        $this->notifications[$level->value][] = '[' . self::getDateTime() . '] ' . $text;
         return true;
     }
 
@@ -65,5 +66,10 @@ class EmailNotifier implements NotifierInterface
             $success = $success && $this->mail->send();
         }
         return $success;
+    }
+
+    protected static function getDateTime()
+    {
+        return date('Y-m-d H:i:s');
     }
 }
