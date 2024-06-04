@@ -149,6 +149,7 @@ class Investor
             $currentPosition = $strategy->getCurrentPosition();
 
             $this->addNotificationSummary('<h2 style="text-align: center">' . $strategy->getStrategyName() . '</h2>');
+            $this->addNotificationSummary('<p style="text-align: center">' . implode(', ', $strategy->getTickers()) . '</p>');
             $this->addNotificationSummary('<h4>Current position: ' . ($currentPosition ? $currentPosition->toString() : 'None') . '</h4>');
 
             $this->logAndNotify("== Executing the '{$id}' investment, starting capital: {$strategy->getCapital(true)} ==");
