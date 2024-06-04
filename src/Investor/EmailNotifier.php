@@ -8,7 +8,9 @@ use SimpleTrader\Loggers\Level;
 class EmailNotifier implements NotifierInterface
 {
     protected PHPMailer $mail;
+    protected array $summary = [];
     protected array $notifications = [];
+    protected bool $hasErrors = false;
 
 
     public function __construct(string $smtpHost, string $smtpPort, string $smtpUsername, string $smtpPassword,
@@ -26,9 +28,21 @@ class EmailNotifier implements NotifierInterface
         $this->mail->setFrom($fromEmail, 'Simple Trader Mailer');
     }
 
+    public function addSummary(string $text): void
+    {
+        $this->summary[] = $text;
+    }
+
+    public function addLogs(array $logs): void
+    {
+        if (!empty($logs)) {
+            $this->notifications += $logs;
+        }
+    }
+
     public function notify(Level $level, string $text): bool
     {
-        $this->notifications[$level->value][] = '[' . self::getDateTime() . '] ' . $text;
+        $this->notifications[] = '[' . self::getDateTime() . '][' . $level->value . '] ' . $text;
         return true;
     }
 
@@ -49,23 +63,19 @@ class EmailNotifier implements NotifierInterface
 
     public function notifyError(string $error): bool
     {
+        $this->hasErrors = true;
         return $this->notify(Level::Error, $error);
     }
 
-    public function sendAllNotifications(?Level $onlyLevel = null): bool
+    public function sendAllNotifications(): bool
     {
-        $success = true;
-        foreach ($this->notifications as $level => $notifications) {
-            if ($onlyLevel !== null && $onlyLevel->value !== $level) {
-                continue;
-            }
-            $allNotifications = implode('<br/>', $notifications);
-            $this->mail->Subject = "[$level] Simple Trader Notifier";
-            $this->mail->Body = $allNotifications;
-            $this->mail->addAddress($this->toEmail);
-            $success = $success && $this->mail->send();
-        }
-        return $success;
+        $summary = implode('', $this->summary);
+        $allNotifications = '<h3>All Events</h3>' .
+            '<pre>' . implode("\n", $this->notifications) . '</pre>';
+        $this->mail->Subject = ($this->hasErrors ? '[ERROR] ' : '[INFO] ') . "Simple Trader Notifier";
+        $this->mail->Body = $summary . $allNotifications;
+        $this->mail->addAddress($this->toEmail);
+        return $this->mail->send();
     }
 
     protected static function getDateTime()

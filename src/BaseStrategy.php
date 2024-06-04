@@ -108,6 +108,11 @@ class BaseStrategy
         }
     }
 
+    public function getLogger(): ?LoggerInterface
+    {
+        return $this->logger;
+    }
+
     public function setOnOpenEvent(Closure $callback): void
     {
         $this->onOpenEvent = $callback;

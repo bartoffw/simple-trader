@@ -6,6 +6,7 @@ namespace SimpleTrader\Loggers;
 class Console implements LoggerInterface
 {
     protected Level $level = Level::Debug;
+    protected array $logs = [];
 
 
     protected function getDateTime()
@@ -31,6 +32,7 @@ class Console implements LoggerInterface
             $showLog = false;
         }
         if ($showLog) {
+            $this->logs[] = $text;
             echo '[' . self::getDateTime() . '][' . $level->value . '] ' . $text . "\n";
         }
     }
@@ -40,18 +42,23 @@ class Console implements LoggerInterface
         $this->log(Level::Debug, $debug);
     }
 
-    public function logInfo(string $info)
+    public function logInfo(string $info): void
     {
         $this->log(Level::Info, $info);
     }
 
-    public function logWarning(string $warning)
+    public function logWarning(string $warning): void
     {
         $this->log(Level::Warning, $warning);
     }
 
-    public function logError(string $error)
+    public function logError(string $error): void
     {
         $this->log(Level::Error, $error);
+    }
+
+    public function getLogs(): array
+    {
+        return $this->logs;
     }
 }

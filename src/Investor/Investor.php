@@ -97,10 +97,10 @@ class Investor
                 $latestEntry = $tickerDf->head(1);
                 $latestDate = null;
                 if (empty($latestEntry)) {
-                    $daysToGet = (int) floor($startDate->diffInDays($this->now));
+                    $daysToGet = (int) ceil($startDate->diffInDays($this->now));
                 } else {
                     $latestDate = Carbon::parse($latestEntry[0]['date']);
-                    $daysToGet = (int) floor($latestDate > $startDate ? $latestDate->diffInDays($this->now) - 1 : $startDate->diffInDays($this->now));
+                    $daysToGet = (int) ceil($latestDate > $startDate ? $latestDate->diffInDays($this->now) - 1 : $startDate->diffInDays($this->now));
                 }
                 $this->logAndNotify("Days to get for {$tickerName}: {$daysToGet}");
 
@@ -144,8 +144,13 @@ class Investor
         /** @var Investment $investment */
         foreach ($this->investmentsList as $id => $investment) {
             $that = $this;
+            $positionAction = false;
             $strategy = $investment->getStrategy();
             $currentPosition = $strategy->getCurrentPosition();
+
+            $this->addNotificationSummary('<h2 style="text-align: center">' . $strategy->getStrategyName() . '</h2>');
+            $this->addNotificationSummary('<h4>Current position: ' . ($currentPosition ? $currentPosition->toString() : 'None') . '</h4>');
+
             $this->logAndNotify("== Executing the '{$id}' investment, starting capital: {$strategy->getCapital(true)} ==");
             $this->logAndNotify("== parameters: " . implode(', ', $strategy->getParameters(true)) . " ==");
             $this->logAndNotify($currentPosition ? '== Open position: ' . $currentPosition->toString() . ' ==' : '== No open positions. ==');
@@ -154,24 +159,32 @@ class Investor
             $onCloseExists = (new ReflectionMethod($strategy, 'onClose'))->getDeclaringClass()->getName() !== BaseStrategy::class;
             $assets = $investment->getAssets();
 
-            $strategy->setOnOpenEvent(function(Position $position) use ($that) {
+            $strategy->setOnOpenEvent(function(Position $position) use ($that, &$positionAction) {
                 $that->logAndNotify('==> Opening position: ' . $position->toString());
+                $that->addNotificationSummary('<h4>Action: OPEN ' . $position->toString() . '</h4>');
+                $positionAction = true;
             });
-            $strategy->setOnCloseEvent(function(Position $position) use ($that) {
+            $strategy->setOnCloseEvent(function(Position $position) use ($that, &$positionAction) {
                 $that->logAndNotify('==> Closing position: ' . $position->toString(true));
+                $that->addNotificationSummary('<h4>Action: CLOSE ' . $position->toString() . '</h4>');
+                $positionAction = true;
             });
 
             if ($event == Event::OnOpen && $onOpenExists) {
                 $this->logAndNotify("== OnOpen event triggered for {$this->now->toDateString()}. ==");
                 $strategy->onOpen($assets, $this->now, true);
+                $this->notifier->addLogs($strategy->getLogger()?->getLogs());
             }
             if ($event == Event::OnClose && $onCloseExists) {
                 $this->logAndNotify("== OnClose event triggered for {$this->now->toDateString()}. ==");
                 $strategy->onClose($assets, $this->now, true);
+                $this->notifier->addLogs($strategy->getLogger()?->getLogs());
             }
+            if (!$positionAction) {
+                $this->addNotificationSummary('<h4>Action: NONE</h4>');
+            }
+            $this->addNotificationSummary('<hr/>');
         }
-
-        $this->notifier->notifyInfo("Investor script executed");
 
         // save current state
         $this->saveCurrentState();
@@ -238,6 +251,11 @@ class Investor
         }
         $this->logAndNotify('Saving state for ' . count($state) . ' investments.');
         file_put_contents($this->stateFile, json_encode($state));
+    }
+
+    public function addNotificationSummary(string $summary): void
+    {
+        $this->notifier->addSummary($summary);
     }
 
     public function logAndNotify($message, Level $level = Level::Info): void
