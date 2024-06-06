@@ -8,7 +8,8 @@ use SimpleTrader\Loaders\SourceInterface;
 
 class Investment
 {
-    public function __construct(protected BaseStrategy $strategy, protected SourceInterface $source, protected Assets $assets)
+    public function __construct(protected BaseStrategy $strategy, protected SourceInterface $source,
+                                protected Assets $assets, protected ?float $capital = null)
     {
         $this->strategy->setTickers($this->assets->getTickers());
     }
@@ -26,6 +27,11 @@ class Investment
     public function getAssets(): Assets
     {
         return $this->assets;
+    }
+
+    public function getCapital(): ?float
+    {
+        return $this->capital;
     }
 
     public function setAssets(Assets $assets): void

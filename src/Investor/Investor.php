@@ -67,8 +67,8 @@ class Investor
         if ($this->logger) {
             $investment->getStrategy()->setLogger($this->logger);
         }
-        if ($this->equity && empty($investment->getStrategy()->getCapital())) {
-            $investment->getStrategy()->setCapital($this->equity);
+        if (($this->equity || $investment->getCapital()) && empty($investment->getStrategy()->getCapital())) {
+            $investment->getStrategy()->setCapital($investment->getCapital() ?: $this->equity);
         }
         $this->investmentsList[$id] = $investment;
     }

@@ -135,8 +135,7 @@ class Backtester
      * @throws BacktesterException
      * @throws StrategyException
      */
-    public function runBacktest(Assets $assets, Carbon $startTime, ?Carbon $endTime = null, array $strategyParameters = [],
-                                array $optimizationParameters = []): void
+    public function runBacktest(Assets $assets, Carbon $startTime, ?Carbon $endTime = null, array $optimizationParameters = []): void
     {
         if (!isset($this->strategy)) {
             throw new BacktesterException('Strategy is not set');
@@ -158,9 +157,6 @@ class Backtester
         $this->backtestStartTime = $startTime;
         $this->backtestEndTime = $endTime;
         $this->backtestStarted = microtime(true);
-        if (!empty($strategyParameters)) {
-            $this->strategy->setParameters($strategyParameters);
-        }
 
         $backtestStartTime = $this->strategy->getStartDateForCalculations($this->assets, $startTime);
 
