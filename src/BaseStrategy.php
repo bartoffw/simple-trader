@@ -702,8 +702,8 @@ class BaseStrategy
         uasort($tradeLog, function($a, $b) {
             /** @var Position $a */
             /** @var Position $b */
-            $closeTimeA = $a->getCloseTime()->toDateString();
-            $closeTimeB = $b->getCloseTime()->toDateString();
+            $closeTimeA = ($a->getCloseTime() ?? $a->getOpenTime())->toDateString();
+            $closeTimeB = ($b->getCloseTime() ?? $b->getOpenTime())->toDateString();
             return $closeTimeA <=> $closeTimeB;
         });
         return $tradeLog;

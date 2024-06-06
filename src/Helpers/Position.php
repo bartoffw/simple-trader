@@ -14,7 +14,7 @@ class Position
     protected string $openComment = '';
     protected string $closeComment = '';
     protected Carbon $openTime;
-    protected Carbon $closeTime;
+    protected ?Carbon $closeTime = null;
     protected float $openPrice;
     protected float $closePrice;
     protected float $openPositionSize;
@@ -94,7 +94,7 @@ class Position
         return $this->openTime;
     }
 
-    public function getCloseTime(): Carbon
+    public function getCloseTime(): ?Carbon
     {
         return $this->closeTime;
     }
