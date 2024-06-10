@@ -64,11 +64,13 @@ class Investor
         if (isset($this->investmentsList[$id])) {
             throw new InvestorException('Investment already exists.');
         }
+        $strategy = $investment->getStrategy();
+        $strategy->setNotifier($this->notifier);
         if ($this->logger) {
-            $investment->getStrategy()->setLogger($this->logger);
+            $strategy->setLogger($this->logger);
         }
         if (($this->equity || $investment->getCapital()) && empty($investment->getStrategy()->getCapital())) {
-            $investment->getStrategy()->setCapital($investment->getCapital() ?: $this->equity);
+            $strategy->setCapital($investment->getCapital() ?: $this->equity);
         }
         $this->investmentsList[$id] = $investment;
     }
@@ -135,7 +137,7 @@ class Investor
      * @throws \ReflectionException
      * @throws InvestorException
      */
-    public function execute(Event $event): void
+    public function execute(Event $event, bool $withSummary = false): void
     {
         if ($this->notifier === null) {
             throw new InvestorException('Notifier is not set.');
@@ -148,10 +150,6 @@ class Investor
             $strategy = $investment->getStrategy();
             $currentPosition = $strategy->getCurrentPosition();
 
-            $this->addNotificationSummary('<h2 style="text-align: center">' . $strategy->getStrategyName() . '</h2>');
-            $this->addNotificationSummary('<p style="text-align: center">' . implode(', ', $strategy->getTickers()) . '</p>');
-            $this->addNotificationSummary('<h4>Current position: ' . ($currentPosition ? $currentPosition->toString() : 'None') . '</h4>');
-
             $this->logAndNotify("== Executing the '{$id}' investment, starting capital: {$strategy->getCapital(true)} ==");
             $this->logAndNotify("== parameters: " . implode(', ', $strategy->getParameters(true)) . " ==");
             $this->logAndNotify($currentPosition ? '== Open position: ' . $currentPosition->toString() . ' ==' : '== No open positions. ==');
@@ -160,14 +158,18 @@ class Investor
             $onCloseExists = (new ReflectionMethod($strategy, 'onClose'))->getDeclaringClass()->getName() !== BaseStrategy::class;
             $assets = $investment->getAssets();
 
-            $strategy->setOnOpenEvent(function(Position $position) use ($that, &$positionAction) {
+            $strategy->setOnOpenEvent(function(Position $position) use ($that, $withSummary, &$positionAction) {
                 $that->logAndNotify('==> Opening position: ' . $position->toString());
-                $that->addNotificationSummary('<h4>Action: OPEN ' . $position->toString() . '</h4>');
+                if ($withSummary) {
+                    $that->addNotificationSummary('<h4>Action: OPEN ' . $position->toString() . '</h4>');
+                }
                 $positionAction = true;
             });
-            $strategy->setOnCloseEvent(function(Position $position) use ($that, &$positionAction) {
+            $strategy->setOnCloseEvent(function(Position $position) use ($that, $withSummary, &$positionAction) {
                 $that->logAndNotify('==> Closing position: ' . $position->toString(true));
-                $that->addNotificationSummary('<h4>Action: CLOSE ' . $position->toString() . '</h4>');
+                if ($withSummary) {
+                    $that->addNotificationSummary('<h4>Action: CLOSE ' . $position->toString() . '</h4>');
+                }
                 $positionAction = true;
             });
 
@@ -181,10 +183,15 @@ class Investor
                 $strategy->onClose($assets, $this->now, true);
                 $this->notifier->addLogs($strategy->getLogger()?->getLogs());
             }
-            if (!$positionAction) {
-                $this->addNotificationSummary('<h4>Action: NONE</h4>');
+            if ($withSummary) {
+                $this->addNotificationSummary('<h2 style="text-align: center">' . $strategy->getStrategyName() . '</h2>');
+                $this->addNotificationSummary('<p style="text-align: center">' . implode(', ', $strategy->getTickers()) . '</p>');
+                $this->addNotificationSummary('<h4>Current position: ' . ($currentPosition ? $currentPosition->toString() : 'NONE') . '</h4>');
+                if (!$positionAction) {
+                    $this->addNotificationSummary('<h4>Action: NONE</h4>');
+                }
+                $this->addNotificationSummary('<hr/>');
             }
-            $this->addNotificationSummary('<hr/>');
         }
 
         // save current state
@@ -224,8 +231,8 @@ class Investor
                 /** @var Investment $investment */
                 $investment = $this->investmentsList[$id];
                 $strategy = $investment->getStrategy();
-                if (!empty($investmentState['capital'])) {
-                    $strategy->setCapital($investmentState['capital']);
+                if (!empty($investmentState['strategy_vars'])) {
+                    $strategy->setStrategyVariables($investmentState['strategy_vars']);
                 }
                 if (!empty($investmentState['current_position'])) {
                     $strategy->setCurrentPosition(unserialize($investmentState['current_position']));
@@ -244,7 +251,7 @@ class Investor
             $strategy = $investment->getStrategy();
             $state[$id] = [
                 'name' => get_class($strategy),
-                'capital' => $strategy->getCapital(),
+                'strategy_vars' => $strategy->getStrategyVariables(),
                 'current_position' => $strategy->getCurrentPosition() ? serialize($strategy->getCurrentPosition()) : null,
                 'open_trades' => $strategy->getOpenTradesAsArray(),
                 'trade_log' => $strategy->getTradeLogAsArray(),

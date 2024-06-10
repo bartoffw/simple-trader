@@ -12,12 +12,14 @@ use SimpleTrader\Helpers\Calculator;
 use SimpleTrader\Helpers\Position;
 use SimpleTrader\Helpers\QuantityType;
 use SimpleTrader\Helpers\Side;
+use SimpleTrader\Investor\NotifierInterface;
 use SimpleTrader\Loggers\LoggerInterface;
 
 class BaseStrategy
 {
     protected string $strategyName = 'Base Strategy';
     protected ?LoggerInterface $logger = null;
+    protected NotifierInterface $notifier;
     protected Carbon $startDate;
     protected Carbon $currentDateTime;
     protected Assets $currentAssets;
@@ -99,6 +101,11 @@ class BaseStrategy
     public function getStrategyName(): string
     {
         return $this->strategyName;
+    }
+
+    public function setNotifier(NotifierInterface $notifier): void
+    {
+        $this->notifier = $notifier;
     }
 
     public function setLogger(LoggerInterface $logger, bool $override = false): void
@@ -839,6 +846,27 @@ class BaseStrategy
             $params['benchmark_profit'] = $this->calcStatBenchmarkProfit($benchmarkLog);
         }
         return $params;
+    }
+
+    public function getStrategyVariables(): string
+    {
+        $vars = get_object_vars($this);
+        unset($vars['logger']);
+        unset($vars['assets']);
+        unset($vars['currentAssets']);
+        unset($vars['benchmark']);
+        unset($vars['currentPosition']);
+        unset($vars['onOpenEvent']);
+        unset($vars['onCloseEvent']);
+        return serialize($vars);
+    }
+
+    public function setStrategyVariables(string $data): void
+    {
+        $data = unserialize($data);
+        foreach ($data as $name => $value) {
+            $this->$name = $value;
+        }
     }
 
     /**
