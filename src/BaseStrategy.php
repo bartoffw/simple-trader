@@ -26,7 +26,7 @@ class BaseStrategy
     protected ?Event $currentEvent = null;
     protected array $strategyParameters = [];
     protected ?array $optimizationParameters = null;
-    protected ?Position $currentPosition = null;
+    protected array $currentPositions = [];
 
     protected ?Closure $onOpenEvent = null;
     protected ?Closure $onCloseEvent = null;
@@ -140,17 +140,20 @@ class BaseStrategy
         return $this->startDate;
     }
 
-    public function setCurrentPosition(Position $position): void
+    /**
+     * @throws StrategyException
+     */
+    public function setCurrentPositions(array $positions): void
     {
-        if ($this->currentPosition !== null) {
-            throw new StrategyException('Current position already set.');
+        if ($this->currentPositions !== []) {
+            throw new StrategyException('Current positions already set.');
         }
-        $this->currentPosition = $position;
+        $this->currentPositions = $positions;
     }
 
-    public function getCurrentPosition(): ?Position
+    public function getCurrentPositions(): array
     {
-        return $this->currentPosition;
+        return $this->currentPositions;
     }
 
     public function getMaxLookbackPeriod(): int
@@ -333,8 +336,8 @@ class BaseStrategy
         $this->openTrades[$position->getId()] = $position;
         $this->tradeLog[$position->getId()] = $position;
 
-        $this->openPositionSize = $this->openPositionSize + $calculatedSize;
-        $this->capitalAvailable = $this->capitalAvailable - $calculatedSize;
+        $this->openPositionSize += $calculatedSize;
+        $this->capitalAvailable -= $calculatedSize;
 
         $this->logger?->logInfo(
             '[' . $this->currentDateTime->toDateString() . ']' . $position->toString() . ', equity: ' . $this->getCapital()
@@ -347,7 +350,32 @@ class BaseStrategy
     /**
      * @throws StrategyException
      */
-    public function closeAll(string $comment = '')
+    public function close(string $positionId, string $comment = '')
+    {
+        if ($this->currentEvent === null) {
+            throw new StrategyException('Current event not known. Are you calling parent onOpen/onClose/onStrategyEnd in your strategy?');
+        }
+        if (!isset($this->openTrades[$positionId])) {
+            throw new StrategyException("Position ($positionId) not found in open positions.");
+        }
+        $position = $this->openTrades[$positionId];
+        if (!$this->currentAssets->hasAsset($position->getTicker())) {
+            throw new StrategyException('Asset not found in the asset list for an open position: ' . $position->getTicker());
+        }
+
+        $calculatedSize = $this->closePosition($position, $comment);
+
+        $this->openTrades[$positionId] = null;
+        unset($this->openTrades[$positionId]);
+
+        $this->openPositionSize -= $calculatedSize;
+        $this->capitalAvailable += $calculatedSize;
+    }
+
+    /**
+     * @throws StrategyException
+     */
+    public function closeAll(string $comment = ''): void
     {
         if ($this->currentEvent === null) {
             throw new StrategyException('Current event not known. Are you calling parent onOpen/onClose/onStrategyEnd in your strategy?');
@@ -357,72 +385,10 @@ class BaseStrategy
             if (!$this->currentAssets->hasAsset($position->getTicker())) {
                 throw new StrategyException('Asset not found in the asset list for an open position: ' . $position->getTicker());
             }
-            $currentPrice = $this->currentAssets->getCurrentValue($position->getTicker(), $this->currentDateTime, $this->currentEvent);
-            $calculatedSize = $this->calculatePositionSize($currentPrice, $position->getQuantity(), QuantityType::Units);
-            $position->closePosition($this->currentDateTime, $currentPrice, $calculatedSize, $comment);
-
-            $this->tradeLog[$position->getId()] = $position;
-
-            $profit = $position->getProfitAmount();
-            $openBars = $position->getOpenBars();
-            if ($profit > 0.00001) {
-                $this->grossProfit += $profit;
-                $this->capital += $profit;
-                $this->profitableTransactions++;
-                $this->barsProfitableTransactions += $openBars;
-                if ($profit > $this->maxProfitableTransaction) {
-                    $this->maxProfitableTransaction = $profit;
-                }
-                if ($position->getSide() === Side::Long) {
-                    $this->grossProfitLongs += $profit;
-                    $this->profitableTransactionsLongs++;
-                    $this->barsProfitableTransactionsLongs += $openBars;
-                    if ($profit > $this->maxProfitableTransactionLongs) {
-                        $this->maxProfitableTransactionLongs = $profit;
-                    }
-                } else {
-                    $this->grossProfitShorts += $profit;
-                    $this->profitableTransactionsShorts++;
-                    $this->barsProfitableTransactionsShorts += $openBars;
-                    if ($profit > $this->maxProfitableTransactionShorts) {
-                        $this->maxProfitableTransactionShorts = $profit;
-                    }
-                }
-            } else {
-                $loss = abs($profit);
-                $this->grossLoss += $loss;
-                $this->capital -= $loss;
-                $this->losingTransactions++;
-                $this->barsLosingTransactions += $openBars;
-                if ($loss > $this->maxLosingTransaction) {
-                    $this->maxLosingTransaction = $loss;
-                }
-                if ($position->getSide() === Side::Long) {
-                    $this->grossLossLongs += $loss;
-                    $this->losingTransactionsLongs++;
-                    $this->barsLosingTransactionsLongs += $openBars;
-                    if ($loss > $this->maxLosingTransactionLongs) {
-                        $this->maxLosingTransactionLongs = $loss;
-                    }
-                } else {
-                    $this->grossLossShorts += $loss;
-                    $this->losingTransactionsShorts++;
-                    $this->barsLosingTransactionsShorts += $openBars;
-                    if ($loss > $this->maxLosingTransactionShorts) {
-                        $this->maxLosingTransactionShorts = $loss;
-                    }
-                }
-            }
-
-            $this->logger?->logInfo(
-                '[' . $this->currentDateTime->toDateString() . '][' . $position->getId() . '] CLOSE @ ' . $currentPrice . ', ' .
-                'profit: ' . $position->getProfitPercent() . '%' /*. '% == ' . $position->getProfitAmount() . ', equity: ' . $this->getCapital()*/ .
-                ($comment ? ' (' . $comment . ')' : '')
-            );
-            $this->onCloseEvent?->call($this, $position);
+            $this->closePosition($position, $comment);
         }
-        $this->openPositionSize = 0;
         $this->openTrades = [];
+        $this->openPositionSize = 0;
         $this->capitalAvailable = $this->capital;
     }
 
@@ -855,7 +821,7 @@ class BaseStrategy
         unset($vars['assets']);
         unset($vars['currentAssets']);
         unset($vars['benchmark']);
-        unset($vars['currentPosition']);
+        unset($vars['currentPositions']);
         unset($vars['onOpenEvent']);
         unset($vars['onCloseEvent']);
         return serialize($vars);
@@ -866,6 +832,82 @@ class BaseStrategy
         $data = unserialize($data);
         foreach ($data as $name => $value) {
             $this->$name = $value;
+        }
+    }
+
+    /**
+     * @throws StrategyException
+     */
+    protected function closePosition(Position $position, string $comment): float
+    {
+        $currentPrice = $this->currentAssets->getCurrentValue($position->getTicker(), $this->currentDateTime, $this->currentEvent);
+        $calculatedSize = $this->calculatePositionSize($currentPrice, $position->getQuantity(), QuantityType::Units);
+        $position->closePosition($this->currentDateTime, $currentPrice, $calculatedSize, $comment);
+
+        $this->tradeLog[$position->getId()] = $position;
+        $this->updateStatsAfterClosedPosition($position);
+
+        $this->logger?->logInfo(
+            '[' . $this->currentDateTime->toDateString() . '][' . $position->getId() . '] CLOSE @ ' . $currentPrice . ', ' .
+            'profit: ' . $position->getProfitPercent() . '%' /*. '% == ' . $position->getProfitAmount() . ', equity: ' . $this->getCapital()*/ .
+            ($comment ? ' (' . $comment . ')' : '')
+        );
+        $this->onCloseEvent?->call($this, $position);
+
+        return $calculatedSize;
+    }
+
+    protected function updateStatsAfterClosedPosition(Position $position): void
+    {
+        $profit = $position->getProfitAmount();
+        $openBars = $position->getOpenBars();
+        if ($profit > 0.00001) {
+            $this->grossProfit += $profit;
+            $this->capital += $profit;
+            $this->profitableTransactions++;
+            $this->barsProfitableTransactions += $openBars;
+            if ($profit > $this->maxProfitableTransaction) {
+                $this->maxProfitableTransaction = $profit;
+            }
+            if ($position->getSide() === Side::Long) {
+                $this->grossProfitLongs += $profit;
+                $this->profitableTransactionsLongs++;
+                $this->barsProfitableTransactionsLongs += $openBars;
+                if ($profit > $this->maxProfitableTransactionLongs) {
+                    $this->maxProfitableTransactionLongs = $profit;
+                }
+            } else {
+                $this->grossProfitShorts += $profit;
+                $this->profitableTransactionsShorts++;
+                $this->barsProfitableTransactionsShorts += $openBars;
+                if ($profit > $this->maxProfitableTransactionShorts) {
+                    $this->maxProfitableTransactionShorts = $profit;
+                }
+            }
+        } else {
+            $loss = abs($profit);
+            $this->grossLoss += $loss;
+            $this->capital -= $loss;
+            $this->losingTransactions++;
+            $this->barsLosingTransactions += $openBars;
+            if ($loss > $this->maxLosingTransaction) {
+                $this->maxLosingTransaction = $loss;
+            }
+            if ($position->getSide() === Side::Long) {
+                $this->grossLossLongs += $loss;
+                $this->losingTransactionsLongs++;
+                $this->barsLosingTransactionsLongs += $openBars;
+                if ($loss > $this->maxLosingTransactionLongs) {
+                    $this->maxLosingTransactionLongs = $loss;
+                }
+            } else {
+                $this->grossLossShorts += $loss;
+                $this->losingTransactionsShorts++;
+                $this->barsLosingTransactionsShorts += $openBars;
+                if ($loss > $this->maxLosingTransactionShorts) {
+                    $this->maxLosingTransactionShorts = $loss;
+                }
+            }
         }
     }
 

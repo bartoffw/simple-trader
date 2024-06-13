@@ -148,11 +148,15 @@ class Investor
             $that = $this;
             $positionAction = false;
             $strategy = $investment->getStrategy();
-            $currentPosition = $strategy->getCurrentPosition();
+            $currentPositions = $strategy->getCurrentPositions();
+            $positionsList = array_map(fn($item) => $item->toString(), $currentPositions);
 
             $this->logAndNotify("== Executing the '{$id}' investment, starting capital: {$strategy->getCapital(true)} ==");
             $this->logAndNotify("== parameters: " . implode(', ', $strategy->getParameters(true)) . " ==");
-            $this->logAndNotify($currentPosition ? '== Open position: ' . $currentPosition->toString() . ' ==' : '== No open positions. ==');
+            $this->logAndNotify(!empty($currentPositions) ?
+                '== Open positions: ' . implode("\n", $positionsList) . ' ==' :
+                '== No open positions. =='
+            );
 
             $onOpenExists = (new ReflectionMethod($strategy, 'onOpen'))->getDeclaringClass()->getName() !== BaseStrategy::class;
             $onCloseExists = (new ReflectionMethod($strategy, 'onClose'))->getDeclaringClass()->getName() !== BaseStrategy::class;
@@ -176,17 +180,17 @@ class Investor
             if ($event == Event::OnOpen && $onOpenExists) {
                 $this->logAndNotify("== OnOpen event triggered for {$this->now->toDateString()}. ==");
                 $strategy->onOpen($assets, $this->now, true);
-                $this->notifier->addLogs($strategy->getLogger()?->getLogs());
+                //$this->notifier->addLogs($strategy->getLogger()?->getLogs());
             }
             if ($event == Event::OnClose && $onCloseExists) {
                 $this->logAndNotify("== OnClose event triggered for {$this->now->toDateString()}. ==");
                 $strategy->onClose($assets, $this->now, true);
-                $this->notifier->addLogs($strategy->getLogger()?->getLogs());
+                //$this->notifier->addLogs($strategy->getLogger()?->getLogs());
             }
             if ($withSummary) {
                 $this->addNotificationSummary('<h2 style="text-align: center">' . $strategy->getStrategyName() . '</h2>');
                 $this->addNotificationSummary('<p style="text-align: center">' . implode(', ', $strategy->getTickers()) . '</p>');
-                $this->addNotificationSummary('<h4>Current position: ' . ($currentPosition ? $currentPosition->toString() : 'NONE') . '</h4>');
+                $this->addNotificationSummary('<h4>Current positions: ' . (!empty($currentPositions) ? '<br/>' . implode('<br/>', $positionsList) : 'NONE') . '</h4>');
                 if (!$positionAction) {
                     $this->addNotificationSummary('<h4>Action: NONE</h4>');
                 }
@@ -235,7 +239,10 @@ class Investor
                     $strategy->setStrategyVariables($investmentState['strategy_vars']);
                 }
                 if (!empty($investmentState['current_position'])) {
-                    $strategy->setCurrentPosition(unserialize($investmentState['current_position']));
+                    $position = unserialize($investmentState['current_position']);
+                    $strategy->setCurrentPositions([$position]);
+                } elseif (!empty($investmentState['current_positions'])) {
+                    $strategy->setCurrentPositions(unserialize($investmentState['current_position']));
                 }
                 $strategy->setOpenTradesFromArray($investmentState['open_trades']);
                 $strategy->setTradeLogFromArray($investmentState['trade_log']);
@@ -252,7 +259,7 @@ class Investor
             $state[$id] = [
                 'name' => get_class($strategy),
                 'strategy_vars' => $strategy->getStrategyVariables(),
-                'current_position' => $strategy->getCurrentPosition() ? serialize($strategy->getCurrentPosition()) : null,
+                'current_positions' => $strategy->getCurrentPositions() ? serialize($strategy->getCurrentPositions()) : null,
                 'open_trades' => $strategy->getOpenTradesAsArray(),
                 'trade_log' => $strategy->getTradeLogAsArray(),
             ];
