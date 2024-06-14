@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use MammothPHP\WoollyM\IO\CSV;
 use SimpleTrader\Assets;
 use SimpleTrader\Backtester;
+use SimpleTrader\Helpers\OptimizationParam;
 use SimpleTrader\Helpers\Resolution;
 use SimpleTrader\Loggers\Console;
 use SimpleTrader\Loggers\Level;
@@ -30,9 +31,7 @@ try {
         $assets->addAsset(CSV::fromFilePath($path)->import(), $ticker);
     }
 
-    $strategy = new TestStrategy(paramsOverrides: [
-        'length' => 200
-    ]);
+    $strategy = new TestStrategy();
     $strategy->setCapital(10000);
     $strategy->setLogger($logger);
     $strategy->setTickers(array_keys($tickers));
@@ -41,7 +40,9 @@ try {
     $backtest->setLogger($logger);
     $backtest->setStrategy($strategy);
     $backtest->setBenchmark(CSV::fromFilePath($benchmarkFile)->import(), $benchmark);
-    $backtest->runBacktest($assets, $fromDate, $toDate);
+    $backtest->runBacktest($assets, $fromDate, $toDate, [
+        new OptimizationParam('length', 50, 250, 50)
+    ]);
 
     $logger->logInfo('Backtest run in ' . number_format($backtest->getLastBacktestTime(), 2) . 's');
 

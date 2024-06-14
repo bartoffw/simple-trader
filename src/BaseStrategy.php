@@ -328,7 +328,9 @@ class BaseStrategy
         }
         $calculatedSize = $this->calculatePositionSize($currentPrice, $positionSize, $this->qtyType);
         if ($calculatedSize > $this->capitalAvailable + 0.00001) {
-            throw new StrategyException("Position size ($calculatedSize) is greater than the available capital ($this->capitalAvailable)");
+            //throw new StrategyException("Position size ($calculatedSize) is greater than the available capital ($this->capitalAvailable)");
+            $this->logger?->logWarning("Position size ($calculatedSize) is greater than the available capital ($this->capitalAvailable), reducing");
+            $calculatedSize = $this->capitalAvailable;
         }
         $calculatedQty = $calculatedSize / $currentPrice;
 

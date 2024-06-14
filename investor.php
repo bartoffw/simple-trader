@@ -15,15 +15,24 @@ use SimpleTrader\TestStrategy;
 
 
 $tickers = [
-    'QQQ3' => [
-        'path' => __DIR__ . '/QQQ3-tv.csv',
-        'exchange' => 'MIL'
+    'IUSQ' => [
+        'path' => __DIR__ . '/IUSQ.csv',
+        'exchange' => 'XETR'
     ],
 ];
 $stateFile = __DIR__ . '/investments-state.json';
 
 $logger = new Console();
 $logger->setLevel(Level::Info);
+
+$notifier = new EmailNotifier(
+    getenv('SMTP_HOST'),
+    getenv('SMTP_PORT'),
+    getenv('SMTP_USER'),
+    getenv('SMTP_PASS'),
+    getenv('FROM_EMAIL'),
+    getenv('TO_EMAIL')
+);
 
 try {
     // 1. create objects for all strategies
@@ -36,17 +45,28 @@ try {
 
     $investor = new Investor($stateFile);
     $investor->setLogger($logger);
-    $investor->setNotifier(new EmailNotifier(getenv('SMTP_HOST'), getenv('SMTP_PORT'), getenv('SMTP_USER'), getenv('SMTP_PASS')));
-    $investor->addInvestment(TestStrategy::class, new Investment(new TestStrategy(), new TradingViewSource(), $assets));
+    $investor->setNotifier($notifier);
+    if (!$investor->hasCurrentState()) {
+        $investor->setEquity(10000);
+    }
+
+    $strategy = new TestStrategy(paramsOverrides: [
+        'length' => 200
+    ]);
+    $investor->addInvestment(TestStrategy::class, new Investment($strategy, new TradingViewSource(), $assets));
+
+    $investor->loadCurrentState();
 
     // 4. check missing day(s) and pull them from data source(s) into data storage
     $investor->updateSources();
 
     // 5. run all defined strategies on the updated data
-    $investor->execute(Event::OnClose);
+    $investor->execute(Event::OnOpen);
+    $investor->execute(Event::OnClose, true);
 
 } catch (Exception $e) {
     $logger->logError($e->getMessage());
+    $notifier->notifyError($e->getMessage());
 }
 
 // 6. report all successes and failures in steps 1 to 5 (via email)
