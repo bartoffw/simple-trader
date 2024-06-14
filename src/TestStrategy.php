@@ -95,7 +95,6 @@ class TestStrategy extends BaseStrategy
             }
         } else {
             // looking for entry
-            $smaDiffs = [];
             $bestTicker = null;
             $bestSma = null;
             foreach ($smaValues as $ticker => $sma) {
@@ -108,12 +107,14 @@ class TestStrategy extends BaseStrategy
             if ($bestTicker && $bestSma) {
                 $assetVal = $assets->getCurrentValue($bestTicker, $dateTime);
                 $smaVal = $smaValues[$bestTicker][0];
-                $this->openComment = 'SMA Diff: ' . number_format($bestSma, 1) . '%';
-                $this->buyTicker = $bestTicker;
-                if ($isLive) {
-                    $this->notifier->addSummary("<h4>Action: OnOpen BUY {$bestTicker}</h4>");
-                    $this->notifier->addSummary("<p>SMA: {$smaVal} vs. price: {$assetVal}</p>");
-                    $this->strategyLog($isLive, "[{$bestTicker}] --== Want to buy ==-- SMA: {$smaVal} vs. price: {$assetVal}");
+                if ($assetVal > $smaVal) {
+                    $this->openComment = 'SMA Diff: ' . number_format($bestSma, 1) . '%';
+                    $this->buyTicker = $bestTicker;
+                    if ($isLive) {
+                        $this->notifier->addSummary("<h4>Action: OnOpen BUY {$bestTicker}</h4>");
+                        $this->notifier->addSummary("<p>SMA: {$smaVal} vs. price: {$assetVal}</p>");
+                        $this->strategyLog($isLive, "[{$bestTicker}] --== Want to buy ==-- SMA: {$smaVal} vs. price: {$assetVal}");
+                    }
                 }
             }
         }
