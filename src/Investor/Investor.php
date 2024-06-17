@@ -162,21 +162,24 @@ class Investor
             $onCloseExists = (new ReflectionMethod($strategy, 'onClose'))->getDeclaringClass()->getName() !== BaseStrategy::class;
             $assets = $investment->getAssets();
 
-            $strategy->setOnOpenEvent(function(Position $position) use ($that, $withSummary, &$positionAction) {
+            $strategy->setOnOpenEvent(function(Position $position) use ($that, $withSummary) {
                 $that->logAndNotify('==> Opening position: ' . $position->toString());
                 if ($withSummary) {
                     $that->addNotificationSummary('<h4>Action: OPEN ' . $position->toString() . '</h4>');
                 }
-                $positionAction = true;
             });
-            $strategy->setOnCloseEvent(function(Position $position) use ($that, $withSummary, &$positionAction) {
+            $strategy->setOnCloseEvent(function(Position $position) use ($that, $withSummary) {
                 $that->logAndNotify('==> Closing position: ' . $position->toString(true));
                 if ($withSummary) {
                     $that->addNotificationSummary('<h4>Action: CLOSE ' . $position->toString() . '</h4>');
                 }
-                $positionAction = true;
             });
 
+            if ($withSummary) {
+                $this->addNotificationSummary('<h2 style="text-align: center">' . $strategy->getStrategyName() . '</h2>');
+                $this->addNotificationSummary('<p style="text-align: center">' . implode(', ', $strategy->getTickers()) . '</p>');
+                $this->addNotificationSummary('<h4>Current positions: ' . (!empty($currentPositions) ? '<br/>' . implode('<br/>', $positionsList) : 'NONE') . '</h4>');
+            }
             if ($event == Event::OnOpen && $onOpenExists) {
                 $this->logAndNotify("== OnOpen event triggered for {$this->now->toDateString()}. ==");
                 $strategy->onOpen($assets, $this->now, true);
@@ -187,15 +190,7 @@ class Investor
                 $strategy->onClose($assets, $this->now, true);
                 //$this->notifier->addLogs($strategy->getLogger()?->getLogs());
             }
-            if ($withSummary) {
-                $this->addNotificationSummary('<h2 style="text-align: center">' . $strategy->getStrategyName() . '</h2>');
-                $this->addNotificationSummary('<p style="text-align: center">' . implode(', ', $strategy->getTickers()) . '</p>');
-                $this->addNotificationSummary('<h4>Current positions: ' . (!empty($currentPositions) ? '<br/>' . implode('<br/>', $positionsList) : 'NONE') . '</h4>');
-                if (!$positionAction) {
-                    $this->addNotificationSummary('<h4>Action: NONE</h4>');
-                }
-                $this->addNotificationSummary('<hr/>');
-            }
+            $this->addNotificationSummary('<hr/>');
         }
 
         // save current state
