@@ -238,11 +238,8 @@ class Investor
                 if (!empty($investmentState['strategy_vars'])) {
                     $strategy->setStrategyVariables($investmentState['strategy_vars']);
                 }
-                if (!empty($investmentState['current_position']) && !empty(unserialize($investmentState['current_position']))) {
-                    $position = unserialize($investmentState['current_position']);
-                    $strategy->setCurrentPositions([$position]);
-                } elseif (!empty($investmentState['current_positions']) && !empty(unserialize($investmentState['current_position']))) {
-                    $strategy->setCurrentPositions(unserialize($investmentState['current_position']));
+                if (!empty($investmentState['current_positions']) && !empty(unserialize($investmentState['current_positions']))) {
+                    $strategy->setCurrentPositions(unserialize($investmentState['current_positions']));
                 }
                 $strategy->setOpenTradesFromArray($investmentState['open_trades']);
                 $strategy->setTradeLogFromArray($investmentState['trade_log']);
