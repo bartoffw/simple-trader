@@ -221,11 +221,11 @@ class Position
     public function toString(bool $onClose = false): string
     {
         $result = '[' . $this->getId() . '-' . $this->openTime->toDateString() . '] ' . $this->getSide()->value . ' @ ' . number_format($this->price, 2) . ', ' .
-            'total size: ' . number_format($this->positionSize, 2) . ', profit: ' . number_format($this->getProfitAmount(), 2);
+            'total size: ' . number_format($this->positionSize, 2) . ', profit: ' . number_format($this->getProfitAmount(), 2) . ' / ' . number_format($this->getProfitPercent(), 1) . '%';
         if ($onClose) {
-            $result .= $this->closeComment ? ' (' . $this->closeComment . ')' : '';
+            $result .= $this->closeComment ? ' ("' . $this->closeComment . '")' : '';
         } else {
-            $result .= $this->openComment ? ' (' . $this->openComment . ')' : '';
+            $result .= $this->openComment ? ' ("' . $this->openComment . '")' : '';
         }
         return $result;
     }
