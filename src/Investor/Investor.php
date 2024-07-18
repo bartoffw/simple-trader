@@ -257,7 +257,7 @@ class Investor
             ];
         }
         $this->logAndNotify('Saving state for ' . count($state) . ' investments.');
-        file_put_contents($this->stateFile, json_encode($state));
+        file_put_contents($this->stateFile, json_encode($state, JSON_PRETTY_PRINT));
     }
 
     public function addNotificationSummary(string $summary): void
