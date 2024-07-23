@@ -90,6 +90,20 @@ class BaseStrategy
 
     protected int $precision = 2;
 
+    protected array $ignoreAttributes = [
+        'ignoreAttributes',
+        'logger',
+        'assets',
+        'currentAssets',
+        'benchmark',
+        'currentPositions',
+        'onOpenEvent',
+        'onCloseEvent',
+        'strategyParameters',
+        'optimizationParameters',
+        'tickers'
+    ];
+
 
     public function __construct(protected QuantityType $qtyType = QuantityType::Percent, array $paramsOverrides = [])
     {
@@ -819,13 +833,9 @@ class BaseStrategy
     public function getStrategyVariables(): string
     {
         $vars = get_object_vars($this);
-        unset($vars['logger']);
-        unset($vars['assets']);
-        unset($vars['currentAssets']);
-        unset($vars['benchmark']);
-        unset($vars['currentPositions']);
-        unset($vars['onOpenEvent']);
-        unset($vars['onCloseEvent']);
+        foreach ($this->ignoreAttributes as $attrib) {
+            unset($vars[$attrib]);
+        }
         return serialize($vars);
     }
 
@@ -833,8 +843,15 @@ class BaseStrategy
     {
         $data = unserialize($data);
         foreach ($data as $name => $value) {
-            $this->$name = $value;
+            if (!in_array($name, $this->ignoreAttributes)) {
+                $this->$name = $value;
+            }
         }
+    }
+
+    public function getStrategyParameters(): array
+    {
+        return $this->strategyParameters;
     }
 
     /**

@@ -7,4 +7,5 @@ enum Level:string {
     case Info = 'INFO';
     case Warning = 'WARNING';
     case Error = 'ERROR';
+    case Exec = 'EXEC';
 }

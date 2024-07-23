@@ -84,13 +84,12 @@ class Investor
     public function updateSources(): void
     {
         /** @var Investment $investment */
-        foreach ($this->investmentsList as $investment) {
+        foreach ($this->investmentsList as $id => $investment) {
             $strategy = $investment->getStrategy();
             $source = $investment->getSource();
-            $this->logAndNotify("Executing strategy: " . get_class($strategy));
 
             $startDate = $this->now->copy()->subDays($strategy->getMaxLookbackPeriod());
-            $this->logAndNotify('Need data from date: ' . $startDate->toDateString());
+            $this->logAndNotify("Strategy: {$id} [" . implode(', ', $strategy->getTickers()) . "], need data from date: " . $startDate->toDateString());
 
             $updateAssets = false;
             $newAssets = new Assets();
@@ -110,6 +109,7 @@ class Investor
                     $ohlcQuotes = $source->getQuotes($tickerName, $assets->getExchange($tickerName), '1D', $daysToGet);
                     if (empty($ohlcQuotes)) {
                         $this->logAndNotify('No new data available in the source.');
+                        $newAssets->addAsset(CSV::fromFilePath($assets->getPath($tickerName))->import(), $tickerName, false, $assets->getExchange($tickerName), $assets->getPath($tickerName));
                     } else {
                         $this->logAndNotify('Adding ' . count($ohlcQuotes) . ' quotes from the source');
                         /** @var Ohlc $quote */
@@ -142,6 +142,7 @@ class Investor
         if ($this->notifier === null) {
             throw new InvestorException('Notifier is not set.');
         }
+        $this->logAndNotify("=== {$event->name} for {$this->now->toDateString()} ===", Level::Exec);
 
         /** @var Investment $investment */
         foreach ($this->investmentsList as $id => $investment) {
@@ -151,11 +152,11 @@ class Investor
             $currentPositions = $strategy->getCurrentPositions();
             $positionsList = array_map(fn($item) => $item->toString(), $currentPositions);
 
-            $this->logAndNotify("== Executing the '{$id}' investment, starting capital: {$strategy->getCapital(true)} ==");
-            $this->logAndNotify("== parameters: " . implode(', ', $strategy->getParameters(true)) . " ==");
+            $this->logAndNotify("{$id} [" . implode(', ', $strategy->getParameters(true)) . "] starting capital: {$strategy->getCapital(true)}", Level::Exec);
             $this->logAndNotify(!empty($currentPositions) ?
-                '== Open positions: ' . implode("\n", $positionsList) . ' ==' :
-                '== No open positions. =='
+                'OPEN POSITIONS: ' . implode("\n", $positionsList) :
+                'NO OPEN POSITIONS',
+                Level::Exec
             );
 
             $onOpenExists = (new ReflectionMethod($strategy, 'onOpen'))->getDeclaringClass()->getName() !== BaseStrategy::class;
@@ -181,14 +182,12 @@ class Investor
                 $this->addNotificationSummary('<h4>Current positions: ' . (!empty($currentPositions) ? '<br/>' . implode('<br/>', $positionsList) : 'NONE') . '</h4>');
             }
             if ($event == Event::OnOpen && $onOpenExists) {
-                $this->logAndNotify("== OnOpen event triggered for {$this->now->toDateString()}. ==");
+                $this->logAndNotify("OnOpen strategy event triggered", Level::Exec);
                 $strategy->onOpen($assets, $this->now, true);
-                //$this->notifier->addLogs($strategy->getLogger()?->getLogs());
             }
             if ($event == Event::OnClose && $onCloseExists) {
-                $this->logAndNotify("== OnClose event triggered for {$this->now->toDateString()}. ==");
+                $this->logAndNotify("OnClose strategy event triggered", Level::Exec);
                 $strategy->onClose($assets, $this->now, true);
-                //$this->notifier->addLogs($strategy->getLogger()?->getLogs());
             }
             $this->addNotificationSummary('<hr/>');
         }
