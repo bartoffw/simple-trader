@@ -27,6 +27,7 @@ class BaseStrategy
     protected array $strategyParameters = [];
     protected ?array $optimizationParameters = null;
     protected array $currentPositions = [];
+    protected array $currentAssetValues = [];
 
     protected ?Closure $onOpenEvent = null;
     protected ?Closure $onCloseEvent = null;
@@ -168,6 +169,11 @@ class BaseStrategy
     public function getCurrentPositions(): array
     {
         return $this->currentPositions;
+    }
+
+    public function getCurrentAssetValues(): array
+    {
+        return $this->currentAssetValues;
     }
 
     public function getMaxLookbackPeriod(): int

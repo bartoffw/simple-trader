@@ -189,7 +189,14 @@ class Investor
                 $this->logAndNotify("OnClose strategy event triggered", Level::Exec);
                 $strategy->onClose($assets, $this->now, true);
             }
-            $this->addNotificationSummary('<hr/>');
+            if ($withSummary) {
+                $values = [];
+                foreach ($strategy->getCurrentAssetValues() as $ticker => $value) {
+                    $values[] = "<strong>{$ticker}</strong>: " . round($value, 2);
+                }
+                $this->addNotificationSummary(implode('<br/>', $values));
+                $this->addNotificationSummary('<hr/>');
+            }
         }
 
         // save current state
