@@ -78,6 +78,16 @@ class EmailNotifier implements NotifierInterface
         return $this->mail->send();
     }
 
+    public function getSummary(): array
+    {
+        return $this->summary;
+    }
+
+    public function getNotifications(): array
+    {
+        return $this->notifications;
+    }
+
     protected static function getDateTime()
     {
         return date('Y-m-d H:i:s');
