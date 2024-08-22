@@ -94,6 +94,7 @@ class BaseStrategy
     protected array $ignoreAttributes = [
         'ignoreAttributes',
         'logger',
+        'notifier',
         'assets',
         'currentAssets',
         'benchmark',
