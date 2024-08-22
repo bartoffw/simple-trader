@@ -152,7 +152,7 @@ class Investor
             $currentPositions = $strategy->getCurrentPositions();
             $positionsList = array_map(fn($item) => $item->toString(), $currentPositions);
 
-            $this->logAndNotify("{$id} [" . implode(', ', $strategy->getParameters(true)) . "] starting capital: {$strategy->getCapital(true)}", Level::Exec);
+            $this->logAndNotify("=> {$id} [" . implode(', ', $strategy->getParameters(true)) . "] starting capital: {$strategy->getCapital(true)}", Level::Exec);
             $this->logAndNotify(!empty($currentPositions) ?
                 'OPEN POSITIONS: ' . implode("\n", $positionsList) :
                 'NO OPEN POSITIONS',
