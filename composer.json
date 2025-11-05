@@ -24,7 +24,11 @@
     "mammothphp/woollym": "dev-master",
     "nesbot/carbon": "^3.3",
     "textalk/websocket": "^1.6",
-    "phpmailer/phpmailer": "^6.9"
+    "phpmailer/phpmailer": "^6.9",
+    "slim/slim": "^4.14",
+    "slim/psr7": "^1.7",
+    "php-di/php-di": "^7.0",
+    "slim/twig-view": "^3.4"
   },
   "minimum-stability": "dev"
 }
