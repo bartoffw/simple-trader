@@ -1,0 +1,164 @@
+<?php
+
+namespace SimpleTrader\Database;
+
+use PDO;
+use PDOException;
+
+/**
+ * Database Singleton Class
+ *
+ * Provides a single PDO connection instance for SQLite database operations
+ */
+class Database
+{
+    private static ?Database $instance = null;
+    private ?PDO $connection = null;
+    private string $databasePath;
+
+    /**
+     * Private constructor to prevent direct instantiation
+     *
+     * @param string $databasePath Path to SQLite database file
+     */
+    private function __construct(string $databasePath)
+    {
+        $this->databasePath = $databasePath;
+        $this->connect();
+    }
+
+    /**
+     * Get singleton instance of Database
+     *
+     * @param string|null $databasePath Path to SQLite database file (required on first call)
+     * @return Database
+     * @throws \RuntimeException If path not provided on first call
+     */
+    public static function getInstance(?string $databasePath = null): Database
+    {
+        if (self::$instance === null) {
+            if ($databasePath === null) {
+                throw new \RuntimeException('Database path must be provided on first getInstance call');
+            }
+            self::$instance = new self($databasePath);
+        }
+
+        return self::$instance;
+    }
+
+    /**
+     * Establish PDO connection to SQLite database
+     *
+     * @return void
+     * @throws PDOException
+     */
+    private function connect(): void
+    {
+        try {
+            $dsn = 'sqlite:' . $this->databasePath;
+
+            $this->connection = new PDO($dsn, null, null, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ]);
+
+            // Enable foreign key constraints
+            $this->connection->exec('PRAGMA foreign_keys = ON;');
+
+        } catch (PDOException $e) {
+            throw new PDOException('Database connection failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get PDO connection instance
+     *
+     * @return PDO
+     */
+    public function getConnection(): PDO
+    {
+        // Reconnect if connection was lost
+        if ($this->connection === null) {
+            $this->connect();
+        }
+
+        return $this->connection;
+    }
+
+    /**
+     * Execute a SQL file (for migrations)
+     *
+     * @param string $filePath Path to SQL file
+     * @return bool
+     * @throws PDOException
+     */
+    public function executeSqlFile(string $filePath): bool
+    {
+        if (!file_exists($filePath)) {
+            throw new \RuntimeException("SQL file not found: {$filePath}");
+        }
+
+        $sql = file_get_contents($filePath);
+
+        try {
+            $this->connection->exec($sql);
+            return true;
+        } catch (PDOException $e) {
+            throw new PDOException('Failed to execute SQL file: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Begin transaction
+     *
+     * @return bool
+     */
+    public function beginTransaction(): bool
+    {
+        return $this->connection->beginTransaction();
+    }
+
+    /**
+     * Commit transaction
+     *
+     * @return bool
+     */
+    public function commit(): bool
+    {
+        return $this->connection->commit();
+    }
+
+    /**
+     * Rollback transaction
+     *
+     * @return bool
+     */
+    public function rollback(): bool
+    {
+        return $this->connection->rollBack();
+    }
+
+    /**
+     * Get last insert ID
+     *
+     * @return string
+     */
+    public function lastInsertId(): string
+    {
+        return $this->connection->lastInsertId();
+    }
+
+    /**
+     * Prevent cloning of singleton instance
+     */
+    private function __clone() {}
+
+    /**
+     * Prevent unserialization of singleton instance
+     */
+    public function __wakeup()
+    {
+        throw new \RuntimeException('Cannot unserialize singleton');
+    }
+}
