@@ -1,0 +1,147 @@
+/**
+ * Simple-Trader Custom Styles
+ * Additional styling on top of AdminLTE
+ */
+
+/* Ticker table improvements */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.025);
+}
+
+/* Button group spacing */
+.btn-group-sm .btn {
+    margin-left: 2px;
+}
+
+.btn-group-sm .btn:first-child {
+    margin-left: 0;
+}
+
+/* Flash message animations */
+.alert {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Form validation feedback */
+.invalid-feedback {
+    display: block;
+}
+
+/* Code blocks for file paths */
+code {
+    background-color: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 90%;
+}
+
+/* Small box icon positioning */
+.small-box .icon {
+    font-size: 70px;
+}
+
+/* Improve readability of small text */
+small.text-muted {
+    font-size: 85%;
+}
+
+/* Badge improvements */
+.badge {
+    font-weight: 500;
+}
+
+/* Card tools alignment */
+.card-tools {
+    margin-left: auto;
+}
+
+/* Audit log list styling */
+.list-group-flush .list-group-item {
+    padding: 0.75rem 1rem;
+}
+
+/* Empty state styling */
+.text-center.p-5 i {
+    opacity: 0.5;
+}
+
+/* Required field indicator */
+span.text-danger {
+    font-weight: bold;
+}
+
+/* Form switch improvements */
+.custom-switch .custom-control-label {
+    font-weight: normal;
+    padding-top: 2px;
+}
+
+/* Loading state (for future use) */
+.btn.loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.btn.loading:after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spinner 0.6s linear infinite;
+}
+
+@keyframes spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .small-box .icon {
+        font-size: 50px;
+    }
+
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.4rem;
+        font-size: 0.75rem;
+    }
+
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+}
+
+/* Print styles */
+@media print {
+    .main-sidebar,
+    .main-header,
+    .main-footer,
+    .card-tools,
+    .btn,
+    .alert {
+        display: none !important;
+    }
+
+    .content-wrapper {
+        margin-left: 0 !important;
+    }
+}

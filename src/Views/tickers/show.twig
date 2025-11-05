@@ -1,0 +1,150 @@
+{% extends "layout.twig" %}
+
+{% set active_menu = 'tickers' %}
+
+{% block title %}Ticker {{ ticker.symbol }} Details - {{ app_name }}{% endblock %}
+
+{% block page_title %}Ticker Details{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tickers">Home</a></li>
+    <li class="breadcrumb-item"><a href="/tickers">Tickers</a></li>
+    <li class="breadcrumb-item active">{{ ticker.symbol }}</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <!-- Ticker Information Card -->
+        <div class="col-md-6">
+            <div class="card card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">Ticker Information</h3>
+                    <div class="card-tools">
+                        {% if ticker.enabled %}
+                            <span class="badge badge-success">Enabled</span>
+                        {% else %}
+                            <span class="badge badge-secondary">Disabled</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">ID</dt>
+                        <dd class="col-sm-8">{{ ticker.id }}</dd>
+
+                        <dt class="col-sm-4">Symbol</dt>
+                        <dd class="col-sm-8"><strong>{{ ticker.symbol }}</strong></dd>
+
+                        <dt class="col-sm-4">Exchange</dt>
+                        <dd class="col-sm-8">{{ ticker.exchange }}</dd>
+
+                        <dt class="col-sm-4">CSV Path</dt>
+                        <dd class="col-sm-8">
+                            <code>{{ ticker.csv_path }}</code>
+                            <br>
+                            {% if ticker.csv_path starts with '/var/www/' %}
+                                <small class="text-muted">
+                                    {% set file_exists = false %}
+                                    {% if file_exists %}
+                                        <i class="fas fa-check-circle text-success"></i> File exists
+                                    {% else %}
+                                        <i class="fas fa-exclamation-triangle text-warning"></i> File status unknown
+                                    {% endif %}
+                                </small>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-4">Status</dt>
+                        <dd class="col-sm-8">
+                            {% if ticker.enabled %}
+                                <span class="badge badge-success"><i class="fas fa-check-circle"></i> Enabled</span>
+                            {% else %}
+                                <span class="badge badge-secondary"><i class="fas fa-ban"></i> Disabled</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-4">Created</dt>
+                        <dd class="col-sm-8">{{ ticker.created_at }}</dd>
+
+                        <dt class="col-sm-4">Last Updated</dt>
+                        <dd class="col-sm-8">{{ ticker.updated_at }}</dd>
+                    </dl>
+                </div>
+                <div class="card-footer">
+                    <a href="/tickers/{{ ticker.id }}/edit" class="btn btn-warning">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <form method="POST" action="/tickers/{{ ticker.id }}/toggle" style="display: inline;">
+                        <button type="submit" class="btn btn-{% if ticker.enabled %}secondary{% else %}success{% endif %}"
+                                onclick="return confirm('Are you sure you want to {% if ticker.enabled %}disable{% else %}enable{% endif %} this ticker?')">
+                            <i class="fas fa-{% if ticker.enabled %}toggle-off{% else %}toggle-on{% endif %}"></i>
+                            {% if ticker.enabled %}Disable{% else %}Enable{% endif %}
+                        </button>
+                    </form>
+                    <form method="POST" action="/tickers/{{ ticker.id }}/delete" style="display: inline;" class="float-right">
+                        <button type="submit" class="btn btn-danger"
+                                onclick="return confirm('Are you sure you want to delete ticker {{ ticker.symbol }}? This action cannot be undone.')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit Log Card -->
+        <div class="col-md-6">
+            <div class="card card-info">
+                <div class="card-header">
+                    <h3 class="card-title">Change History</h3>
+                </div>
+                <div class="card-body p-0">
+                    {% if audit_log|length > 0 %}
+                        <ul class="list-group list-group-flush">
+                            {% for entry in audit_log %}
+                                <li class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            {% if entry.action == 'created' %}
+                                                <span class="badge badge-success"><i class="fas fa-plus"></i> Created</span>
+                                            {% elseif entry.action == 'updated' %}
+                                                <span class="badge badge-warning"><i class="fas fa-edit"></i> Updated</span>
+                                            {% elseif entry.action == 'deleted' %}
+                                                <span class="badge badge-danger"><i class="fas fa-trash"></i> Deleted</span>
+                                            {% elseif entry.action == 'enabled' %}
+                                                <span class="badge badge-success"><i class="fas fa-toggle-on"></i> Enabled</span>
+                                            {% elseif entry.action == 'disabled' %}
+                                                <span class="badge badge-secondary"><i class="fas fa-toggle-off"></i> Disabled</span>
+                                            {% else %}
+                                                <span class="badge badge-info">{{ entry.action }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <small class="text-muted">{{ entry.timestamp }}</small>
+                                    </div>
+                                    {% if entry.new_values %}
+                                        <small class="text-muted d-block mt-1">
+                                            <i class="fas fa-info-circle"></i> Changes: {{ entry.new_values }}
+                                        </small>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="text-center p-4">
+                            <i class="fas fa-history fa-2x text-muted mb-2"></i>
+                            <p class="text-muted">No change history available</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back Button -->
+    <div class="row">
+        <div class="col-12">
+            <a href="/tickers" class="btn btn-default">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+{% endblock %}
