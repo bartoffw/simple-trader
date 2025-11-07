@@ -286,13 +286,59 @@ class TickerController
                 ->withStatus(302);
         }
 
+        // Get quote repository
+        $database = $this->container->get('db');
+        $quoteRepository = new \SimpleTrader\Database\QuoteRepository($database);
+
+        // Get quote date range
+        $dateRange = $quoteRepository->getDateRange($id);
+
         // Get audit log for this ticker
         $auditLog = $this->repository->getAuditLog($id, 20);
 
+        // Get source options for display
+        $sources = \SimpleTrader\Helpers\SourceDiscovery::getSourceOptions();
+
         return $this->view->render($response, 'tickers/show.twig', [
             'ticker' => $ticker,
+            'date_range' => $dateRange,
+            'source_label' => $sources[$ticker['source']] ?? $ticker['source'],
             'audit_log' => $auditLog,
             'flash' => $this->flash->all()
         ]);
+    }
+
+    /**
+     * Fetch quotes for a ticker via AJAX
+     *
+     * POST /tickers/{id}/fetch-quotes
+     */
+    public function fetchQuotes(Request $request, Response $response, array $args): Response
+    {
+        $id = (int)$args['id'];
+
+        try {
+            // Get repositories
+            $database = $this->container->get('db');
+            $quoteRepository = new \SimpleTrader\Database\QuoteRepository($database);
+
+            // Create quote fetcher service
+            $quoteFetcher = new \SimpleTrader\Services\QuoteFetcher($quoteRepository, $this->repository);
+
+            // Fetch quotes
+            $result = $quoteFetcher->fetchQuotes($id);
+
+            $response->getBody()->write(json_encode($result));
+            return $response->withHeader('Content-Type', 'application/json');
+
+        } catch (\Exception $e) {
+            $error = [
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ];
+
+            $response->getBody()->write(json_encode($error));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
     }
 }
