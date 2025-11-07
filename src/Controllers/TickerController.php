@@ -52,7 +52,10 @@ class TickerController
      */
     public function create(Request $request, Response $response): Response
     {
+        $sources = \SimpleTrader\Helpers\SourceDiscovery::getSourceOptions();
+
         return $this->view->render($response, 'tickers/create.twig', [
+            'sources' => $sources,
             'flash' => $this->flash->all()
         ]);
     }
@@ -65,36 +68,29 @@ class TickerController
     public function store(Request $request, Response $response): Response
     {
         $data = $request->getParsedBody();
+        $sources = \SimpleTrader\Helpers\SourceDiscovery::getSourceOptions();
 
         // Validate input
         $errors = $this->repository->validateTickerData($data);
 
         if (!empty($errors)) {
             return $this->view->render($response->withStatus(400), 'tickers/create.twig', [
+                'sources' => $sources,
                 'errors' => $errors,
                 'old' => $data
             ]);
         }
 
-        // Check if CSV file exists (optional warning)
-        $csvWarning = null;
-        if (!file_exists($data['csv_path'])) {
-            $csvWarning = "Warning: CSV file does not exist yet at path: {$data['csv_path']}";
-        }
-
         try {
-            // Create ticker
+            // Create ticker (csv_path is auto-generated in repository)
             $tickerId = $this->repository->createTicker([
                 'symbol' => $data['symbol'],
                 'exchange' => $data['exchange'],
-                'csv_path' => $data['csv_path'],
+                'source' => $data['source'],
                 'enabled' => isset($data['enabled']) && $data['enabled'] === '1'
             ]);
 
-            $message = "Ticker '{$data['symbol']}' created successfully.";
-            if ($csvWarning) {
-                $message .= " " . $csvWarning;
-            }
+            $message = "Ticker '{$data['symbol']}' created successfully with {$sources[$data['source']]}.";
 
             $this->flash->set('success', $message);
 
@@ -105,12 +101,14 @@ class TickerController
         } catch (\RuntimeException $e) {
             // Handle duplicate or other runtime errors
             return $this->view->render($response->withStatus(400), 'tickers/create.twig', [
+                'sources' => $sources,
                 'errors' => ['general' => $e->getMessage()],
                 'old' => $data
             ]);
         } catch (\Exception $e) {
             // Handle unexpected errors
             return $this->view->render($response->withStatus(500), 'tickers/create.twig', [
+                'sources' => $sources,
                 'errors' => ['general' => 'An unexpected error occurred: ' . $e->getMessage()],
                 'old' => $data
             ]);
@@ -134,8 +132,11 @@ class TickerController
                 ->withStatus(302);
         }
 
+        $sources = \SimpleTrader\Helpers\SourceDiscovery::getSourceOptions();
+
         return $this->view->render($response, 'tickers/edit.twig', [
             'ticker' => $ticker,
+            'sources' => $sources,
             'flash' => $this->flash->all()
         ]);
     }
@@ -149,6 +150,7 @@ class TickerController
     {
         $id = (int)$args['id'];
         $data = $request->getParsedBody();
+        $sources = \SimpleTrader\Helpers\SourceDiscovery::getSourceOptions();
 
         // Get existing ticker
         $ticker = $this->repository->getTicker($id);
@@ -165,14 +167,9 @@ class TickerController
         if (!empty($errors)) {
             return $this->view->render($response->withStatus(400), 'tickers/edit.twig', [
                 'ticker' => array_merge($ticker, $data),
+                'sources' => $sources,
                 'errors' => $errors
             ]);
-        }
-
-        // Check if CSV file exists (optional warning)
-        $csvWarning = null;
-        if (isset($data['csv_path']) && !file_exists($data['csv_path'])) {
-            $csvWarning = "Warning: CSV file does not exist at path: {$data['csv_path']}";
         }
 
         try {
@@ -184,8 +181,8 @@ class TickerController
             if (isset($data['exchange']) && !empty($data['exchange'])) {
                 $updateData['exchange'] = $data['exchange'];
             }
-            if (isset($data['csv_path']) && !empty($data['csv_path'])) {
-                $updateData['csv_path'] = $data['csv_path'];
+            if (isset($data['source']) && !empty($data['source'])) {
+                $updateData['source'] = $data['source'];
             }
             if (isset($data['enabled'])) {
                 $updateData['enabled'] = $data['enabled'] === '1';
@@ -195,9 +192,6 @@ class TickerController
             $this->repository->updateTicker($id, $updateData);
 
             $message = "Ticker '{$ticker['symbol']}' updated successfully.";
-            if ($csvWarning) {
-                $message .= " " . $csvWarning;
-            }
 
             $this->flash->set('success', $message);
 
@@ -209,12 +203,14 @@ class TickerController
             // Handle duplicate or other runtime errors
             return $this->view->render($response->withStatus(400), 'tickers/edit.twig', [
                 'ticker' => array_merge($ticker, $data),
+                'sources' => $sources,
                 'errors' => ['general' => $e->getMessage()]
             ]);
         } catch (\Exception $e) {
             // Handle unexpected errors
             return $this->view->render($response->withStatus(500), 'tickers/edit.twig', [
                 'ticker' => array_merge($ticker, $data),
+                'sources' => $sources,
                 'errors' => ['general' => 'An unexpected error occurred: ' . $e->getMessage()]
             ]);
         }

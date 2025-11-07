@@ -69,21 +69,25 @@
                             {% endif %}
                         </div>
 
-                        <!-- CSV Path -->
+                        <!-- Data Source -->
                         <div class="form-group">
-                            <label for="csv_path">CSV File Path <span class="text-danger">*</span></label>
-                            <input type="text"
-                                   class="form-control {% if errors.csv_path is defined %}is-invalid{% endif %}"
-                                   id="csv_path"
-                                   name="csv_path"
-                                   placeholder="/var/www/AAPL.csv"
-                                   value="{{ ticker.csv_path }}"
-                                   required>
+                            <label for="source">Data Source <span class="text-danger">*</span></label>
+                            <select class="form-control {% if errors.source is defined %}is-invalid{% endif %}"
+                                    id="source"
+                                    name="source"
+                                    required>
+                                <option value="">-- Select Data Source --</option>
+                                {% for sourceKey, sourceLabel in sources %}
+                                    <option value="{{ sourceKey }}" {% if ticker.source == sourceKey %}selected{% endif %}>
+                                        {{ sourceLabel }}
+                                    </option>
+                                {% endfor %}
+                            </select>
                             <small class="form-text text-muted">
-                                Enter the full path to the CSV file containing price data.
+                                Select the data source provider for fetching price data.
                             </small>
-                            {% if errors.csv_path is defined %}
-                                <span class="error invalid-feedback">{{ errors.csv_path }}</span>
+                            {% if errors.source is defined %}
+                                <span class="error invalid-feedback">{{ errors.source }}</span>
                             {% endif %}
                         </div>
 

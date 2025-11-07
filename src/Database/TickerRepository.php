@@ -110,14 +110,14 @@ class TickerRepository
     /**
      * Create a new ticker
      *
-     * @param array $data ['symbol' => '...', 'exchange' => '...', 'csv_path' => '...', 'enabled' => true/false]
+     * @param array $data ['symbol' => '...', 'exchange' => '...', 'source' => '...', 'enabled' => true/false]
      * @return int|false Last insert ID or false on failure
      * @throws PDOException
      */
     public function createTicker(array $data): int|false
     {
         // Validate required fields
-        $requiredFields = ['symbol', 'exchange', 'csv_path'];
+        $requiredFields = ['symbol', 'exchange', 'source'];
         foreach ($requiredFields as $field) {
             if (!isset($data[$field]) || empty($data[$field])) {
                 throw new \InvalidArgumentException("Missing required field: {$field}");
@@ -132,12 +132,16 @@ class TickerRepository
             throw new \RuntimeException("Ticker with symbol '{$data['symbol']}' already exists");
         }
 
-        $sql = 'INSERT INTO tickers (symbol, exchange, csv_path, enabled, created_at, updated_at)
-                VALUES (:symbol, :exchange, :csv_path, :enabled, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)';
+        // Auto-generate CSV path based on symbol
+        $data['csv_path'] = $data['csv_path'] ?? '/var/www/' . $data['symbol'] . '.csv';
+
+        $sql = 'INSERT INTO tickers (symbol, exchange, source, csv_path, enabled, created_at, updated_at)
+                VALUES (:symbol, :exchange, :source, :csv_path, :enabled, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)';
 
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':symbol', $data['symbol'], PDO::PARAM_STR);
         $stmt->bindValue(':exchange', $data['exchange'], PDO::PARAM_STR);
+        $stmt->bindValue(':source', $data['source'], PDO::PARAM_STR);
         $stmt->bindValue(':csv_path', $data['csv_path'], PDO::PARAM_STR);
         $stmt->bindValue(':enabled', $data['enabled'] ?? true, PDO::PARAM_INT);
 
@@ -169,7 +173,7 @@ class TickerRepository
         }
 
         // Build dynamic update query
-        $allowedFields = ['symbol', 'exchange', 'csv_path', 'enabled'];
+        $allowedFields = ['symbol', 'exchange', 'source', 'csv_path', 'enabled'];
         $updateFields = [];
         $params = [':id' => $id];
 
@@ -378,10 +382,18 @@ class TickerRepository
             $errors['exchange'] = 'Exchange must be 10 characters or less';
         }
 
-        // Validate CSV path
-        if (!$isUpdate && (!isset($data['csv_path']) || empty($data['csv_path']))) {
-            $errors['csv_path'] = 'CSV path is required';
-        } elseif (isset($data['csv_path'])) {
+        // Validate source
+        if (!$isUpdate && (!isset($data['source']) || empty($data['source']))) {
+            $errors['source'] = 'Data source is required';
+        } elseif (isset($data['source'])) {
+            // Validate that source is a valid source class
+            if (!\SimpleTrader\Helpers\SourceDiscovery::isValidSource($data['source'])) {
+                $errors['source'] = 'Invalid data source selected';
+            }
+        }
+
+        // Validate CSV path (optional - will be auto-generated if not provided)
+        if (isset($data['csv_path'])) {
             // Check for path traversal attempts
             if (strpos($data['csv_path'], '..') !== false) {
                 $errors['csv_path'] = 'Invalid path: path traversal not allowed';
