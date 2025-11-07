@@ -67,6 +67,7 @@ class QuoteFetcher
             $source = SourceDiscovery::createSourceInstance($ticker['source']);
 
             // Fetch quotes from source
+            // Note: Following the same pattern as Investor::updateSources()
             $quotes = $source->getQuotes(
                 $ticker['symbol'],
                 $ticker['exchange'],
@@ -77,23 +78,42 @@ class QuoteFetcher
             if (empty($quotes)) {
                 return [
                     'success' => false,
-                    'message' => 'No quotes returned from source',
+                    'message' => "No quotes returned from source (requested {$barCount} bars for {$ticker['symbol']} on {$ticker['exchange']})",
                     'count' => 0,
                     'date_range' => $dateRange
                 ];
             }
 
-            // Convert Ohlc objects to arrays
+            // Convert Ohlc objects to arrays, filtering out duplicates
             $quotesData = [];
+            $latestDate = $dateRange !== null ? $dateRange['last_date'] : null;
+
             foreach ($quotes as $quote) {
-                $quoteArray = $quote->toArray(8); // Use 8 decimal places for precision
+                /** @var \SimpleTrader\Helpers\Ohlc $quote */
+                $quoteDate = $quote->getDateTime()->toDateString();
+
+                // Skip quotes that are older than or equal to our latest date
+                if ($latestDate !== null && $quoteDate <= $latestDate) {
+                    continue;
+                }
+
                 $quotesData[] = [
-                    'date' => $quoteArray['date'],
-                    'open' => (string)$quoteArray['open'],
-                    'high' => (string)$quoteArray['high'],
-                    'low' => (string)$quoteArray['low'],
-                    'close' => (string)$quoteArray['close'],
-                    'volume' => (int)$quoteArray['volume']
+                    'date' => $quoteDate,
+                    'open' => (string)$quote->getOpen(),
+                    'high' => (string)$quote->getHigh(),
+                    'low' => (string)$quote->getLow(),
+                    'close' => (string)$quote->getClose(),
+                    'volume' => $quote->getVolume() ?? 0
+                ];
+            }
+
+            // If after filtering we have no new quotes
+            if (empty($quotesData)) {
+                return [
+                    'success' => true,
+                    'message' => "Received {$barCount} bars from source, but all were duplicates (already in database)",
+                    'count' => 0,
+                    'date_range' => $dateRange
                 ];
             }
 
@@ -113,7 +133,7 @@ class QuoteFetcher
         } catch (\Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Error fetching quotes: ' . $e->getMessage(),
+                'message' => 'Error fetching quotes: ' . $e->getMessage() . ' (Line: ' . $e->getLine() . ' in ' . basename($e->getFile()) . ')',
                 'count' => 0,
                 'date_range' => $dateRange
             ];
