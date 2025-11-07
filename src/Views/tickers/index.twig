@@ -75,9 +75,9 @@
                                     <th>ID</th>
                                     <th>Symbol</th>
                                     <th>Exchange</th>
-                                    <th>CSV Path</th>
+                                    <th>Data Source</th>
+                                    <th>Latest Quote</th>
                                     <th>Status</th>
-                                    <th>Created</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -88,7 +88,14 @@
                                         <td><strong>{{ ticker.symbol }}</strong></td>
                                         <td>{{ ticker.exchange }}</td>
                                         <td>
-                                            <small class="text-muted">{{ ticker.csv_path }}</small>
+                                            <small class="text-muted">{{ ticker.source|replace({'Source': ''}) }}</small>
+                                        </td>
+                                        <td>
+                                            {% if ticker.latest_quote_date %}
+                                                <span class="badge badge-info">{{ ticker.latest_quote_date }}</span>
+                                            {% else %}
+                                                <span class="badge badge-secondary">No data</span>
+                                            {% endif %}
                                         </td>
                                         <td>
                                             {% if ticker.enabled %}
@@ -96,9 +103,6 @@
                                             {% else %}
                                                 <span class="badge badge-secondary">Disabled</span>
                                             {% endif %}
-                                        </td>
-                                        <td>
-                                            <small>{{ ticker.created_at|date('Y-m-d H:i') }}</small>
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm">

@@ -32,13 +32,15 @@ class TickerRepository
      */
     public function getAllTickers(?bool $enabledOnly = null): array
     {
-        $sql = 'SELECT * FROM tickers';
+        $sql = 'SELECT t.*,
+                       (SELECT MAX(q.date) FROM quotes q WHERE q.ticker_id = t.id) as latest_quote_date
+                FROM tickers t';
 
         if ($enabledOnly !== null) {
-            $sql .= ' WHERE enabled = :enabled';
+            $sql .= ' WHERE t.enabled = :enabled';
         }
 
-        $sql .= ' ORDER BY symbol ASC';
+        $sql .= ' ORDER BY t.symbol ASC';
 
         $stmt = $this->db->prepare($sql);
 
