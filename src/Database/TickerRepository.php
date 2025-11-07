@@ -226,18 +226,15 @@ class TickerRepository
             throw new \RuntimeException("Ticker with ID {$id} not found");
         }
 
+        // Note: We don't log the deletion in audit_log because CASCADE DELETE
+        // will remove all audit entries for this ticker anyway.
+        // The entire ticker and its history is being permanently removed.
+
         $sql = 'DELETE FROM tickers WHERE id = :id';
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
 
-        $result = $stmt->execute();
-
-        if ($result) {
-            // Log audit entry
-            $this->logAudit($id, 'deleted', json_encode($ticker), null);
-        }
-
-        return $result;
+        return $stmt->execute();
     }
 
     /**
