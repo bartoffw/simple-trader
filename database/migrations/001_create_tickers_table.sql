@@ -2,6 +2,9 @@
 -- Created: 2025-11-05
 -- Description: Initial schema for ticker management
 
+-- Enable foreign key constraints for this connection
+PRAGMA foreign_keys = ON;
+
 -- Tickers table
 CREATE TABLE IF NOT EXISTS tickers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

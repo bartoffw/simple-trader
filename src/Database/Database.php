@@ -83,6 +83,9 @@ class Database
             $this->connect();
         }
 
+        // Ensure foreign keys are enabled (SQLite requires this per-connection)
+        $this->connection->exec('PRAGMA foreign_keys = ON;');
+
         return $this->connection;
     }
 
