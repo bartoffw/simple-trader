@@ -58,10 +58,14 @@
                                     name="exchange"
                                     required>
                                 <option value="">-- Select Exchange --</option>
-                                {% for exchangeCode, country in exchanges %}
-                                    <option value="{{ exchangeCode }}" {% if ticker.exchange == exchangeCode %}selected{% endif %}>
-                                        {{ exchangeCode }} - {{ country }}
-                                    </option>
+                                {% for region, exchangesInRegion in exchanges %}
+                                    <optgroup label="{{ region }}">
+                                        {% for exchangeCode, country in exchangesInRegion %}
+                                            <option value="{{ exchangeCode }}" {% if ticker.exchange == exchangeCode %}selected{% endif %}>
+                                                {{ exchangeCode }} - {{ country }}
+                                            </option>
+                                        {% endfor %}
+                                    </optgroup>
                                 {% endfor %}
                             </select>
                             <small class="form-text text-muted">
