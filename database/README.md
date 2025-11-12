@@ -1,6 +1,6 @@
 # Simple-Trader Database
 
-This application uses two separate SQLite databases to keep data organized and performant.
+This application uses three separate SQLite databases to keep data organized and performant.
 
 ## Database Structure
 
@@ -17,19 +17,29 @@ Stores backtest execution runs, configurations, results, and logs.
 **Tables:**
 - `runs` - Backtest run configurations, status, results, and reports
 
-## Why Two Databases?
+### 3. Monitors Database (`monitors.db`)
+Stores strategy monitoring configurations, daily snapshots, trades, and performance metrics.
+
+**Tables:**
+- `monitors` - Monitor configurations (strategy, tickers, parameters, status, progress tracking)
+- `monitor_daily_snapshots` - Daily state snapshots (equity, positions, strategy state)
+- `monitor_trades` - Trade history for each monitor
+- `monitor_metrics` - Performance metrics (separate for backtest and forward testing)
+
+## Why Three Databases?
 
 **Performance & Organization:**
 - Ticker/quote data remains compact and fast to query
-- Large run logs and HTML reports don't bloat the tickers database
-- Can backup/restore runs independently from ticker data
-- Better separation of concerns
+- Backtest runs are isolated from monitoring data
+- Monitor snapshots and trades don't bloat other databases
+- Can backup/restore each database type independently
+- Better separation of concerns (data sources vs backtests vs live monitoring)
 
 ## Running Migrations
 
 ### Initial Setup (New Installation)
 
-Run the main migration script to create both databases:
+Run the main migration script to create all databases:
 
 ```bash
 php database/migrate.php
@@ -38,7 +48,8 @@ php database/migrate.php
 This will:
 1. Create `runs.db` and initialize the runs table
 2. Create `tickers.db` and initialize tickers/quotes tables
-3. Display success message with database paths
+3. Create `monitors.db` and initialize all monitoring tables
+4. Display success message with database paths
 
 **Expected Output:**
 ```
@@ -55,7 +66,6 @@ Migrations: /path/to/database/runs-migrations
   → Running 001_create_runs_table.sql... ✓
 
 ✓ Runs Database migrations completed!
-Database: /path/to/database/runs.db
 
 === Tickers Database ===
 Database: /path/to/database/tickers.db
@@ -71,13 +81,29 @@ Migrations: /path/to/database/migrations
   → Running 005_drop_runs_table.sql... ✓
 
 ✓ Tickers Database migrations completed!
-Database: /path/to/database/tickers.db
+
+=== Monitors Database ===
+Database: /path/to/database/monitors.db
+Migrations: /path/to/database/monitors-migrations
+
+[1/2] Connecting to database...
+✓ Connected successfully
+
+[2/2] Running migrations...
+  → Running 001_create_monitors_table.sql... ✓
+  → Running 002_create_monitor_daily_snapshots_table.sql... ✓
+  → Running 003_create_monitor_trades_table.sql... ✓
+  → Running 004_create_monitor_metrics_table.sql... ✓
+  → Running 005_add_progress_tracking.sql... ✓
+
+✓ Monitors Database migrations completed!
 
 === ✓ All Migrations Completed Successfully! ===
 
 Databases created:
   - /path/to/database/runs.db
   - /path/to/database/tickers.db
+  - /path/to/database/monitors.db
 ```
 
 ### Upgrading (Existing Installation)
@@ -114,6 +140,13 @@ php database/migrate-runs.php
 - `003_create_quotes_table.sql` - Creates quotes table
 - `005_drop_runs_table.sql` - Removes runs table from tickers.db (separation)
 
+### Monitors Migrations (`monitors-migrations/`)
+- `001_create_monitors_table.sql` - Creates monitors table for strategy monitoring configurations
+- `002_create_monitor_daily_snapshots_table.sql` - Creates table for daily state snapshots
+- `003_create_monitor_trades_table.sql` - Creates table for monitor trade history
+- `004_create_monitor_metrics_table.sql` - Creates table for performance metrics (backtest/forward)
+- `005_add_progress_tracking.sql` - Adds progress tracking fields for initial backtest execution
+
 ## Troubleshooting
 
 ### Error: "no such table: runs"
@@ -132,13 +165,21 @@ This means the tickers database hasn't been created. Run:
 php database/migrate.php
 ```
 
+### Error: "no such table: monitors" or "no such table: monitor_daily_snapshots"
+
+This means the monitors database hasn't been created. Run:
+
+```bash
+php database/migrate.php
+```
+
 ### Starting Fresh
 
 To reset all databases and start over:
 
 ```bash
 # Backup existing data first!
-rm database/tickers.db database/runs.db
+rm database/tickers.db database/runs.db database/monitors.db
 
 # Run migrations
 php database/migrate.php
@@ -157,15 +198,19 @@ sqlite3 database/tickers.db ".tables"
 sqlite3 database/runs.db ".tables"
 # Output: runs
 
+# Check monitors database
+sqlite3 database/monitors.db ".tables"
+# Output: monitor_daily_snapshots  monitor_metrics  monitor_trades  monitors
+
 # View table schema
-sqlite3 database/runs.db ".schema runs"
+sqlite3 database/monitors.db ".schema monitors"
 ```
 
 ## Database Access in Code
 
 ### Web Application (`public/index.php`)
 
-Both databases are registered in the DI container:
+All three databases are registered in the DI container:
 
 ```php
 // Tickers database
@@ -178,6 +223,11 @@ $container->set('runsDb', function() use ($config) {
     return Database::getInstance($config['database']['runs']);
 });
 
+// Monitors database
+$container->set('monitorsDb', function() use ($config) {
+    return Database::getInstance($config['database']['monitors']);
+});
+
 // Repositories
 $container->set('tickerRepository', function($container) {
     return new TickerRepository($container->get('db'));
@@ -186,21 +236,27 @@ $container->set('tickerRepository', function($container) {
 $container->set('runRepository', function($container) {
     return new RunRepository($container->get('runsDb'));
 });
+
+$container->set('monitorRepository', function($container) {
+    return new MonitorRepository($container->get('monitorsDb'));
+});
 ```
 
 ### CLI Scripts (`commands/`)
 
-CLI scripts load both databases:
+CLI scripts load all three databases:
 
 ```php
 $config = require __DIR__ . '/../config/config.php';
 
 $tickersDb = Database::getInstance($config['database']['tickers']);
 $runsDb = Database::getInstance($config['database']['runs']);
+$monitorsDb = Database::getInstance($config['database']['monitors']);
 
 $runRepository = new RunRepository($runsDb);
 $tickerRepository = new TickerRepository($tickersDb);
 $quoteRepository = new QuoteRepository($tickersDb);
+$monitorRepository = new MonitorRepository($monitorsDb);
 ```
 
 ## Configuration (`config/config.php`)
@@ -211,6 +267,7 @@ Database paths are configured in the main config file:
 'database' => [
     'tickers' => __DIR__ . '/../database/tickers.db',
     'runs' => __DIR__ . '/../database/runs.db',
+    'monitors' => __DIR__ . '/../database/monitors.db',
 ],
 ```
 
@@ -219,13 +276,15 @@ Database paths are configured in the main config file:
 ### Backup
 
 ```bash
-# Backup both databases
+# Backup all databases
 cp database/tickers.db database/backups/tickers-$(date +%Y%m%d).db
 cp database/runs.db database/backups/runs-$(date +%Y%m%d).db
+cp database/monitors.db database/backups/monitors-$(date +%Y%m%d).db
 
 # Or use SQLite backup command
 sqlite3 database/tickers.db ".backup database/backups/tickers-$(date +%Y%m%d).db"
 sqlite3 database/runs.db ".backup database/backups/runs-$(date +%Y%m%d).db"
+sqlite3 database/monitors.db ".backup database/backups/monitors-$(date +%Y%m%d).db"
 ```
 
 ### Restore
@@ -234,6 +293,7 @@ sqlite3 database/runs.db ".backup database/backups/runs-$(date +%Y%m%d).db"
 # Restore from backup
 cp database/backups/tickers-20240115.db database/tickers.db
 cp database/backups/runs-20240115.db database/runs.db
+cp database/backups/monitors-20240115.db database/monitors.db
 ```
 
 ## Best Practices
@@ -262,6 +322,15 @@ Create new file in `database/runs-migrations/`:
 ```bash
 # File: 002_add_new_column.sql
 ALTER TABLE runs ADD COLUMN new_column TEXT;
+```
+
+### For Monitors Database
+
+Create new file in `database/monitors-migrations/`:
+
+```bash
+# File: 006_add_new_column.sql
+ALTER TABLE monitors ADD COLUMN new_column TEXT;
 ```
 
 Then run `php database/migrate.php` to apply.
