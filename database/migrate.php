@@ -34,7 +34,14 @@ DESCRIPTION:
      - Initializes runs table for backtest execution history
      - Creates indexes for performance
 
-  2. Creates tickers.db database
+  2. Creates monitors.db database
+     - Initializes monitors table for strategy monitoring configuration
+     - Initializes monitor_daily_snapshots for daily state tracking
+     - Initializes monitor_trades for trade history
+     - Initializes monitor_metrics for performance metrics
+     - Creates indexes for fast querying
+
+  3. Creates tickers.db database
      - Initializes tickers table for ticker metadata
      - Initializes quotes table for OHLCV data
      - Creates indexes for fast querying
@@ -55,11 +62,13 @@ WHAT IT DOES:
 
 DATABASE FILES:
   - database/runs.db      (backtest run history)
+  - database/monitors.db  (strategy monitoring data)
   - database/tickers.db   (ticker and quote data)
 
 MIGRATION FILES:
-  - database/runs-migrations/*.sql    (runs database migrations)
-  - database/migrations/*.sql         (tickers database migrations)
+  - database/runs-migrations/*.sql      (runs database migrations)
+  - database/monitors-migrations/*.sql  (monitors database migrations)
+  - database/migrations/*.sql           (tickers database migrations)
 
 EXAMPLES:
 
@@ -97,6 +106,11 @@ $databases = [
         'path' => __DIR__ . '/runs.db',
         'migrations' => __DIR__ . '/runs-migrations',
         'name' => 'Runs Database'
+    ],
+    'monitors' => [
+        'path' => __DIR__ . '/monitors.db',
+        'migrations' => __DIR__ . '/monitors-migrations',
+        'name' => 'Monitors Database'
     ],
     'tickers' => [
         'path' => __DIR__ . '/tickers.db',

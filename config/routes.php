@@ -108,6 +108,38 @@ $app->group('/runs', function (RouteCollectorProxy $group) {
         ->setName('runs.delete');
 });
 
+// Monitor Management Routes (Strategy Monitoring)
+$app->group('/monitors', function (RouteCollectorProxy $group) {
+
+    // List all monitors (index page)
+    $group->get('', SimpleTrader\Controllers\MonitorController::class . ':index')
+        ->setName('monitors.index');
+
+    // Show create monitor form
+    $group->get('/create', SimpleTrader\Controllers\MonitorController::class . ':create')
+        ->setName('monitors.create');
+
+    // Store new monitor (POST)
+    $group->post('', SimpleTrader\Controllers\MonitorController::class . ':store')
+        ->setName('monitors.store');
+
+    // View monitor details
+    $group->get('/{id:[0-9]+}', SimpleTrader\Controllers\MonitorController::class . ':show')
+        ->setName('monitors.show');
+
+    // Stop monitor (POST)
+    $group->post('/{id:[0-9]+}/stop', SimpleTrader\Controllers\MonitorController::class . ':stop')
+        ->setName('monitors.stop');
+
+    // Activate monitor (POST)
+    $group->post('/{id:[0-9]+}/activate', SimpleTrader\Controllers\MonitorController::class . ':activate')
+        ->setName('monitors.activate');
+
+    // Delete monitor (POST)
+    $group->post('/{id:[0-9]+}/delete', SimpleTrader\Controllers\MonitorController::class . ':destroy')
+        ->setName('monitors.delete');
+});
+
 // API Routes (for AJAX requests - future enhancement)
 $app->group('/api', function (RouteCollectorProxy $group) use ($container) {
 

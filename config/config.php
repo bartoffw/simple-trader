@@ -18,6 +18,7 @@ return [
     'database' => [
         'tickers' => __DIR__ . '/../database/tickers.db',
         'runs' => __DIR__ . '/../database/runs.db',
+        'monitors' => __DIR__ . '/../database/monitors.db',
     ],
 
     // View Settings
