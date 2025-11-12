@@ -29,7 +29,7 @@ class BackgroundRunner
         $command = $this->buildCommand($runId);
 
         // Execute command in background
-        if (strto(PHP_OS, 'WIN') === 0) {
+        if (stripos(PHP_OS, 'WIN') === 0) {
             // Windows
             pclose(popen("start /B " . $command, "r"));
         } else {
@@ -49,7 +49,7 @@ class BackgroundRunner
     private function buildCommand(int $runId): string
     {
         $scriptPath = $this->projectRoot . '/commands/run-backtest.php';
-        return escapeshellcmd($this->phpBinary) . ' ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg($runId);
+        return escapeshellcmd($this->phpBinary) . ' ' . escapeshellarg($scriptPath) . ' --run-id=' . escapeshellarg($runId);
     }
 
     /**

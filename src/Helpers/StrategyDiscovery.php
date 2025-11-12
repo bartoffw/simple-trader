@@ -75,13 +75,26 @@ class StrategyDiscovery
         $className = 'SimpleTrader\\' . $strategyClass;
         $reflection = new ReflectionClass($className);
 
-        // Try to get strategy name from property
+        // Try to get strategy name and description from properties
         $strategyName = null;
+        $strategyDescription = null;
         try {
             $instance = $reflection->newInstanceWithoutConstructor();
+
+            // Get strategy name
             $nameProperty = $reflection->getProperty('strategyName');
             $nameProperty->setAccessible(true);
             $strategyName = $nameProperty->getValue($instance);
+
+            // Get strategy description
+            try {
+                $descProperty = $reflection->getProperty('strategyDescription');
+                $descProperty->setAccessible(true);
+                $strategyDescription = $descProperty->getValue($instance);
+            } catch (\Exception $e) {
+                // Description property doesn't exist, use null
+                $strategyDescription = null;
+            }
         } catch (\Exception $e) {
             // Fall back to class name
             $strategyName = $strategyClass;
@@ -94,6 +107,7 @@ class StrategyDiscovery
             'class_name' => $strategyClass,
             'full_class_name' => $className,
             'strategy_name' => $strategyName,
+            'strategy_description' => $strategyDescription,
             'overridden_methods' => $overriddenMethods,
             'file_path' => $reflection->getFileName(),
             'doc_comment' => $reflection->getDocComment() ?: null

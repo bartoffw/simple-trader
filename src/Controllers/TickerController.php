@@ -19,6 +19,7 @@ class TickerController
     private TickerRepository $repository;
     private Twig $view;
     private $flash;
+    private array $config;
 
     public function __construct(ContainerInterface $container)
     {
@@ -26,6 +27,7 @@ class TickerController
         $this->repository = $container->get('tickerRepository');
         $this->view = $container->get('view');
         $this->flash = $container->get('flash');
+        $this->config = require __DIR__ . '/../../config/config.php';
     }
 
     /**
@@ -37,6 +39,21 @@ class TickerController
     {
         $tickers = $this->repository->getAllTickers();
         $stats = $this->repository->getStatistics();
+
+        // Get quote repository to fetch latest prices
+        $quoteRepository = $this->container->get('quoteRepository');
+
+        // Enhance tickers with latest quote data
+        foreach ($tickers as &$ticker) {
+            $latestQuote = $quoteRepository->getLatestQuote($ticker['id']);
+            if ($latestQuote) {
+                $ticker['last_close'] = $latestQuote['close'];
+                $ticker['last_date'] = $latestQuote['date'];
+            } else {
+                $ticker['last_close'] = null;
+                $ticker['last_date'] = null;
+            }
+        }
 
         return $this->view->render($response, 'tickers/index.twig', [
             'tickers' => $tickers,
@@ -56,6 +73,7 @@ class TickerController
 
         return $this->view->render($response, 'tickers/create.twig', [
             'sources' => $sources,
+            'exchanges' => $this->config['exchanges'],
             'flash' => $this->flash->all()
         ]);
     }
@@ -137,6 +155,7 @@ class TickerController
         return $this->view->render($response, 'tickers/edit.twig', [
             'ticker' => $ticker,
             'sources' => $sources,
+            'exchanges' => $this->config['exchanges'],
             'flash' => $this->flash->all()
         ]);
     }
@@ -339,6 +358,64 @@ class TickerController
 
             $response->getBody()->write(json_encode($error));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
+
+    /**
+     * Download all quotes for a ticker as CSV
+     *
+     * GET /tickers/{id}/download-csv
+     */
+    public function downloadCsv(Request $request, Response $response, array $args): Response
+    {
+        $id = (int)$args['id'];
+
+        try {
+            // Get ticker
+            $ticker = $this->repository->getTicker($id);
+            if ($ticker === null) {
+                throw new \RuntimeException('Ticker not found.');
+            }
+
+            // Get quote repository
+            $database = $this->container->get('db');
+            $quoteRepository = new \SimpleTrader\Database\QuoteRepository($database);
+
+            // Get all quotes for this ticker
+            $quotes = $quoteRepository->getQuotesByTicker($id);
+
+            if (empty($quotes)) {
+                throw new \RuntimeException('No quotation data available for this ticker.');
+            }
+
+            // Generate CSV content
+            $csv = "date,open,high,low,close,volume\n";
+            foreach ($quotes as $quote) {
+                $csv .= sprintf(
+                    "%s,%.4f,%.4f,%.4f,%.4f,%d\n",
+                    $quote['date'],
+                    $quote['open'],
+                    $quote['high'],
+                    $quote['low'],
+                    $quote['close'],
+                    $quote['volume']
+                );
+            }
+
+            // Set headers for CSV download
+            $filename = sprintf('%s_%s_quotes.csv', $ticker['symbol'], date('Y-m-d'));
+
+            $response->getBody()->write($csv);
+            return $response
+                ->withHeader('Content-Type', 'text/csv')
+                ->withHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+                ->withHeader('Cache-Control', 'max-age=0');
+
+        } catch (\Exception $e) {
+            $this->flash->set('error', 'Failed to download CSV: ' . $e->getMessage());
+            return $response
+                ->withHeader('Location', '/tickers/' . $id)
+                ->withStatus(302);
         }
     }
 }

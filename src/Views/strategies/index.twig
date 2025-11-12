@@ -26,10 +26,11 @@
                         <table class="table table-striped table-hover">
                             <thead>
                                 <tr>
-                                    <th style="width: 40%">Strategy Name</th>
-                                    <th style="width: 40%">Class Name</th>
-                                    <th style="width: 10%" class="text-center">Overridden Methods</th>
-                                    <th style="width: 10%" class="text-right">Actions</th>
+                                    <th style="width: 20%">Strategy Name</th>
+                                    <th style="width: 45%">Description</th>
+                                    <th style="width: 20%">Class Name</th>
+                                    <th style="width: 8%" class="text-center">Methods</th>
+                                    <th style="width: 7%" class="text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -37,6 +38,15 @@
                                     <tr>
                                         <td>
                                             <strong>{{ strategy.strategy_name }}</strong>
+                                        </td>
+                                        <td>
+                                            {% set description = strategy.strategy_description|default('No description available.') %}
+                                            {% set short_desc = description|split('.')|slice(0, 2)|join('.') %}
+                                            {% if short_desc|length < description|length %}
+                                                <span class="text-muted">{{ short_desc }}...</span>
+                                            {% else %}
+                                                <span class="text-muted">{{ description }}</span>
+                                            {% endif %}
                                         </td>
                                         <td>
                                             <code class="text-muted">{{ strategy.class_name }}</code>

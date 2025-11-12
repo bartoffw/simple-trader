@@ -75,21 +75,33 @@
                         </a>
                     </li>
 
-                    <!-- Runner Management -->
+                    <!-- Strategy Backtesting -->
                     <li class="nav-item">
-                        <a href="/runs" class="nav-link {% if active_menu == 'runs' %}active{% endif %}">
-                            <i class="nav-icon fas fa-rocket"></i>
+                        <a href="/backtests" class="nav-link {% if active_menu == 'backtests' %}active{% endif %}">
+                            <i class="nav-icon fas fa-flask"></i>
                             <p>
-                                Runner Manager
+                                Strategy Backtesting
+                            </p>
+                        </a>
+                    </li>
+
+                    <!-- Strategy Monitoring -->
+                    <li class="nav-item">
+                        <a href="/monitors" class="nav-link {% if active_menu == 'monitors' %}active{% endif %}">
+                            <i class="nav-icon fas fa-chart-line"></i>
+                            <p>
+                                Strategy Monitoring
                             </p>
                         </a>
                     </li>
 
                     <li class="nav-header">DOCUMENTATION</li>
                     <li class="nav-item">
-                        <a href="/health" target="_blank" class="nav-link">
-                            <i class="nav-icon fas fa-heartbeat"></i>
-                            <p>API Health</p>
+                        <a href="/docs/overview" class="nav-link {% if active_menu == 'docs' %}active{% endif %}">
+                            <i class="nav-icon fas fa-book"></i>
+                            <p>
+                                Documentation
+                            </p>
                         </a>
                     </li>
                 </ul>

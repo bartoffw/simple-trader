@@ -36,14 +36,39 @@ $container->set('config', function() use ($config) {
     return $config;
 });
 
-// Register Database in Container
+// Register Tickers Database in Container
 $container->set('db', function() use ($config) {
-    return \SimpleTrader\Database\Database::getInstance($config['database']['path']);
+    return \SimpleTrader\Database\Database::getInstance($config['database']['tickers']);
+});
+
+// Register Backtests Database in Container
+$container->set('backtestsDb', function() use ($config) {
+    return \SimpleTrader\Database\Database::getInstance($config['database']['backtests']);
+});
+
+// Register Monitors Database in Container
+$container->set('monitorsDb', function() use ($config) {
+    return \SimpleTrader\Database\Database::getInstance($config['database']['monitors']);
 });
 
 // Register TickerRepository in Container
 $container->set('tickerRepository', function($container) {
     return new \SimpleTrader\Database\TickerRepository($container->get('db'));
+});
+
+// Register QuoteRepository in Container
+$container->set('quoteRepository', function($container) {
+    return new \SimpleTrader\Database\QuoteRepository($container->get('db'));
+});
+
+// Register BacktestRepository in Container
+$container->set('backtestRepository', function($container) {
+    return new \SimpleTrader\Database\BacktestRepository($container->get('backtestsDb'));
+});
+
+// Register MonitorRepository in Container
+$container->set('monitorRepository', function($container) {
+    return new \SimpleTrader\Database\MonitorRepository($container->get('monitorsDb'));
 });
 
 // Register Twig View in Container
@@ -95,6 +120,14 @@ $container->set('flash', function() {
             return $messages;
         }
     };
+});
+
+// Register DocumentationController with dependencies
+$container->set(\SimpleTrader\Controllers\DocumentationController::class, function($container) use ($config) {
+    return new \SimpleTrader\Controllers\DocumentationController(
+        $container->get('view'),
+        __DIR__ . '/..'  // Project root directory
+    );
 });
 
 // Load Routes

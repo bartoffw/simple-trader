@@ -9,6 +9,7 @@
 use SimpleTrader\Controllers\TickerController;
 use SimpleTrader\Controllers\StrategyController;
 use SimpleTrader\Controllers\RunnerController;
+use SimpleTrader\Controllers\DocumentationController;
 use Slim\Routing\RouteCollectorProxy;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -55,6 +56,10 @@ $app->group('/tickers', function (RouteCollectorProxy $group) {
     $group->post('/{id:[0-9]+}/fetch-quotes', TickerController::class . ':fetchQuotes')
         ->setName('tickers.fetch');
 
+    // Download ticker quotes as CSV
+    $group->get('/{id:[0-9]+}/download-csv', TickerController::class . ':downloadCsv')
+        ->setName('tickers.downloadCsv');
+
     // View ticker details (optional - for future use)
     $group->get('/{id:[0-9]+}', TickerController::class . ':show')
         ->setName('tickers.show');
@@ -72,36 +77,84 @@ $app->group('/strategies', function (RouteCollectorProxy $group) {
         ->setName('strategies.show');
 });
 
-// Runner Management Routes (Backtest Execution)
-$app->group('/runs', function (RouteCollectorProxy $group) {
+// Backtest Management Routes (Backtest Execution)
+$app->group('/backtests', function (RouteCollectorProxy $group) {
 
-    // List all runs (index page)
+    // List all backtests (index page)
     $group->get('', RunnerController::class . ':index')
-        ->setName('runs.index');
+        ->setName('backtests.index');
 
-    // Show create run form
+    // Show create backtest form
     $group->get('/create', RunnerController::class . ':create')
-        ->setName('runs.create');
+        ->setName('backtests.create');
 
-    // Store new run and start execution (POST)
+    // Store new backtest and start execution (POST)
     $group->post('', RunnerController::class . ':store')
-        ->setName('runs.store');
+        ->setName('backtests.store');
 
-    // View run details and results
+    // View backtest details and results
     $group->get('/{id:[0-9]+}', RunnerController::class . ':show')
-        ->setName('runs.show');
+        ->setName('backtests.show');
 
     // AJAX endpoint for real-time log polling
     $group->get('/{id:[0-9]+}/logs', RunnerController::class . ':logs')
-        ->setName('runs.logs');
+        ->setName('backtests.logs');
 
     // Download standalone HTML report
     $group->get('/{id:[0-9]+}/report', RunnerController::class . ':downloadReport')
-        ->setName('runs.report');
+        ->setName('backtests.report');
 
-    // Delete run (POST)
+    // Delete backtest (POST)
     $group->post('/{id:[0-9]+}/delete', RunnerController::class . ':destroy')
-        ->setName('runs.delete');
+        ->setName('backtests.delete');
+});
+
+// Monitor Management Routes (Strategy Monitoring)
+$app->group('/monitors', function (RouteCollectorProxy $group) {
+
+    // List all monitors (index page)
+    $group->get('', SimpleTrader\Controllers\MonitorController::class . ':index')
+        ->setName('monitors.index');
+
+    // Show create monitor form
+    $group->get('/create', SimpleTrader\Controllers\MonitorController::class . ':create')
+        ->setName('monitors.create');
+
+    // Store new monitor (POST)
+    $group->post('', SimpleTrader\Controllers\MonitorController::class . ':store')
+        ->setName('monitors.store');
+
+    // Get backtest progress (AJAX)
+    $group->get('/{id:[0-9]+}/progress', SimpleTrader\Controllers\MonitorController::class . ':progress')
+        ->setName('monitors.progress');
+
+    // View monitor details
+    $group->get('/{id:[0-9]+}', SimpleTrader\Controllers\MonitorController::class . ':show')
+        ->setName('monitors.show');
+
+    // Stop monitor (POST)
+    $group->post('/{id:[0-9]+}/stop', SimpleTrader\Controllers\MonitorController::class . ':stop')
+        ->setName('monitors.stop');
+
+    // Activate monitor (POST)
+    $group->post('/{id:[0-9]+}/activate', SimpleTrader\Controllers\MonitorController::class . ':activate')
+        ->setName('monitors.activate');
+
+    // Delete monitor (POST)
+    $group->post('/{id:[0-9]+}/delete', SimpleTrader\Controllers\MonitorController::class . ':destroy')
+        ->setName('monitors.delete');
+});
+
+// Documentation Routes
+$app->group('/docs', function (RouteCollectorProxy $group) {
+
+    // Documentation index page
+    $group->get('', DocumentationController::class . ':index')
+        ->setName('docs.index');
+
+    // View specific documentation
+    $group->get('/{slug}', DocumentationController::class . ':show')
+        ->setName('docs.show');
 });
 
 // API Routes (for AJAX requests - future enhancement)

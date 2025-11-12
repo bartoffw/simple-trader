@@ -76,7 +76,8 @@
                                     <th>Symbol</th>
                                     <th>Exchange</th>
                                     <th>Data Source</th>
-                                    <th>Latest Quote</th>
+                                    <th>Last Close</th>
+                                    <th>Latest Quote Date</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -91,8 +92,15 @@
                                             <small class="text-muted">{{ ticker.source|replace({'Source': ''}) }}</small>
                                         </td>
                                         <td>
-                                            {% if ticker.latest_quote_date %}
-                                                <span class="badge badge-info">{{ ticker.latest_quote_date }}</span>
+                                            {% if ticker.last_close %}
+                                                ${{ ticker.last_close|number_format(2, '.', ',') }}
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if ticker.last_date %}
+                                                <span class="badge badge-info">{{ ticker.last_date }}</span>
                                             {% else %}
                                                 <span class="badge badge-secondary">No data</span>
                                             {% endif %}

@@ -1,0 +1,164 @@
+{% extends "layout.twig" %}
+
+{% set active_menu = 'monitors' %}
+
+{% block title %}Create Monitor - {{ app_name }}{% endblock %}
+
+{% block page_title %}Create Strategy Monitor{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tickers">Home</a></li>
+    <li class="breadcrumb-item"><a href="/monitors">Monitors</a></li>
+    <li class="breadcrumb-item active">Create</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">Monitor Configuration</h3>
+                </div>
+
+                <form method="POST" action="/monitors">
+                    <div class="card-body">
+                        {% if errors.general %}
+                            <div class="alert alert-danger alert-dismissible">
+                                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                                <i class="fas fa-exclamation-triangle"></i> {{ errors.general }}
+                            </div>
+                        {% endif %}
+
+                        <!-- Monitor Name -->
+                        <div class="form-group">
+                            <label for="name">Monitor Name <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control {% if errors.name %}is-invalid{% endif %}"
+                                   id="name"
+                                   name="name"
+                                   value="{{ old.name ?? '' }}"
+                                   placeholder="e.g., My SMA Strategy Monitor"
+                                   required>
+                            {% if errors.name %}
+                                <span class="error invalid-feedback">{{ errors.name }}</span>
+                            {% endif %}
+                            <small class="form-text text-muted">A descriptive name for this monitor</small>
+                        </div>
+
+                        <!-- Strategy Selection -->
+                        <div class="form-group">
+                            <label for="strategy_class">Strategy <span class="text-danger">*</span></label>
+                            <select class="form-control {% if errors.strategy_class %}is-invalid{% endif %}"
+                                    id="strategy_class"
+                                    name="strategy_class"
+                                    required>
+                                <option value="">-- Select Strategy --</option>
+                                {% for strategy in strategies %}
+                                    <option value="{{ strategy.full_class_name }}"
+                                            {% if old.strategy_class == strategy.full_class_name %}selected{% endif %}>
+                                        {{ strategy.strategy_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            {% if errors.strategy_class %}
+                                <span class="error invalid-feedback">{{ errors.strategy_class }}</span>
+                            {% endif %}
+                            <small class="form-text text-muted">Select the trading strategy to monitor</small>
+                        </div>
+
+                        <!-- Ticker Selection -->
+                        <div class="form-group">
+                            <label for="tickers">Tickers <span class="text-danger">*</span></label>
+                            <select class="form-control select2 {% if errors.tickers %}is-invalid{% endif %}"
+                                    id="tickers"
+                                    name="tickers[]"
+                                    multiple="multiple"
+                                    data-placeholder="Select tickers"
+                                    style="width: 100%;"
+                                    required>
+                                {% for ticker in tickers %}
+                                    <option value="{{ ticker.id }}"
+                                            {% if old.tickers and ticker.id in old.tickers %}selected{% endif %}>
+                                        {{ ticker.symbol }} ({{ ticker.exchange }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            {% if errors.tickers %}
+                                <span class="error invalid-feedback d-block">{{ errors.tickers }}</span>
+                            {% endif %}
+                            <small class="form-text text-muted">Select one or more tickers to monitor</small>
+                        </div>
+
+                        <!-- Start Date -->
+                        <div class="form-group">
+                            <label for="start_date">Start Date <span class="text-danger">*</span></label>
+                            <input type="date"
+                                   class="form-control {% if errors.start_date %}is-invalid{% endif %}"
+                                   id="start_date"
+                                   name="start_date"
+                                   value="{{ old.start_date ?? '' }}"
+                                   required>
+                            {% if errors.start_date %}
+                                <span class="error invalid-feedback">{{ errors.start_date }}</span>
+                            {% endif %}
+                            <small class="form-text text-muted">Initial backtest will run from this date to today</small>
+                        </div>
+
+                        <!-- Initial Capital -->
+                        <div class="form-group">
+                            <label for="initial_capital">Initial Capital <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text">$</span>
+                                </div>
+                                <input type="number"
+                                       class="form-control {% if errors.initial_capital %}is-invalid{% endif %}"
+                                       id="initial_capital"
+                                       name="initial_capital"
+                                       value="{{ old.initial_capital ?? '10000' }}"
+                                       step="0.01"
+                                       min="0.01"
+                                       required>
+                                {% if errors.initial_capital %}
+                                    <span class="error invalid-feedback">{{ errors.initial_capital }}</span>
+                                {% endif %}
+                            </div>
+                            <small class="form-text text-muted">Starting capital for this monitor</small>
+                        </div>
+
+                        <!-- Strategy Parameters (Optional) -->
+                        <div class="form-group">
+                            <label for="strategy_parameters">Strategy Parameters (JSON)</label>
+                            <textarea class="form-control font-monospace"
+                                      id="strategy_parameters"
+                                      name="strategy_parameters"
+                                      rows="4"
+                                      placeholder='{"param1": "value1", "param2": 123}'>{{ old.strategy_parameters ?? '' }}</textarea>
+                            <small class="form-text text-muted">Optional: Override strategy parameters in JSON format</small>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Create Monitor
+                        </button>
+                        <a href="/monitors" class="btn btn-default">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for ticker selection
+    $('.select2').select2({
+        theme: 'bootstrap4'
+    });
+});
+</script>
+{% endblock %}

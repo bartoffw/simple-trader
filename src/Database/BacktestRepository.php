@@ -5,11 +5,11 @@ namespace SimpleTrader\Database;
 use PDO;
 
 /**
- * Run Repository
+ * Backtest Repository
  *
- * Handles all database operations for backtest runs
+ * Handles all database operations for backtests
  */
-class RunRepository
+class BacktestRepository
 {
     private PDO $db;
 
@@ -25,9 +25,9 @@ class RunRepository
      * @param int|null $limit Limit results
      * @return array
      */
-    public function getAllRuns(?string $status = null, ?int $limit = null): array
+    public function getAllBacktests(?string $status = null, ?int $limit = null): array
     {
-        $sql = 'SELECT * FROM runs WHERE 1=1';
+        $sql = 'SELECT * FROM backtestsWHERE 1=1';
 
         if ($status !== null) {
             $sql .= ' AND status = :status';
@@ -54,14 +54,40 @@ class RunRepository
     }
 
     /**
+     * Get all runs for a specific strategy
+     *
+     * @param string $strategyClass Strategy class name
+     * @param int|null $limit Limit results
+     * @return array
+     */
+    public function getBacktestsByStrategy(string $strategyClass, ?int $limit = null): array
+    {
+        $sql = 'SELECT * FROM backtestsWHERE strategy_class = :strategy_class ORDER BY created_at DESC';
+
+        if ($limit !== null) {
+            $sql .= ' LIMIT :limit';
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':strategy_class', $strategyClass, PDO::PARAM_STR);
+
+        if ($limit !== null) {
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        }
+
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    /**
      * Get a single run by ID
      *
      * @param int $id
      * @return array|null
      */
-    public function getRun(int $id): ?array
+    public function getBacktest(int $id): ?array
     {
-        $sql = 'SELECT * FROM runs WHERE id = :id';
+        $sql = 'SELECT * FROM backtestsWHERE id = :id';
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
@@ -76,9 +102,9 @@ class RunRepository
      * @param array $data Run data
      * @return int|false Run ID or false on failure
      */
-    public function createRun(array $data): int|false
+    public function createBacktest(array $data): int|false
     {
-        $sql = 'INSERT INTO runs (
+        $sql = 'INSERT INTO backtests (
                     name, strategy_class, strategy_parameters, tickers,
                     benchmark_ticker_id, start_date, end_date, initial_capital,
                     is_optimization, optimization_params, status
@@ -117,7 +143,7 @@ class RunRepository
      */
     public function updateStatus(int $id, string $status): bool
     {
-        $sql = 'UPDATE runs SET status = :status';
+        $sql = 'UPDATE backtests SET status = :status';
 
         if ($status === 'running') {
             $sql .= ', started_at = CURRENT_TIMESTAMP';
@@ -143,7 +169,7 @@ class RunRepository
      */
     public function updateResults(int $id, array $results): bool
     {
-        $sql = 'UPDATE runs SET
+        $sql = 'UPDATE backtests SET
                     report_html = :report_html,
                     log_output = :log_output,
                     result_metrics = :result_metrics,
@@ -172,7 +198,7 @@ class RunRepository
      */
     public function updateError(int $id, string $errorMessage): bool
     {
-        $sql = 'UPDATE runs SET
+        $sql = 'UPDATE backtests SET
                     error_message = :error_message,
                     status = :status,
                     completed_at = CURRENT_TIMESTAMP
@@ -204,7 +230,7 @@ class RunRepository
         $currentLog = $run['log_output'] ?? '';
         $newLog = $currentLog . $logText;
 
-        $sql = 'UPDATE runs SET log_output = :log_output WHERE id = :id';
+        $sql = 'UPDATE backtests SET log_output = :log_output WHERE id = :id';
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':log_output', $newLog, PDO::PARAM_STR);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
@@ -218,9 +244,9 @@ class RunRepository
      * @param int $id
      * @return bool
      */
-    public function deleteRun(int $id): bool
+    public function deleteBacktest(int $id): bool
     {
-        $sql = 'DELETE FROM runs WHERE id = :id';
+        $sql = 'DELETE FROM backtestsWHERE id = :id';
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
 
