@@ -54,6 +54,32 @@ class RunRepository
     }
 
     /**
+     * Get all runs for a specific strategy
+     *
+     * @param string $strategyClass Strategy class name
+     * @param int|null $limit Limit results
+     * @return array
+     */
+    public function getRunsByStrategy(string $strategyClass, ?int $limit = null): array
+    {
+        $sql = 'SELECT * FROM runs WHERE strategy_class = :strategy_class ORDER BY created_at DESC';
+
+        if ($limit !== null) {
+            $sql .= ' LIMIT :limit';
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':strategy_class', $strategyClass, PDO::PARAM_STR);
+
+        if ($limit !== null) {
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        }
+
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    /**
      * Get a single run by ID
      *
      * @param int $id
