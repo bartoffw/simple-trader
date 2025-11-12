@@ -55,6 +55,10 @@ $app->group('/tickers', function (RouteCollectorProxy $group) {
     $group->post('/{id:[0-9]+}/fetch-quotes', TickerController::class . ':fetchQuotes')
         ->setName('tickers.fetch');
 
+    // Download ticker quotes as CSV
+    $group->get('/{id:[0-9]+}/download-csv', TickerController::class . ':downloadCsv')
+        ->setName('tickers.downloadCsv');
+
     // View ticker details (optional - for future use)
     $group->get('/{id:[0-9]+}', TickerController::class . ':show')
         ->setName('tickers.show');
