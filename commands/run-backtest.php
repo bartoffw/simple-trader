@@ -63,9 +63,22 @@ use SimpleTrader\Services\EmbeddedReportGenerator;
 // Parse command line arguments
 $options = parseArguments($argv);
 
+// Check for help flag or no arguments
+if (isset($options['help']) || isset($options['h'])) {
+    printHelp();
+    exit(0);
+}
+
+// Check if no arguments provided at all
+if (empty($options)) {
+    printHelp();
+    exit(0);
+}
+
 // Validate required options
 if (!isset($options['run-id']) && !isset($options['strategy'])) {
-    printUsage();
+    echo "Error: Missing required parameters.\n\n";
+    printHelp();
     exit(1);
 }
 
@@ -463,47 +476,143 @@ function outputJson(array $data): void
 }
 
 /**
- * Print usage instructions
+ * Print help and usage instructions
  */
-function printUsage(): void
+function printHelp(): void
 {
-    echo <<<USAGE
+    echo <<<HELP
 
-Usage:
-  Mode 1 (from database):
-    php commands/run-backtest.php --run-id=<id> [--format=human|json] [--no-save]
+Simple-Trader Backtest Runner
+==============================
 
-  Mode 2 (direct parameters):
-    php commands/run-backtest.php --strategy=<name> --tickers=<ids> --start-date=<date> --end-date=<date> [options]
+Execute backtests from database configurations or directly with command-line parameters.
+Supports multiple output formats and optional database saving.
 
-Options:
-  --run-id=<id>              Load configuration from database run
-  --strategy=<name>          Strategy class name (e.g., TestStrategy)
-  --tickers=<ids>            Comma-separated ticker IDs (e.g., 1,2,3)
-  --start-date=<date>        Start date (YYYY-MM-DD)
-  --end-date=<date>          End date (YYYY-MM-DD)
-  --name=<name>              Run name (optional)
-  --initial-capital=<amount> Initial capital (default: 10000)
-  --benchmark=<ticker-id>    Benchmark ticker ID (optional)
-  --format=<format>          Output format: human|json (default: human)
-  --no-save                  Skip saving to database
-  --param:<name>=<value>     Strategy parameter (can be specified multiple times)
-  --optimize                 Enable optimization mode
-  --opt:<name>=<from>:<to>:<step>  Optimization parameter range
+USAGE:
+  php commands/run-backtest.php [options]
+  php commands/run-backtest.php --help
 
-Examples:
-  # Run from database with JSON output
-  php commands/run-backtest.php --run-id=1 --format=json
+MODE 1 - Run from Database:
+  php commands/run-backtest.php --run-id=<id> [--format=human|json] [--no-save]
 
-  # Run directly without saving to database
-  php commands/run-backtest.php --strategy=TestStrategy --tickers=1,2 --start-date=2023-01-01 --end-date=2023-12-31 --no-save
+  Load an existing backtest configuration from the database and execute it.
+  Useful for re-running backtests or automating saved configurations.
 
-  # Run with custom parameters
-  php commands/run-backtest.php --strategy=TestStrategy --tickers=1 --start-date=2023-01-01 --end-date=2023-12-31 --param:threshold=0.05 --param:window=14
+MODE 2 - Direct Parameters:
+  php commands/run-backtest.php --strategy=<name> --tickers=<ids> --start-date=<date> --end-date=<date> [options]
 
-  # Run optimization
-  php commands/run-backtest.php --strategy=TestStrategy --tickers=1 --start-date=2023-01-01 --end-date=2023-12-31 --optimize --opt:threshold=0.01:0.1:0.01
+  Execute a backtest directly with all parameters specified via command line.
+  Saves to database by default unless --no-save is specified.
+
+OPTIONS:
+  -h, --help                 Show this help message and exit
+
+  Required (Mode 1):
+    --run-id=<id>            Load configuration from database run ID
+
+  Required (Mode 2):
+    --strategy=<name>        Strategy class name (e.g., TestStrategy)
+    --tickers=<ids>          Comma-separated ticker IDs (e.g., 1,2,3)
+    --start-date=<date>      Start date in YYYY-MM-DD format
+    --end-date=<date>        End date in YYYY-MM-DD format
+
+  Optional:
+    --name=<name>            Custom run name (default: "Backtest YYYY-MM-DD HH:MM:SS")
+    --initial-capital=<amt>  Initial capital amount (default: 10000)
+    --benchmark=<id>         Benchmark ticker ID for comparison
+    --format=<format>        Output format: human|json (default: human)
+    --no-save                Skip saving to database (for quick tests)
+
+  Strategy Parameters:
+    --param:<name>=<value>   Set strategy parameter (can be used multiple times)
+                             Example: --param:threshold=0.05 --param:window=14
+
+  Optimization:
+    --optimize               Enable optimization mode (test parameter ranges)
+    --opt:<name>=<f>:<t>:<s> Define parameter range: from:to:step
+                             Example: --opt:threshold=0.01:0.1:0.01
+
+EXAMPLES:
+
+  1. Show help:
+     php commands/run-backtest.php --help
+
+  2. Run from database with human-readable output:
+     php commands/run-backtest.php --run-id=1
+
+  3. Run from database with JSON output:
+     php commands/run-backtest.php --run-id=1 --format=json
+
+  4. Simple backtest with direct parameters:
+     php commands/run-backtest.php \\
+       --strategy=TestStrategy \\
+       --tickers=1,2,3 \\
+       --start-date=2023-01-01 \\
+       --end-date=2023-12-31
+
+  5. Backtest without saving to database (quick test):
+     php commands/run-backtest.php \\
+       --strategy=TestStrategy \\
+       --tickers=1 \\
+       --start-date=2023-01-01 \\
+       --end-date=2023-12-31 \\
+       --no-save
+
+  6. Backtest with custom strategy parameters:
+     php commands/run-backtest.php \\
+       --strategy=TestStrategy \\
+       --tickers=1 \\
+       --start-date=2023-01-01 \\
+       --end-date=2023-12-31 \\
+       --param:threshold=0.05 \\
+       --param:window=14 \\
+       --param:stop_loss=0.02
+
+  7. Backtest with benchmark and custom capital:
+     php commands/run-backtest.php \\
+       --strategy=TestStrategy \\
+       --tickers=1,2 \\
+       --start-date=2023-01-01 \\
+       --end-date=2023-12-31 \\
+       --benchmark=1 \\
+       --initial-capital=50000
+
+  8. Run optimization (test parameter ranges):
+     php commands/run-backtest.php \\
+       --strategy=TestStrategy \\
+       --tickers=1 \\
+       --start-date=2023-01-01 \\
+       --end-date=2023-12-31 \\
+       --optimize \\
+       --opt:threshold=0.01:0.1:0.01 \\
+       --opt:window=5:20:1
+
+  9. JSON output for scripting/automation:
+     php commands/run-backtest.php \\
+       --strategy=TestStrategy \\
+       --tickers=1 \\
+       --start-date=2023-01-01 \\
+       --end-date=2023-12-31 \\
+       --format=json \\
+       --no-save > results.json
+
+OUTPUT FORMATS:
+
+  human (default):
+    Clear, formatted console output with metrics summary.
+    Best for interactive use and reviewing results.
+
+  json:
+    Structured JSON output with all metrics and configuration.
+    Best for scripting, automation, and programmatic processing.
+
+EXIT CODES:
+  0  Success
+  1  Error (invalid parameters, strategy not found, execution failure)
+
+MORE INFORMATION:
+  See commands/README.md for detailed documentation and advanced examples.
 
 
-USAGE;
+HELP;
 }

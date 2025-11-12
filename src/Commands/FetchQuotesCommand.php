@@ -28,26 +28,76 @@ class FetchQuotesCommand extends Command
             ->addArgument('ticker-id', InputArgument::REQUIRED, 'The ID of the ticker to fetch quotes for')
             ->addArgument('bar-count', InputArgument::OPTIONAL, 'Number of bars to fetch (default: auto-calculate missing days)', null)
             ->setHelp(<<<'HELP'
-This command fetches quotation data for a specific ticker from its configured data source.
+<info>Simple-Trader Quote Fetcher</info>
+==============================
 
-Usage:
-  php commands/fetch-quotes.php <ticker-id>
-  php commands/fetch-quotes.php <ticker-id> <bar-count>
+Fetches quotation data for a specific ticker from its configured data source.
+Automatically detects missing dates and fetches only the required data.
 
-Examples:
-  # Fetch quotes for ticker with ID 1 (auto-calculates missing days)
-  php commands/fetch-quotes.php 1
+<comment>USAGE:</comment>
+  php commands/fetch-quotes.php <ticker-id> [bar-count]
+  php commands/fetch-quotes.php --help
 
-  # Fetch last 100 bars for ticker with ID 1
-  php commands/fetch-quotes.php 1 100
+<comment>ARGUMENTS:</comment>
+  ticker-id    The database ID of the ticker to fetch quotes for (required)
+  bar-count    Number of bars/candles to fetch (optional)
+               If not specified, automatically calculates missing days
 
-The command will:
-1. Load ticker configuration from database
-2. Determine how many bars to fetch (or use provided bar-count)
-3. Connect to the configured data source
-4. Fetch OHLCV data
-5. Store quotes in the database
-6. Display summary of fetched data
+<comment>EXAMPLES:</comment>
+
+  1. Show help:
+     <info>php commands/fetch-quotes.php --help</info>
+
+  2. Fetch quotes for ticker with ID 1 (auto-detect missing dates):
+     <info>php commands/fetch-quotes.php 1</info>
+
+  3. Fetch last 100 bars for ticker with ID 1:
+     <info>php commands/fetch-quotes.php 1 100</info>
+
+  4. Fetch last 365 days of data (1 year):
+     <info>php commands/fetch-quotes.php 1 365</info>
+
+  5. Fetch all available historical data (5000 bars):
+     <info>php commands/fetch-quotes.php 1 5000</info>
+
+<comment>HOW IT WORKS:</comment>
+
+  1. Loads ticker configuration from database (symbol, exchange, source)
+  2. Checks existing quotes to determine date range
+  3. Calculates missing days (if bar-count not specified)
+  4. Connects to configured data source (e.g., Yahoo Finance, Interactive Brokers)
+  5. Fetches OHLCV (Open, High, Low, Close, Volume) data
+  6. Stores quotes in database
+  7. Displays summary with date range and record count
+
+<comment>AUTO-DETECTION:</comment>
+
+  When bar-count is not specified, the command:
+  - Checks the most recent quote date in database
+  - Calculates business days between then and now
+  - Fetches only the missing data
+  - Adds a buffer of 5 extra days to ensure no gaps
+
+<comment>DATA SOURCES:</comment>
+
+  The ticker's configured source determines where data is fetched from:
+  - yahoo: Yahoo Finance (free, most stocks)
+  - ib: Interactive Brokers TWS (requires active connection)
+  - csv: Local CSV file (for custom data)
+
+<comment>EXIT CODES:</comment>
+  0  Success - quotes fetched and stored
+  1  Error - ticker not found, source unavailable, or fetch failed
+
+<comment>NOTES:</comment>
+  - Ticker must exist in database before fetching quotes
+  - Use the web UI (Ticker Management) to add new tickers
+  - For continuous updates, set up a cron job to run this command daily
+  - Large bar-counts may take longer and hit API rate limits
+
+<comment>MORE INFORMATION:</comment>
+  See the web UI at /tickers for managing tickers and viewing quote data.
+
 HELP
             );
     }

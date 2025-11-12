@@ -4,11 +4,90 @@
  * Database Migration Script
  *
  * Initializes both SQLite databases and runs all migrations
+ *
+ * Usage:
+ *   php database/migrate.php
+ *   php database/migrate.php --help
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use SimpleTrader\Database\Database;
+
+// Check for help flag
+if (isset($argv[1]) && ($argv[1] === '--help' || $argv[1] === '-h')) {
+    echo <<<HELP
+
+Simple-Trader Database Migration
+=================================
+
+Creates and initializes both SQLite databases with all required tables and indexes.
+
+USAGE:
+  php database/migrate.php
+  php database/migrate.php --help
+
+DESCRIPTION:
+  This script performs the following operations:
+
+  1. Creates runs.db database
+     - Initializes runs table for backtest execution history
+     - Creates indexes for performance
+
+  2. Creates tickers.db database
+     - Initializes tickers table for ticker metadata
+     - Initializes quotes table for OHLCV data
+     - Creates indexes for fast querying
+     - Removes old runs table if it exists (database separation)
+
+WHEN TO RUN:
+  - Initial installation (first time setup)
+  - After pulling database schema changes
+  - When upgrading to new version with schema changes
+  - If database files are deleted and need to be recreated
+
+WHAT IT DOES:
+  - Automatically creates database files if they don't exist
+  - Runs all SQL migration files in order
+  - Skips migrations that have already been applied
+  - Reports success or failure for each migration
+  - Safe to run multiple times (idempotent)
+
+DATABASE FILES:
+  - database/runs.db      (backtest run history)
+  - database/tickers.db   (ticker and quote data)
+
+MIGRATION FILES:
+  - database/runs-migrations/*.sql    (runs database migrations)
+  - database/migrations/*.sql         (tickers database migrations)
+
+EXAMPLES:
+
+  1. Run migrations:
+     php database/migrate.php
+
+  2. Show this help:
+     php database/migrate.php --help
+
+EXIT CODES:
+  0  Success - all migrations completed
+  1  Error - migration failed or database connection error
+
+NOTES:
+  - Requires SQLite PDO extension (pdo_sqlite)
+  - Creates database directory structure automatically
+  - Backup existing databases before running on production
+  - See database/README.md for more information
+
+TROUBLESHOOTING:
+  - Error "could not find driver": Install php-sqlite3 or php-pdo-sqlite
+  - Permission errors: Check write permissions on database/ directory
+  - Migration failed: Check migration file syntax and table names
+
+
+HELP;
+    exit(0);
+}
 
 echo "=== Simple-Trader Database Migration ===" . PHP_EOL . PHP_EOL;
 
