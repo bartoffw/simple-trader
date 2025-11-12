@@ -18,6 +18,9 @@ class QuoteFetcher
     private QuoteRepository $quoteRepository;
     private TickerRepository $tickerRepository;
 
+    // Maximum bars that can be fetched per request from most sources
+    private const MAX_BARS_PER_REQUEST = 5000;
+
     public function __construct(QuoteRepository $quoteRepository, TickerRepository $tickerRepository)
     {
         $this->quoteRepository = $quoteRepository;
@@ -27,9 +30,12 @@ class QuoteFetcher
     /**
      * Fetch and store quotes for a ticker
      *
+     * Automatically handles fetching in chunks if more than MAX_BARS_PER_REQUEST bars are needed.
+     * Continues fetching until all available data is retrieved.
+     *
      * @param int $tickerId Ticker ID
      * @param int|null $barCount Number of bars to fetch (null = fetch all available)
-     * @return array ['success' => bool, 'message' => string, 'count' => int, 'date_range' => array]
+     * @return array ['success' => bool, 'message' => string, 'count' => int, 'date_range' => array, 'fetches' => int]
      */
     public function fetchQuotes(int $tickerId, ?int $barCount = null): array
     {
@@ -48,17 +54,19 @@ class QuoteFetcher
 
         // Determine how many bars to fetch
         if ($barCount === null) {
-            // If no quotes exist, fetch maximum available (e.g., 5000 bars ~ 20 years of daily data)
-            $barCount = $dateRange === null ? 5000 : $this->calculateMissingDays($dateRange['last_date']);
+            // If no quotes exist, fetch all available data (in chunks)
+            // If quotes exist, calculate missing days
+            $barCount = $dateRange === null ? null : $this->calculateMissingDays($dateRange['last_date']);
         }
 
         // If we have data and barCount is calculated as 0 or negative, no need to fetch
-        if ($barCount <= 0) {
+        if ($barCount !== null && $barCount <= 0) {
             return [
                 'success' => true,
                 'message' => 'Data is already up to date',
                 'count' => 0,
-                'date_range' => $dateRange
+                'date_range' => $dateRange,
+                'fetches' => 0
             ];
         }
 
@@ -66,68 +74,109 @@ class QuoteFetcher
             // Create source instance
             $source = SourceDiscovery::createSourceInstance($ticker['source']);
 
-            // Fetch quotes from source
-            // Note: Following the same pattern as Investor::updateSources()
-            $quotes = $source->getQuotes(
-                $ticker['symbol'],
-                $ticker['exchange'],
-                '1D', // Daily interval
-                $barCount
-            );
+            $totalInserted = 0;
+            $fetchCount = 0;
+            $continuesFetching = true;
 
-            if (empty($quotes)) {
-                return [
-                    'success' => false,
-                    'message' => "No quotes returned from source (requested {$barCount} bars for {$ticker['symbol']} on {$ticker['exchange']})",
-                    'count' => 0,
-                    'date_range' => $dateRange
-                ];
-            }
+            // If barCount is null, we fetch until we get less than MAX_BARS_PER_REQUEST
+            // If barCount is set, we fetch in chunks until we have all bars
+            while ($continuesFetching) {
+                $fetchCount++;
 
-            // Convert Ohlc objects to arrays, filtering out duplicates
-            $quotesData = [];
-            $latestDate = $dateRange !== null ? $dateRange['last_date'] : null;
-
-            foreach ($quotes as $quote) {
-                /** @var \SimpleTrader\Helpers\Ohlc $quote */
-                $quoteDate = $quote->getDateTime()->toDateString();
-
-                // Skip quotes that are older than or equal to our latest date
-                if ($latestDate !== null && $quoteDate <= $latestDate) {
-                    continue;
+                // Determine how many bars to request in this iteration
+                if ($barCount === null) {
+                    // Fetching all data - request max bars
+                    $barsToRequest = self::MAX_BARS_PER_REQUEST;
+                } else {
+                    // Fetching specific amount - request remaining or max, whichever is smaller
+                    $remainingBars = $barCount - $totalInserted;
+                    $barsToRequest = min($remainingBars, self::MAX_BARS_PER_REQUEST);
                 }
 
-                $quotesData[] = [
-                    'date' => $quoteDate,
-                    'open' => (string)$quote->getOpen(),
-                    'high' => (string)$quote->getHigh(),
-                    'low' => (string)$quote->getLow(),
-                    'close' => (string)$quote->getClose(),
-                    'volume' => $quote->getVolume() ?? 0
-                ];
-            }
+                // Fetch quotes from source
+                $quotes = $source->getQuotes(
+                    $ticker['symbol'],
+                    $ticker['exchange'],
+                    '1D', // Daily interval
+                    $barsToRequest
+                );
 
-            // If after filtering we have no new quotes
-            if (empty($quotesData)) {
-                return [
-                    'success' => true,
-                    'message' => "Received {$barCount} bars from source, but all were duplicates (already in database)",
-                    'count' => 0,
-                    'date_range' => $dateRange
-                ];
-            }
+                if (empty($quotes)) {
+                    // No more data available
+                    if ($totalInserted === 0) {
+                        return [
+                            'success' => false,
+                            'message' => "No quotes returned from source (requested {$barsToRequest} bars for {$ticker['symbol']} on {$ticker['exchange']})",
+                            'count' => 0,
+                            'date_range' => $dateRange,
+                            'fetches' => $fetchCount
+                        ];
+                    }
+                    break;
+                }
 
-            // Store quotes in database (batch insert)
-            $insertedCount = $this->quoteRepository->batchUpsertQuotes($tickerId, $quotesData);
+                // Convert Ohlc objects to arrays, filtering out duplicates
+                $quotesData = [];
+                $currentDateRange = $this->quoteRepository->getDateRange($tickerId);
+                $latestDate = $currentDateRange !== null ? $currentDateRange['last_date'] : null;
+
+                foreach ($quotes as $quote) {
+                    /** @var \SimpleTrader\Helpers\Ohlc $quote */
+                    $quoteDate = $quote->getDateTime()->toDateString();
+
+                    // Skip quotes that are older than or equal to our latest date
+                    if ($latestDate !== null && $quoteDate <= $latestDate) {
+                        continue;
+                    }
+
+                    $quotesData[] = [
+                        'date' => $quoteDate,
+                        'open' => (string)$quote->getOpen(),
+                        'high' => (string)$quote->getHigh(),
+                        'low' => (string)$quote->getLow(),
+                        'close' => (string)$quote->getClose(),
+                        'volume' => $quote->getVolume() ?? 0
+                    ];
+                }
+
+                // If no new quotes after filtering, stop
+                if (empty($quotesData)) {
+                    break;
+                }
+
+                // Store quotes in database (batch insert)
+                $insertedCount = $this->quoteRepository->batchUpsertQuotes($tickerId, $quotesData);
+                $totalInserted += $insertedCount;
+
+                // Decide whether to continue fetching
+                if ($barCount === null) {
+                    // Fetching all data - continue if we got a full batch (means there might be more)
+                    $continuesFetching = count($quotes) >= self::MAX_BARS_PER_REQUEST;
+                } else {
+                    // Fetching specific amount - continue if we haven't reached the target
+                    $continuesFetching = $totalInserted < $barCount && count($quotes) >= $barsToRequest;
+                }
+
+                // Safety check: don't fetch more than 10 times (50,000 bars max)
+                if ($fetchCount >= 10) {
+                    break;
+                }
+            }
 
             // Get updated date range
             $updatedDateRange = $this->quoteRepository->getDateRange($tickerId);
 
+            $message = "Successfully fetched and stored {$totalInserted} quote" . ($totalInserted !== 1 ? 's' : '');
+            if ($fetchCount > 1) {
+                $message .= " in {$fetchCount} fetches";
+            }
+
             return [
                 'success' => true,
-                'message' => "Successfully fetched and stored {$insertedCount} quote" . ($insertedCount !== 1 ? 's' : ''),
-                'count' => $insertedCount,
-                'date_range' => $updatedDateRange
+                'message' => $message,
+                'count' => $totalInserted,
+                'date_range' => $updatedDateRange,
+                'fetches' => $fetchCount
             ];
 
         } catch (\Exception $e) {
@@ -135,7 +184,8 @@ class QuoteFetcher
                 'success' => false,
                 'message' => 'Error fetching quotes: ' . $e->getMessage() . ' (Line: ' . $e->getLine() . ' in ' . basename($e->getFile()) . ')',
                 'count' => 0,
-                'date_range' => $dateRange
+                'date_range' => $dateRange,
+                'fetches' => 0
             ];
         }
     }

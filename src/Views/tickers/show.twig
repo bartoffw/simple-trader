@@ -270,6 +270,22 @@
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 $(document).ready(function() {
+    // Auto-fetch quotes if data is outdated
+    {% if date_range %}
+    const lastQuoteDate = new Date('{{ date_range.last_date }}');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);  // Reset time to midnight for date comparison
+    lastQuoteDate.setHours(0, 0, 0, 0);
+
+    if (lastQuoteDate < today) {
+        // Data is outdated, auto-fetch
+        console.log('Quote data is outdated (last: {{ date_range.last_date }}), auto-fetching...');
+        setTimeout(function() {
+            $('#fetch-quotes-btn').click();
+        }, 500);  // Small delay to ensure UI is ready
+    }
+    {% endif %}
+
     $('#fetch-quotes-btn').click(function() {
         const tickerId = $(this).data('ticker-id');
         const $btn = $(this);
@@ -339,6 +355,13 @@ $(document).ready(function() {
                         '</div>';
 
                         $('#quote-status').html(statusHtml);
+                    }
+
+                    // Reload page after 2 seconds to update chart with new data
+                    if (response.count > 0) {
+                        setTimeout(function() {
+                            location.reload();
+                        }, 2000);
                     }
                 } else {
                     // Show error message
@@ -448,7 +471,7 @@ $(document).ready(function() {
                 // Add volume series if available
                 if (data.volumeData && data.volumeData.length > 0) {
                     const volumeSeries = chart.addHistogramSeries({
-                        color: '#26a69a',
+                        color: 'rgba(128, 128, 128, 0.3)',  // Grey color
                         priceFormat: {
                             type: 'volume',
                         },
@@ -459,7 +482,13 @@ $(document).ready(function() {
                         },
                     });
 
-                    volumeSeries.setData(data.volumeData);
+                    // Set volume data with grey color
+                    const volumeDataGrey = data.volumeData.map(item => ({
+                        time: item.time,
+                        value: item.value,
+                        color: 'rgba(128, 128, 128, 0.3)'
+                    }));
+                    volumeSeries.setData(volumeDataGrey);
                 }
 
                 // Fit content to visible range

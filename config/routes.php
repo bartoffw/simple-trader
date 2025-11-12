@@ -100,12 +100,10 @@ $app->group('/api', function (RouteCollectorProxy $group) use ($container) {
                 // Only include volume if it exists and is non-zero
                 if (isset($quote['volume']) && $quote['volume'] > 0) {
                     $hasVolume = true;
-                    // Color based on price movement (green for up, red for down)
-                    $color = (float)$quote['close'] >= (float)$quote['open'] ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)';
                     $volumeData[] = [
                         'time' => $quote['date'],
                         'value' => (float)$quote['volume'],
-                        'color' => $color
+                        'color' => 'rgba(128, 128, 128, 0.3)'  // Grey color
                     ];
                 }
             }
