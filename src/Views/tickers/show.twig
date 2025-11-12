@@ -222,6 +222,39 @@
         </div>
     </div>
 
+    <!-- Price Chart Card -->
+    {% if date_range %}
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <div class="card card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-line"></i> Price Chart: {{ ticker.symbol }}
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="chart-container" style="position: relative; height: 500px; width: 100%;">
+                        <div class="text-center" style="padding: 100px 0;">
+                            <i class="fas fa-spinner fa-spin fa-3x text-primary"></i>
+                            <p class="mt-3">Loading chart data...</p>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-muted small">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Chart powered by TradingView Lightweight Charts</strong> (Apache 2.0 License) |
+                        Interactive: Use mouse wheel to zoom, click and drag to pan
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Back Button -->
     <div class="row">
         <div class="col-12">
@@ -233,6 +266,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Lightweight Charts Library -->
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 $(document).ready(function() {
     $('#fetch-quotes-btn').click(function() {
@@ -358,6 +393,120 @@ $(document).ready(function() {
             $btn.removeClass('btn-success').addClass('btn-outline-secondary');
         }, 2000);
     });
+
+    // Initialize Price Chart
+    {% if date_range %}
+    const chartContainer = document.getElementById('chart-container');
+    if (chartContainer) {
+        // Fetch quote data
+        fetch('/api/tickers/{{ ticker.id }}/quotes')
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    chartContainer.innerHTML = '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> ' + data.message + '</div>';
+                    return;
+                }
+
+                // Clear loading indicator
+                chartContainer.innerHTML = '';
+
+                // Create chart
+                const chart = LightweightCharts.createChart(chartContainer, {
+                    layout: {
+                        background: { color: '#ffffff' },
+                        textColor: '#333',
+                    },
+                    grid: {
+                        vertLines: { color: '#e1e1e1' },
+                        horzLines: { color: '#e1e1e1' },
+                    },
+                    width: chartContainer.clientWidth,
+                    height: 500,
+                    timeScale: {
+                        timeVisible: true,
+                        borderColor: '#cccccc',
+                    },
+                    rightPriceScale: {
+                        borderColor: '#cccccc',
+                    },
+                    crosshair: {
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                    },
+                });
+
+                // Add candlestick series
+                const candlestickSeries = chart.addCandlestickSeries({
+                    upColor: '#26a69a',
+                    downColor: '#ef5350',
+                    borderVisible: false,
+                    wickUpColor: '#26a69a',
+                    wickDownColor: '#ef5350',
+                });
+
+                candlestickSeries.setData(data.candlestickData);
+
+                // Add volume series if available
+                if (data.volumeData && data.volumeData.length > 0) {
+                    const volumeSeries = chart.addHistogramSeries({
+                        color: '#26a69a',
+                        priceFormat: {
+                            type: 'volume',
+                        },
+                        priceScaleId: 'volume',
+                        scaleMargins: {
+                            top: 0.8,
+                            bottom: 0,
+                        },
+                    });
+
+                    volumeSeries.setData(data.volumeData);
+                }
+
+                // Fit content to visible range
+                chart.timeScale().fitContent();
+
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    chart.applyOptions({
+                        width: chartContainer.clientWidth
+                    });
+                });
+
+                // Custom legend/tooltip
+                const legend = document.createElement('div');
+                legend.style.cssText = 'position: absolute; left: 12px; top: 12px; z-index: 1; font-size: 14px; ' +
+                    'line-height: 18px; font-weight: 300; background: rgba(255, 255, 255, 0.8); padding: 8px; ' +
+                    'border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);';
+                chartContainer.appendChild(legend);
+
+                function updateLegend(param) {
+                    if (param.time) {
+                        const data = param.seriesData.get(candlestickSeries);
+                        if (data) {
+                            legend.innerHTML =
+                                '<div style="font-size: 16px; font-weight: 500; margin-bottom: 4px;">{{ ticker.symbol }}</div>' +
+                                '<div><strong>Date:</strong> ' + param.time + '</div>' +
+                                '<div><strong>O:</strong> ' + data.open.toFixed(2) + '</div>' +
+                                '<div><strong>H:</strong> ' + data.high.toFixed(2) + '</div>' +
+                                '<div><strong>L:</strong> ' + data.low.toFixed(2) + '</div>' +
+                                '<div><strong>C:</strong> ' + data.close.toFixed(2) + '</div>';
+                        }
+                    } else {
+                        legend.innerHTML = '<div style="font-size: 16px; font-weight: 500;">{{ ticker.symbol }}</div>' +
+                            '<div class="text-muted">Hover over the chart</div>';
+                    }
+                }
+
+                chart.subscribeCrosshairMove(updateLegend);
+                updateLegend({ time: null });
+
+            })
+            .catch(error => {
+                console.error('Error loading chart data:', error);
+                chartContainer.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Error loading chart data: ' + error.message + '</div>';
+            });
+    }
+    {% endif %}
 });
 </script>
 {% endblock %}

@@ -179,6 +179,26 @@ class QuoteRepository
     }
 
     /**
+     * Get all quotes for a ticker (ordered by date ASC for charting)
+     *
+     * @param int $tickerId Ticker ID
+     * @return array
+     */
+    public function getQuotesByTicker(int $tickerId): array
+    {
+        $sql = 'SELECT date, open, high, low, close, volume
+                FROM quotes
+                WHERE ticker_id = :ticker_id
+                ORDER BY date ASC';
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':ticker_id', $tickerId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll();
+    }
+
+    /**
      * Get quotes for a ticker within a date range
      *
      * @param int $tickerId Ticker ID

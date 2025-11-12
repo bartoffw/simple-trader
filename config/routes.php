@@ -61,6 +61,64 @@ $app->group('/tickers', function (RouteCollectorProxy $group) {
 // API Routes (for AJAX requests - future enhancement)
 $app->group('/api', function (RouteCollectorProxy $group) {
 
+    // Get quote data for charts
+    $group->get('/tickers/{id:[0-9]+}/quotes', function (Request $request, Response $response, array $args, $container) {
+        $tickerId = (int)$args['id'];
+
+        // Get database and quote repository
+        $database = $container->get('db');
+        $quoteRepository = new \SimpleTrader\Database\QuoteRepository($database);
+
+        // Get all quotes for this ticker
+        $quotes = $quoteRepository->getQuotesByTicker($tickerId);
+
+        if (empty($quotes)) {
+            $response->getBody()->write(json_encode([
+                'success' => false,
+                'message' => 'No quotes found for this ticker'
+            ]));
+            return $response->withHeader('Content-Type', 'application/json');
+        }
+
+        // Format quotes for Lightweight Charts
+        // Candlestick format: {time: 'YYYY-MM-DD', open: number, high: number, low: number, close: number}
+        // Volume format: {time: 'YYYY-MM-DD', value: number, color: string}
+        $candlestickData = [];
+        $volumeData = [];
+        $hasVolume = false;
+
+        foreach ($quotes as $quote) {
+            $candlestickData[] = [
+                'time' => $quote['date'],
+                'open' => (float)$quote['open'],
+                'high' => (float)$quote['high'],
+                'low' => (float)$quote['low'],
+                'close' => (float)$quote['close']
+            ];
+
+            // Only include volume if it exists and is non-zero
+            if (isset($quote['volume']) && $quote['volume'] > 0) {
+                $hasVolume = true;
+                // Color based on price movement (green for up, red for down)
+                $color = (float)$quote['close'] >= (float)$quote['open'] ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)';
+                $volumeData[] = [
+                    'time' => $quote['date'],
+                    'value' => (float)$quote['volume'],
+                    'color' => $color
+                ];
+            }
+        }
+
+        $response->getBody()->write(json_encode([
+            'success' => true,
+            'candlestickData' => $candlestickData,
+            'volumeData' => $hasVolume ? $volumeData : null,
+            'count' => count($candlestickData)
+        ]));
+
+        return $response->withHeader('Content-Type', 'application/json');
+    });
+
     // Get ticker statistics
     $group->get('/stats', function (Request $request, Response $response, $container) {
         $repository = $container->get('tickerRepository');
