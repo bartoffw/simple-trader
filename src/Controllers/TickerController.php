@@ -40,6 +40,21 @@ class TickerController
         $tickers = $this->repository->getAllTickers();
         $stats = $this->repository->getStatistics();
 
+        // Get quote repository to fetch latest prices
+        $quoteRepository = $this->container->get('quoteRepository');
+
+        // Enhance tickers with latest quote data
+        foreach ($tickers as &$ticker) {
+            $latestQuote = $quoteRepository->getLatestQuote($ticker['id']);
+            if ($latestQuote) {
+                $ticker['last_close'] = $latestQuote['close'];
+                $ticker['last_date'] = $latestQuote['date'];
+            } else {
+                $ticker['last_close'] = null;
+                $ticker['last_date'] = null;
+            }
+        }
+
         return $this->view->render($response, 'tickers/index.twig', [
             'tickers' => $tickers,
             'stats' => $stats,

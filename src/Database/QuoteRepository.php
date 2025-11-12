@@ -79,6 +79,28 @@ class QuoteRepository
     }
 
     /**
+     * Get latest quote for a ticker
+     *
+     * @param int $tickerId Ticker ID
+     * @return array|null Quote data or null if no quotes
+     */
+    public function getLatestQuote(int $tickerId): ?array
+    {
+        $sql = 'SELECT * FROM quotes
+                WHERE ticker_id = :ticker_id
+                ORDER BY date DESC
+                LIMIT 1';
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':ticker_id', $tickerId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $result = $stmt->fetch();
+
+        return $result ?: null;
+    }
+
+    /**
      * Check if quotes exist for a ticker
      *
      * @param int $tickerId Ticker ID
