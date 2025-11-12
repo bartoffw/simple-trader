@@ -76,7 +76,7 @@ HELP
             $config = require __DIR__ . '/../../config/config.php';
 
             // Initialize database and repositories
-            $database = Database::getInstance($config['database']['path']);
+            $database = Database::getInstance($config['database']['tickers']);
             $tickerRepository = new TickerRepository($database);
             $quoteRepository = new QuoteRepository($database);
 

@@ -16,7 +16,8 @@ return [
 
     // Database Settings
     'database' => [
-        'path' => __DIR__ . '/../database/tickers.db',
+        'tickers' => __DIR__ . '/../database/tickers.db',
+        'runs' => __DIR__ . '/../database/runs.db',
     ],
 
     // View Settings

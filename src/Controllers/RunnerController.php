@@ -27,7 +27,7 @@ class RunnerController
     public function __construct(ContainerInterface $container)
     {
         $this->container = $container;
-        $this->runRepository = new RunRepository($container->get('db'));
+        $this->runRepository = new RunRepository($container->get('runsDb'));
         $this->tickerRepository = $container->get('tickerRepository');
         $this->view = $container->get('view');
         $this->flash = $container->get('flash');

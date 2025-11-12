@@ -36,14 +36,29 @@ $container->set('config', function() use ($config) {
     return $config;
 });
 
-// Register Database in Container
+// Register Tickers Database in Container
 $container->set('db', function() use ($config) {
-    return \SimpleTrader\Database\Database::getInstance($config['database']['path']);
+    return \SimpleTrader\Database\Database::getInstance($config['database']['tickers']);
+});
+
+// Register Runs Database in Container
+$container->set('runsDb', function() use ($config) {
+    return \SimpleTrader\Database\Database::getInstance($config['database']['runs']);
 });
 
 // Register TickerRepository in Container
 $container->set('tickerRepository', function($container) {
     return new \SimpleTrader\Database\TickerRepository($container->get('db'));
+});
+
+// Register QuoteRepository in Container
+$container->set('quoteRepository', function($container) {
+    return new \SimpleTrader\Database\QuoteRepository($container->get('db'));
+});
+
+// Register RunRepository in Container
+$container->set('runRepository', function($container) {
+    return new \SimpleTrader\Database\RunRepository($container->get('runsDb'));
 });
 
 // Register Twig View in Container

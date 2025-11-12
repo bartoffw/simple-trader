@@ -12,7 +12,7 @@ use PDOException;
  */
 class Database
 {
-    private static ?Database $instance = null;
+    private static array $instances = [];
     private ?PDO $connection = null;
     private string $databasePath;
 
@@ -28,22 +28,27 @@ class Database
     }
 
     /**
-     * Get singleton instance of Database
+     * Get singleton instance of Database for a specific path
      *
-     * @param string|null $databasePath Path to SQLite database file (required on first call)
+     * @param string $databasePath Path to SQLite database file
      * @return Database
-     * @throws \RuntimeException If path not provided on first call
+     * @throws \RuntimeException If path not provided
      */
-    public static function getInstance(?string $databasePath = null): Database
+    public static function getInstance(string $databasePath): Database
     {
-        if (self::$instance === null) {
-            if ($databasePath === null) {
-                throw new \RuntimeException('Database path must be provided on first getInstance call');
-            }
-            self::$instance = new self($databasePath);
+        // Use absolute path as key to ensure consistency
+        $absolutePath = realpath($databasePath);
+
+        // If file doesn't exist yet, use the provided path as-is
+        if ($absolutePath === false) {
+            $absolutePath = $databasePath;
         }
 
-        return self::$instance;
+        if (!isset(self::$instances[$absolutePath])) {
+            self::$instances[$absolutePath] = new self($absolutePath);
+        }
+
+        return self::$instances[$absolutePath];
     }
 
     /**
