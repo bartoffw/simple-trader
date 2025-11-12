@@ -13,6 +13,9 @@ use Slim\Views\TwigMiddleware;
 
 require __DIR__ . '/../vendor/autoload.php';
 
+// Load Configuration
+$config = require __DIR__ . '/../config/config.php';
+
 // Create Container
 $container = new Container();
 
@@ -28,9 +31,14 @@ $app->addRoutingMiddleware();
 // Add Error Middleware
 $errorMiddleware = $app->addErrorMiddleware(true, true, true);
 
+// Register Configuration in Container
+$container->set('config', function() use ($config) {
+    return $config;
+});
+
 // Register Database in Container
-$container->set('db', function() {
-    return \SimpleTrader\Database\Database::getInstance(__DIR__ . '/../database/tickers.db');
+$container->set('db', function() use ($config) {
+    return \SimpleTrader\Database\Database::getInstance($config['database']['path']);
 });
 
 // Register TickerRepository in Container
@@ -39,16 +47,16 @@ $container->set('tickerRepository', function($container) {
 });
 
 // Register Twig View in Container
-$container->set('view', function() {
-    $twig = Twig::create(__DIR__ . '/../src/Views', [
-        'cache' => false, // Disable cache for development
-        'auto_reload' => true
+$container->set('view', function() use ($config) {
+    $twig = Twig::create($config['paths']['views'], [
+        'cache' => $config['view']['cache'],
+        'auto_reload' => $config['view']['auto_reload']
     ]);
 
     // Add global variables
     $environment = $twig->getEnvironment();
-    $environment->addGlobal('app_name', 'Simple-Trader');
-    $environment->addGlobal('app_version', '1.0.0');
+    $environment->addGlobal('app_name', $config['app']['name']);
+    $environment->addGlobal('app_version', $config['app']['version']);
 
     return $twig;
 });

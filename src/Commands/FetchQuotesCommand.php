@@ -72,8 +72,11 @@ HELP
         $io->newLine();
 
         try {
+            // Load configuration
+            $config = require __DIR__ . '/../../config/config.php';
+
             // Initialize database and repositories
-            $database = Database::getInstance();
+            $database = Database::getInstance($config['database']['path']);
             $tickerRepository = new TickerRepository($database);
             $quoteRepository = new QuoteRepository($database);
 
