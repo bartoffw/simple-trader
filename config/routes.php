@@ -8,6 +8,7 @@
 
 use SimpleTrader\Controllers\TickerController;
 use SimpleTrader\Controllers\StrategyController;
+use SimpleTrader\Controllers\RunnerController;
 use Slim\Routing\RouteCollectorProxy;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -69,6 +70,38 @@ $app->group('/strategies', function (RouteCollectorProxy $group) {
     // View strategy details
     $group->get('/{className}', StrategyController::class . ':show')
         ->setName('strategies.show');
+});
+
+// Runner Management Routes (Backtest Execution)
+$app->group('/runs', function (RouteCollectorProxy $group) {
+
+    // List all runs (index page)
+    $group->get('', RunnerController::class . ':index')
+        ->setName('runs.index');
+
+    // Show create run form
+    $group->get('/create', RunnerController::class . ':create')
+        ->setName('runs.create');
+
+    // Store new run and start execution (POST)
+    $group->post('', RunnerController::class . ':store')
+        ->setName('runs.store');
+
+    // View run details and results
+    $group->get('/{id:[0-9]+}', RunnerController::class . ':show')
+        ->setName('runs.show');
+
+    // AJAX endpoint for real-time log polling
+    $group->get('/{id:[0-9]+}/logs', RunnerController::class . ':logs')
+        ->setName('runs.logs');
+
+    // Download standalone HTML report
+    $group->get('/{id:[0-9]+}/report', RunnerController::class . ':downloadReport')
+        ->setName('runs.report');
+
+    // Delete run (POST)
+    $group->post('/{id:[0-9]+}/delete', RunnerController::class . ':destroy')
+        ->setName('runs.delete');
 });
 
 // API Routes (for AJAX requests - future enhancement)
