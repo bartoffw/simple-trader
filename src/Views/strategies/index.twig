@@ -40,7 +40,13 @@
                                             <strong>{{ strategy.strategy_name }}</strong>
                                         </td>
                                         <td>
-                                            <span class="text-muted">{{ strategy.strategy_description|default('No description available.') }}</span>
+                                            {% set description = strategy.strategy_description|default('No description available.') %}
+                                            {% set short_desc = description|split('.')|slice(0, 2)|join('.') %}
+                                            {% if short_desc|length < description|length %}
+                                                <span class="text-muted">{{ short_desc }}...</span>
+                                            {% else %}
+                                                <span class="text-muted">{{ description }}</span>
+                                            {% endif %}
                                         </td>
                                         <td>
                                             <code class="text-muted">{{ strategy.class_name }}</code>
