@@ -1,0 +1,156 @@
+{% extends "layout.twig" %}
+
+{% set active_menu = 'tickers' %}
+
+{% block title %}Ticker Management - {{ app_name }}{% endblock %}
+
+{% block page_title %}Ticker Management{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tickers">Home</a></li>
+    <li class="breadcrumb-item active">Tickers</li>
+{% endblock %}
+
+{% block content %}
+    <!-- Stats Info Boxes -->
+    <div class="row">
+        <div class="col-lg-4 col-6">
+            <!-- small box -->
+            <div class="small-box bg-info">
+                <div class="inner">
+                    <h3>{{ stats.total }}</h3>
+                    <p>Total Tickers</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-6">
+            <!-- small box -->
+            <div class="small-box bg-success">
+                <div class="inner">
+                    <h3>{{ stats.enabled }}</h3>
+                    <p>Enabled Tickers</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-6">
+            <!-- small box -->
+            <div class="small-box bg-warning">
+                <div class="inner">
+                    <h3>{{ stats.disabled }}</h3>
+                    <p>Disabled Tickers</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-ban"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticker List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">All Tickers</h3>
+                    <div class="card-tools">
+                        <a href="/tickers/create" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus"></i> Add New Ticker
+                        </a>
+                    </div>
+                </div>
+                <!-- /.card-header -->
+                <div class="card-body table-responsive p-0">
+                    {% if tickers|length > 0 %}
+                        <table class="table table-hover text-nowrap">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Symbol</th>
+                                    <th>Exchange</th>
+                                    <th>Data Source</th>
+                                    <th>Latest Quote</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ticker in tickers %}
+                                    <tr>
+                                        <td>{{ ticker.id }}</td>
+                                        <td><strong>{{ ticker.symbol }}</strong></td>
+                                        <td>{{ ticker.exchange }}</td>
+                                        <td>
+                                            <small class="text-muted">{{ ticker.source|replace({'Source': ''}) }}</small>
+                                        </td>
+                                        <td>
+                                            {% if ticker.latest_quote_date %}
+                                                <span class="badge badge-info">{{ ticker.latest_quote_date }}</span>
+                                            {% else %}
+                                                <span class="badge badge-secondary">No data</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if ticker.enabled %}
+                                                <span class="badge badge-success">Enabled</span>
+                                            {% else %}
+                                                <span class="badge badge-secondary">Disabled</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="/tickers/{{ ticker.id }}" class="btn btn-info" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="/tickers/{{ ticker.id }}/edit" class="btn btn-primary" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <form method="POST" action="/tickers/{{ ticker.id }}/toggle" style="display: inline;">
+                                                    <button type="submit" class="btn btn-{% if ticker.enabled %}warning{% else %}success{% endif %}"
+                                                            title="{% if ticker.enabled %}Disable{% else %}Enable{% endif %}"
+                                                            onclick="return confirm('Are you sure you want to {% if ticker.enabled %}disable{% else %}enable{% endif %} this ticker?')">
+                                                        <i class="fas fa-{% if ticker.enabled %}toggle-off{% else %}toggle-on{% endif %}"></i>
+                                                    </button>
+                                                </form>
+                                                <form method="POST" action="/tickers/{{ ticker.id }}/delete" style="display: inline;">
+                                                    <button type="submit" class="btn btn-danger" title="Delete"
+                                                            onclick="return confirm('Are you sure you want to delete ticker {{ ticker.symbol }}? This action cannot be undone.')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <div class="text-center p-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No tickers found. <a href="/tickers/create">Add your first ticker</a></p>
+                        </div>
+                    {% endif %}
+                </div>
+                <!-- /.card-body -->
+            </div>
+            <!-- /.card -->
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        // Auto-hide flash messages after 5 seconds
+        setTimeout(function() {
+            $('.alert').fadeOut('slow');
+        }, 5000);
+    </script>
+{% endblock %}

@@ -1,0 +1,322 @@
+{% extends "layout.twig" %}
+
+{% set active_menu = 'runs' %}
+
+{% block title %}Create New Run - {{ app_name }}{% endblock %}
+
+{% block page_title %}Create New Backtest Run{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tickers">Home</a></li>
+    <li class="breadcrumb-item"><a href="/runs">Runs</a></li>
+    <li class="breadcrumb-item active">Create</li>
+{% endblock %}
+
+{% block content %}
+    <form action="/runs" method="POST" id="run-form">
+        <div class="row">
+            <!-- Basic Configuration -->
+            <div class="col-md-6">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">Basic Configuration</h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Run Name -->
+                        <div class="form-group">
+                            <label for="name">Run Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required
+                                   placeholder="e.g., SMA Strategy - Q4 2023">
+                            <small class="form-text text-muted">A descriptive name for this backtest run</small>
+                        </div>
+
+                        <!-- Strategy Selection -->
+                        <div class="form-group">
+                            <label for="strategy_class">Strategy <span class="text-danger">*</span></label>
+                            <select class="form-control" id="strategy_class" name="strategy_class" required>
+                                <option value="">-- Select Strategy --</option>
+                                {% for strategy in strategies %}
+                                    <option value="{{ strategy.class_name }}" data-params='{{ strategy.parameters|json_encode }}'>
+                                        {{ strategy.strategy_name }} ({{ strategy.class_name }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Initial Capital -->
+                        <div class="form-group">
+                            <label for="initial_capital">Initial Capital <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text">$</span>
+                                </div>
+                                <input type="number" class="form-control" id="initial_capital" name="initial_capital"
+                                       value="10000" step="0.01" min="0" required>
+                            </div>
+                        </div>
+
+                        <!-- Date Range -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="start_date">Start Date <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="start_date" name="start_date" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="end_date">End Date <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="end_date" name="end_date" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tickers & Benchmark -->
+            <div class="col-md-6">
+                <div class="card card-info">
+                    <div class="card-header">
+                        <h3 class="card-title">Tickers & Benchmark</h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Tickers Selection -->
+                        <div class="form-group">
+                            <label>Select Tickers <span class="text-danger">*</span></label>
+                            <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+                                {% if tickers|length > 0 %}
+                                    {% for ticker in tickers %}
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input"
+                                                   id="ticker_{{ ticker.id }}"
+                                                   name="tickers[]"
+                                                   value="{{ ticker.id }}">
+                                            <label class="custom-control-label" for="ticker_{{ ticker.id }}">
+                                                <strong>{{ ticker.symbol }}</strong> ({{ ticker.exchange }})
+                                                {% if ticker.latest_quote_date %}
+                                                    <small class="text-muted">- Latest: {{ ticker.latest_quote_date }}</small>
+                                                {% endif %}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-muted">No enabled tickers available. Please add tickers first.</p>
+                                {% endif %}
+                            </div>
+                            <small class="form-text text-muted">Select one or more tickers to backtest</small>
+                        </div>
+
+                        <!-- Benchmark Selection -->
+                        <div class="form-group">
+                            <label for="benchmark_ticker_id">Benchmark (Optional)</label>
+                            <select class="form-control" id="benchmark_ticker_id" name="benchmark_ticker_id">
+                                <option value="">-- No Benchmark --</option>
+                                {% for ticker in tickers %}
+                                    <option value="{{ ticker.id }}">{{ ticker.symbol }} ({{ ticker.exchange }})</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Compare strategy performance against a benchmark</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Strategy Parameters -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card card-success" id="strategy-params-card" style="display: none;">
+                    <div class="card-header">
+                        <h3 class="card-title">Strategy Parameters</h3>
+                    </div>
+                    <div class="card-body" id="strategy-params-container">
+                        <!-- Dynamically populated based on strategy selection -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Optimization Settings -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card card-warning">
+                    <div class="card-header">
+                        <h3 class="card-title">Optimization (Optional)</h3>
+                        <div class="card-tools">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" id="enable_optimization" name="enable_optimization">
+                                <label class="custom-control-label" for="enable_optimization">Enable Optimization</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body" id="optimization-settings" style="display: none;">
+                        <p class="text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            Optimization will run the strategy multiple times with different parameter values to find the best combination.
+                        </p>
+                        <div id="optimization-params-container">
+                            <!-- Dynamically populated optimization parameters -->
+                        </div>
+                        <button type="button" class="btn btn-sm btn-success" id="add-optimization-param">
+                            <i class="fas fa-plus"></i> Add Parameter Range
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="row">
+            <div class="col-12">
+                <a href="/runs" class="btn btn-default">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-play"></i> Start Backtest
+                </button>
+            </div>
+        </div>
+    </form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    let strategyParameters = [];
+
+    // Handle strategy selection
+    $('#strategy_class').change(function() {
+        const selectedOption = $(this).find('option:selected');
+        const paramsJson = selectedOption.data('params');
+
+        if (paramsJson && paramsJson.length > 0) {
+            strategyParameters = paramsJson;
+            renderStrategyParams();
+            $('#strategy-params-card').show();
+        } else {
+            strategyParameters = [];
+            $('#strategy-params-card').hide();
+        }
+
+        // Clear optimization params when strategy changes
+        $('#optimization-params-container').empty();
+    });
+
+    // Render strategy parameters form
+    function renderStrategyParams() {
+        let html = '<div class="row">';
+
+        strategyParameters.forEach(function(param, index) {
+            html += '<div class="col-md-4">';
+            html += '<div class="form-group">';
+            html += '<label for="param_' + param.name + '">' + param.name + '</label>';
+            html += '<input type="' + (param.type === 'integer' ? 'number' : 'text') + '" ';
+            html += 'class="form-control" ';
+            html += 'id="param_' + param.name + '" ';
+            html += 'name="strategy_params[' + param.name + ']" ';
+            html += 'value="' + param.default + '" ';
+            if (param.type === 'integer') {
+                html += 'step="1" ';
+            }
+            html += 'placeholder="Default: ' + param.default + '">';
+            html += '<small class="form-text text-muted">Type: ' + param.type + ', Default: ' + param.default + '</small>';
+            html += '</div>';
+            html += '</div>';
+        });
+
+        html += '</div>';
+        $('#strategy-params-container').html(html);
+    }
+
+    // Handle optimization toggle
+    $('#enable_optimization').change(function() {
+        if ($(this).is(':checked')) {
+            $('#optimization-settings').show();
+        } else {
+            $('#optimization-settings').hide();
+        }
+    });
+
+    // Add optimization parameter
+    let optimizationParamCount = 0;
+    $('#add-optimization-param').click(function() {
+        if (strategyParameters.length === 0) {
+            alert('Please select a strategy first');
+            return;
+        }
+
+        let html = '<div class="optimization-param-row mb-3" data-index="' + optimizationParamCount + '">';
+        html += '<div class="row">';
+
+        // Parameter name
+        html += '<div class="col-md-3">';
+        html += '<select class="form-control" name="optimization_params[' + optimizationParamCount + '][name]" required>';
+        html += '<option value="">-- Select Parameter --</option>';
+        strategyParameters.forEach(function(param) {
+            html += '<option value="' + param.name + '">' + param.name + '</option>';
+        });
+        html += '</select>';
+        html += '</div>';
+
+        // From
+        html += '<div class="col-md-2">';
+        html += '<input type="number" class="form-control" name="optimization_params[' + optimizationParamCount + '][from]" placeholder="From" step="any" required>';
+        html += '</div>';
+
+        // To
+        html += '<div class="col-md-2">';
+        html += '<input type="number" class="form-control" name="optimization_params[' + optimizationParamCount + '][to]" placeholder="To" step="any" required>';
+        html += '</div>';
+
+        // Step
+        html += '<div class="col-md-2">';
+        html += '<input type="number" class="form-control" name="optimization_params[' + optimizationParamCount + '][step]" placeholder="Step" step="any" required>';
+        html += '</div>';
+
+        // Remove button
+        html += '<div class="col-md-3">';
+        html += '<button type="button" class="btn btn-danger btn-block remove-optimization-param">Remove</button>';
+        html += '</div>';
+
+        html += '</div>';
+        html += '</div>';
+
+        $('#optimization-params-container').append(html);
+        optimizationParamCount++;
+    });
+
+    // Remove optimization parameter
+    $(document).on('click', '.remove-optimization-param', function() {
+        $(this).closest('.optimization-param-row').remove();
+    });
+
+    // Set default dates (last year)
+    const today = new Date();
+    const oneYearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+
+    $('#end_date').val(today.toISOString().split('T')[0]);
+    $('#start_date').val(oneYearAgo.toISOString().split('T')[0]);
+
+    // Form validation
+    $('#run-form').submit(function(e) {
+        const selectedTickers = $('input[name="tickers[]"]:checked').length;
+        if (selectedTickers === 0) {
+            alert('Please select at least one ticker');
+            e.preventDefault();
+            return false;
+        }
+
+        const startDate = new Date($('#start_date').val());
+        const endDate = new Date($('#end_date').val());
+        if (startDate >= endDate) {
+            alert('End date must be after start date');
+            e.preventDefault();
+            return false;
+        }
+
+        return true;
+    });
+});
+</script>
+{% endblock %}

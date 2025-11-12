@@ -1,0 +1,180 @@
+{% extends "layout.twig" %}
+
+{% set active_menu = 'tickers' %}
+
+{% block title %}Edit Ticker {{ ticker.symbol }} - {{ app_name }}{% endblock %}
+
+{% block page_title %}Edit Ticker{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tickers">Home</a></li>
+    <li class="breadcrumb-item"><a href="/tickers">Tickers</a></li>
+    <li class="breadcrumb-item active">Edit {{ ticker.symbol }}</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card card-warning">
+                <div class="card-header">
+                    <h3 class="card-title">Edit Ticker: <strong>{{ ticker.symbol }}</strong></h3>
+                </div>
+                <!-- /.card-header -->
+
+                <!-- General Error -->
+                {% if errors.general is defined %}
+                    <div class="alert alert-danger m-3">
+                        <i class="icon fas fa-ban"></i> {{ errors.general }}
+                    </div>
+                {% endif %}
+
+                <!-- form start -->
+                <form method="POST" action="/tickers/{{ ticker.id }}" id="tickerForm">
+                    <div class="card-body">
+                        <!-- Symbol -->
+                        <div class="form-group">
+                            <label for="symbol">Ticker Symbol <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control {% if errors.symbol is defined %}is-invalid{% endif %}"
+                                   id="symbol"
+                                   name="symbol"
+                                   placeholder="e.g., AAPL, MSFT, IUSQ"
+                                   value="{{ ticker.symbol }}"
+                                   maxlength="10"
+                                   required>
+                            <small class="form-text text-muted">
+                                Enter the stock ticker symbol (max 10 characters, alphanumeric only).
+                            </small>
+                            {% if errors.symbol is defined %}
+                                <span class="error invalid-feedback">{{ errors.symbol }}</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Exchange -->
+                        <div class="form-group">
+                            <label for="exchange">Exchange <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control {% if errors.exchange is defined %}is-invalid{% endif %}"
+                                   id="exchange"
+                                   name="exchange"
+                                   placeholder="e.g., XETR, NYSE, NASDAQ"
+                                   value="{{ ticker.exchange }}"
+                                   maxlength="10"
+                                   required>
+                            <small class="form-text text-muted">
+                                Enter the exchange code where this ticker is traded.
+                            </small>
+                            {% if errors.exchange is defined %}
+                                <span class="error invalid-feedback">{{ errors.exchange }}</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Data Source -->
+                        <div class="form-group">
+                            <label for="source">Data Source <span class="text-danger">*</span></label>
+                            <select class="form-control {% if errors.source is defined %}is-invalid{% endif %}"
+                                    id="source"
+                                    name="source"
+                                    required>
+                                <option value="">-- Select Data Source --</option>
+                                {% for sourceKey, sourceLabel in sources %}
+                                    <option value="{{ sourceKey }}" {% if ticker.source == sourceKey %}selected{% endif %}>
+                                        {{ sourceLabel }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">
+                                Select the data source provider for fetching price data.
+                            </small>
+                            {% if errors.source is defined %}
+                                <span class="error invalid-feedback">{{ errors.source }}</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Enabled -->
+                        <div class="form-group">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox"
+                                       class="custom-control-input"
+                                       id="enabled"
+                                       name="enabled"
+                                       value="1"
+                                       {% if ticker.enabled %}checked{% endif %}>
+                                <label class="custom-control-label" for="enabled">Enable ticker (active for trading)</label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Only enabled tickers will be processed by the investor.php cron job.
+                            </small>
+                        </div>
+
+                        <!-- Metadata -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Created At</label>
+                                    <input type="text" class="form-control" value="{{ ticker.created_at }}" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Last Updated</label>
+                                    <input type="text" class="form-control" value="{{ ticker.updated_at }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- /.card-body -->
+
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-save"></i> Update Ticker
+                        </button>
+                        <a href="/tickers" class="btn btn-default">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                        <a href="/tickers/{{ ticker.id }}" class="btn btn-info float-right">
+                            <i class="fas fa-eye"></i> View Details
+                        </a>
+                    </div>
+                </form>
+            </div>
+            <!-- /.card -->
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        $(document).ready(function() {
+            // Auto-uppercase symbol
+            $('#symbol').on('input', function() {
+                this.value = this.value.toUpperCase();
+            });
+
+            // Validate symbol (alphanumeric only)
+            $('#symbol').on('blur', function() {
+                var symbol = $(this).val();
+                if (symbol && !/^[A-Z0-9]+$/.test(symbol)) {
+                    $(this).addClass('is-invalid');
+                    if ($(this).next('.invalid-feedback').length === 0) {
+                        $(this).after('<span class="invalid-feedback d-block">Symbol must contain only letters and numbers.</span>');
+                    }
+                } else {
+                    $(this).removeClass('is-invalid');
+                    $(this).next('.invalid-feedback').remove();
+                }
+            });
+
+            // Form validation
+            $('#tickerForm').on('submit', function(e) {
+                var symbol = $('#symbol').val();
+                if (symbol && !/^[A-Z0-9]+$/.test(symbol)) {
+                    e.preventDefault();
+                    $('#symbol').addClass('is-invalid');
+                    alert('Please enter a valid ticker symbol (letters and numbers only).');
+                    return false;
+                }
+            });
+        });
+    </script>
+{% endblock %}

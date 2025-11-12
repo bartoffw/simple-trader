@@ -11,7 +11,14 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-ENV APACHE_DOCUMENT_ROOT /var/www
+# Enable Apache modules for web UI
+RUN a2enmod rewrite headers
+
+# Set Apache DocumentRoot to public directory
+ENV APACHE_DOCUMENT_ROOT /var/www/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
 #ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="0"
 
 WORKDIR /var/www

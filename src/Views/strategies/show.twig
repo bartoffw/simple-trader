@@ -1,0 +1,200 @@
+{% extends "layout.twig" %}
+
+{% set active_menu = 'strategies' %}
+
+{% block title %}{{ strategy.strategy_name }} - {{ app_name }}{% endblock %}
+
+{% block page_title %}Strategy Details{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tickers">Home</a></li>
+    <li class="breadcrumb-item"><a href="/strategies">Strategies</a></li>
+    <li class="breadcrumb-item active">{{ strategy.class_name }}</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <!-- Strategy Information Card -->
+        <div class="col-md-6">
+            <div class="card card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">Strategy Information</h3>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-5">Strategy Name</dt>
+                        <dd class="col-sm-7"><strong>{{ strategy.strategy_name }}</strong></dd>
+
+                        <dt class="col-sm-5">Class Name</dt>
+                        <dd class="col-sm-7"><code>{{ strategy.class_name }}</code></dd>
+
+                        <dt class="col-sm-5">Full Class Name</dt>
+                        <dd class="col-sm-7"><code class="text-muted small">{{ strategy.full_class_name }}</code></dd>
+
+                        <dt class="col-sm-5">File Path</dt>
+                        <dd class="col-sm-7">
+                            <small class="text-muted">{{ strategy.file_path }}</small>
+                        </dd>
+
+                        <dt class="col-sm-5">Overridden Methods</dt>
+                        <dd class="col-sm-7">
+                            <span class="badge badge-primary">{{ strategy.overridden_methods|length }}</span>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats Card -->
+        <div class="col-md-6">
+            <div class="card card-info">
+                <div class="card-header">
+                    <h3 class="card-title">Quick Stats</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="info-box mb-3">
+                                <span class="info-box-icon bg-primary"><i class="fas fa-code"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Methods</span>
+                                    <span class="info-box-number">{{ strategy.overridden_methods|length }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="info-box mb-3">
+                                <span class="info-box-icon bg-success"><i class="fas fa-check-circle"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Status</span>
+                                    <span class="info-box-number" style="font-size: 14px;">Active</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="callout callout-success">
+                        <p class="mb-0">
+                            <i class="fas fa-info-circle"></i>
+                            This strategy extends <code>BaseStrategy</code> and implements custom trading logic.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overridden Methods Card -->
+    {% if strategy.overridden_methods|length > 0 %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card card-success">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-code-branch"></i> Overridden Methods from BaseStrategy
+                    </h3>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%">Method Name</th>
+                                <th style="width: 15%">Visibility</th>
+                                <th style="width: 60%">Parameters</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for method in strategy.overridden_methods %}
+                                <tr>
+                                    <td>
+                                        <code class="text-primary">{{ method.name }}()</code>
+                                        {% if method.is_static %}
+                                            <span class="badge badge-secondary badge-sm ml-1">static</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if method.visibility == 'public' %}
+                                            <span class="badge badge-success">{{ method.visibility }}</span>
+                                        {% elseif method.visibility == 'protected' %}
+                                            <span class="badge badge-warning">{{ method.visibility }}</span>
+                                        {% else %}
+                                            <span class="badge badge-danger">{{ method.visibility }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if method.parameters|length > 0 %}
+                                            <code class="small text-muted">
+                                                {{ method.parameters|join(', ') }}
+                                            </code>
+                                        {% else %}
+                                            <span class="text-muted"><em>no parameters</em></span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                This strategy does not override any methods from BaseStrategy.
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Common BaseStrategy Methods Reference -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card card-secondary collapsed-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-book"></i> Common BaseStrategy Methods Reference
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">These are the main methods available to override in BaseStrategy:</p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5><code>onOpen()</code></h5>
+                            <p class="small">Called when the market opens. Used to execute entry signals determined during the previous close.</p>
+
+                            <h5><code>onClose()</code></h5>
+                            <p class="small">Called when the market closes. Used to analyze data and prepare entry/exit signals for the next open.</p>
+
+                            <h5><code>onStrategyEnd()</code></h5>
+                            <p class="small">Called when the strategy execution ends. Used for cleanup and final position closure.</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5><code>getMaxLookbackPeriod()</code></h5>
+                            <p class="small">Returns the number of historical bars needed for the strategy to function.</p>
+
+                            <h5><code>strategyLog()</code></h5>
+                            <p class="small">Custom logging method that can be overridden for strategy-specific logging.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back Button -->
+    <div class="row">
+        <div class="col-12">
+            <a href="/strategies" class="btn btn-default">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+{% endblock %}
