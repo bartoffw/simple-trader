@@ -7,6 +7,7 @@
  */
 
 use SimpleTrader\Controllers\TickerController;
+use SimpleTrader\Controllers\StrategyController;
 use Slim\Routing\RouteCollectorProxy;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -56,6 +57,18 @@ $app->group('/tickers', function (RouteCollectorProxy $group) {
     // View ticker details (optional - for future use)
     $group->get('/{id:[0-9]+}', TickerController::class . ':show')
         ->setName('tickers.show');
+});
+
+// Strategy Management Routes
+$app->group('/strategies', function (RouteCollectorProxy $group) {
+
+    // List all strategies (index page)
+    $group->get('', StrategyController::class . ':index')
+        ->setName('strategies.index');
+
+    // View strategy details
+    $group->get('/{className}', StrategyController::class . ':show')
+        ->setName('strategies.show');
 });
 
 // API Routes (for AJAX requests - future enhancement)
