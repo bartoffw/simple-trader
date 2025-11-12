@@ -9,6 +9,7 @@
 use SimpleTrader\Controllers\TickerController;
 use SimpleTrader\Controllers\StrategyController;
 use SimpleTrader\Controllers\RunnerController;
+use SimpleTrader\Controllers\DocumentationController;
 use Slim\Routing\RouteCollectorProxy;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -142,6 +143,18 @@ $app->group('/monitors', function (RouteCollectorProxy $group) {
     // Delete monitor (POST)
     $group->post('/{id:[0-9]+}/delete', SimpleTrader\Controllers\MonitorController::class . ':destroy')
         ->setName('monitors.delete');
+});
+
+// Documentation Routes
+$app->group('/docs', function (RouteCollectorProxy $group) {
+
+    // Documentation index page
+    $group->get('', DocumentationController::class . ':index')
+        ->setName('docs.index');
+
+    // View specific documentation
+    $group->get('/{slug}', DocumentationController::class . ':show')
+        ->setName('docs.show');
 });
 
 // API Routes (for AJAX requests - future enhancement)

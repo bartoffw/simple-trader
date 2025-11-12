@@ -122,6 +122,14 @@ $container->set('flash', function() {
     };
 });
 
+// Register DocumentationController with dependencies
+$container->set(\SimpleTrader\Controllers\DocumentationController::class, function($container) use ($config) {
+    return new \SimpleTrader\Controllers\DocumentationController(
+        $container->get('view'),
+        $config['paths']['root']
+    );
+});
+
 // Load Routes
 require __DIR__ . '/../config/routes.php';
 
