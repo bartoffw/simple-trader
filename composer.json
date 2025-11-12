@@ -28,7 +28,8 @@
     "slim/slim": "^4.14",
     "slim/psr7": "^1.7",
     "php-di/php-di": "^7.0",
-    "slim/twig-view": "^3.4"
+    "slim/twig-view": "^3.4",
+    "symfony/console": "^7.0"
   },
   "minimum-stability": "dev"
 }

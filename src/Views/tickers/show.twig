@@ -185,6 +185,30 @@
                         </small>
                     </div>
 
+                    <!-- CLI Command -->
+                    <div class="mt-3">
+                        <div class="callout callout-info">
+                            <h5><i class="fas fa-terminal"></i> Command Line Tool</h5>
+                            <p class="mb-2">You can also fetch quotes using the CLI command:</p>
+                            <div class="input-group">
+                                <input type="text" class="form-control font-monospace bg-light"
+                                       id="cli-command"
+                                       value="php commands/fetch-quotes.php {{ ticker.id }}"
+                                       readonly>
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary" type="button" id="copy-command-btn"
+                                            title="Copy to clipboard">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Run this command in the project root directory to fetch quotes for this ticker.
+                            </small>
+                        </div>
+                    </div>
+
                     <!-- Progress and Messages -->
                     <div id="fetch-progress" class="mt-3" style="display: none;">
                         <div class="progress">
@@ -312,6 +336,27 @@ $(document).ready(function() {
                 );
             }
         });
+    });
+
+    // Copy CLI command to clipboard
+    $('#copy-command-btn').click(function() {
+        const $input = $('#cli-command');
+        const $btn = $(this);
+        const originalIcon = $btn.html();
+
+        // Select and copy the text
+        $input.select();
+        document.execCommand('copy');
+
+        // Visual feedback
+        $btn.html('<i class="fas fa-check"></i>');
+        $btn.addClass('btn-success').removeClass('btn-outline-secondary');
+
+        // Reset after 2 seconds
+        setTimeout(function() {
+            $btn.html(originalIcon);
+            $btn.removeClass('btn-success').addClass('btn-outline-secondary');
+        }, 2000);
     });
 });
 </script>
