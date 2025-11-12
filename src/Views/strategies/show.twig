@@ -13,6 +13,18 @@
 {% endblock %}
 
 {% block content %}
+    <!-- Strategy Description Card -->
+    {% if strategy.strategy_description %}
+    <div class="row">
+        <div class="col-12">
+            <div class="callout callout-info">
+                <h5><i class="fas fa-info-circle"></i> Strategy Description</h5>
+                <p class="mb-0">{{ strategy.strategy_description }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="row">
         <!-- Strategy Information Card -->
         <div class="col-md-6">

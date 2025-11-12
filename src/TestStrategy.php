@@ -10,6 +10,9 @@ use SimpleTrader\Loggers\Level;
 
 class TestStrategy extends BaseStrategy
 {
+    protected string $strategyName = 'SMA Baseline Strategy';
+    protected string $strategyDescription = 'A simple moving average (SMA) based strategy that enters long positions when price crosses above the SMA and exits when price falls below it. Uses a configurable baseline period and selects the best ticker based on SMA momentum. Suitable for trending markets.';
+
     protected array $strategyParameters = [
         'length' => 30
     ];

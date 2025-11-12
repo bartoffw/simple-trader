@@ -18,6 +18,7 @@ use SimpleTrader\Loggers\LoggerInterface;
 class BaseStrategy
 {
     protected string $strategyName = 'Base Strategy';
+    protected string $strategyDescription = 'Base strategy class that provides core functionality for all trading strategies. Should be extended by specific strategy implementations.';
     protected ?LoggerInterface $logger = null;
     protected NotifierInterface $notifier;
     protected Carbon $startDate;
@@ -117,6 +118,11 @@ class BaseStrategy
     public function getStrategyName(): string
     {
         return $this->strategyName;
+    }
+
+    public function getStrategyDescription(): string
+    {
+        return $this->strategyDescription;
     }
 
     public function setNotifier(NotifierInterface $notifier): void

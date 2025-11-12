@@ -44,6 +44,7 @@ class StrategyController
                 $strategies[] = [
                     'class_name' => $info['class_name'],
                     'strategy_name' => $info['strategy_name'],
+                    'strategy_description' => $info['strategy_description'] ?? null,
                     'overridden_count' => count($info['overridden_methods'])
                 ];
             }
