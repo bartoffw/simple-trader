@@ -1,137 +1,268 @@
-# Database Directory
+# Simple-Trader Database
 
-This directory contains the SQLite database for ticker management and related scripts.
+This application uses two separate SQLite databases to keep data organized and performant.
 
-## Files
+## Database Structure
 
-- **tickers.db** - SQLite database file (created after running migration)
-- **migrate.php** - Database migration script
-- **import-existing-tickers.php** - Import hardcoded tickers from investor.php
-- **test-repository.php** - Comprehensive test suite for TickerRepository
-- **migrations/** - SQL migration files
+### 1. Tickers Database (`tickers.db`)
+Stores ticker symbols, exchanges, data sources, and historical quote data.
 
-## Setup Instructions
+**Tables:**
+- `tickers` - Ticker metadata (symbol, exchange, source, enabled status)
+- `quotes` - Historical OHLCV data for each ticker
 
-### 1. Initialize the Database
+### 2. Runs Database (`runs.db`)
+Stores backtest execution runs, configurations, results, and logs.
 
-Run the migration script to create the database and tables:
+**Tables:**
+- `runs` - Backtest run configurations, status, results, and reports
+
+## Why Two Databases?
+
+**Performance & Organization:**
+- Ticker/quote data remains compact and fast to query
+- Large run logs and HTML reports don't bloat the tickers database
+- Can backup/restore runs independently from ticker data
+- Better separation of concerns
+
+## Running Migrations
+
+### Initial Setup (New Installation)
+
+Run the main migration script to create both databases:
 
 ```bash
-# Inside Docker container
 php database/migrate.php
-
-# Or via docker-compose
-docker-compose exec -T trader php database/migrate.php
 ```
 
-### 2. Import Existing Tickers
+This will:
+1. Create `runs.db` and initialize the runs table
+2. Create `tickers.db` and initialize tickers/quotes tables
+3. Display success message with database paths
 
-Import the hardcoded ticker(s) from `investor.php`:
+**Expected Output:**
+```
+=== Simple-Trader Database Migration ===
+
+=== Runs Database ===
+Database: /path/to/database/runs.db
+Migrations: /path/to/database/runs-migrations
+
+[1/2] Connecting to database...
+✓ Connected successfully
+
+[2/2] Running migrations...
+  → Running 001_create_runs_table.sql... ✓
+
+✓ Runs Database migrations completed!
+Database: /path/to/database/runs.db
+
+=== Tickers Database ===
+Database: /path/to/database/tickers.db
+Migrations: /path/to/database/migrations
+
+[1/2] Connecting to database...
+✓ Connected successfully
+
+[2/2] Running migrations...
+  → Running 001_create_tickers_table.sql... ✓
+  → Running 002_add_source_to_tickers.sql... ✓
+  → Running 003_create_quotes_table.sql... ✓
+  → Running 005_drop_runs_table.sql... ✓
+
+✓ Tickers Database migrations completed!
+Database: /path/to/database/tickers.db
+
+=== ✓ All Migrations Completed Successfully! ===
+
+Databases created:
+  - /path/to/database/runs.db
+  - /path/to/database/tickers.db
+```
+
+### Upgrading (Existing Installation)
+
+If you have an existing installation with runs in the tickers database:
 
 ```bash
-# Inside Docker container
-php database/import-existing-tickers.php
-
-# Or via docker-compose
-docker-compose exec -T trader php database/import-existing-tickers.php
+# This will create runs.db and migrate tickers.db
+php database/migrate.php
 ```
 
-### 3. Test the Repository (Optional)
+**Note:** Migration `005_drop_runs_table.sql` will drop the runs table from `tickers.db`. Any existing run data will be lost. This is by design for the database separation.
 
-Run the test suite to verify all CRUD operations:
+### Individual Database Migration (Advanced)
+
+You can also migrate databases individually:
 
 ```bash
-# Inside Docker container
-php database/test-repository.php
+# Runs database only
+php database/migrate-runs.php
 
-# Or via docker-compose
-docker-compose exec -T trader php database/test-repository.php
+# Tickers database only (legacy script, now handled by migrate.php)
+# Not recommended - use migrate.php instead
 ```
 
-## Database Schema
+## Migration Files
 
-### Tickers Table
+### Runs Migrations (`runs-migrations/`)
+- `001_create_runs_table.sql` - Creates runs table with all columns
 
-| Column      | Type         | Description                      |
-|-------------|--------------|----------------------------------|
-| id          | INTEGER      | Primary key (auto-increment)     |
-| symbol      | VARCHAR(10)  | Ticker symbol (unique)           |
-| exchange    | VARCHAR(10)  | Exchange code (e.g., XETR)       |
-| csv_path    | VARCHAR(255) | Path to CSV data file            |
-| enabled     | BOOLEAN      | Whether ticker is active         |
-| created_at  | DATETIME     | Creation timestamp               |
-| updated_at  | DATETIME     | Last update timestamp            |
+### Tickers Migrations (`migrations/`)
+- `001_create_tickers_table.sql` - Creates tickers table
+- `002_add_source_to_tickers.sql` - Adds source column
+- `003_create_quotes_table.sql` - Creates quotes table
+- `005_drop_runs_table.sql` - Removes runs table from tickers.db (separation)
 
-### Ticker Audit Log Table
+## Troubleshooting
 
-| Column      | Type         | Description                      |
-|-------------|--------------|----------------------------------|
-| id          | INTEGER      | Primary key (auto-increment)     |
-| ticker_id   | INTEGER      | Foreign key to tickers table     |
-| action      | VARCHAR(20)  | Action performed                 |
-| old_values  | TEXT         | JSON of previous values          |
-| new_values  | TEXT         | JSON of new values               |
-| timestamp   | DATETIME     | When action occurred             |
+### Error: "no such table: runs"
 
-## Usage Examples
+This means the runs database hasn't been created. Run:
 
-### Get All Enabled Tickers (for investor.php)
+```bash
+php database/migrate.php
+```
+
+### Error: "no such table: tickers" or "no such table: quotes"
+
+This means the tickers database hasn't been created. Run:
+
+```bash
+php database/migrate.php
+```
+
+### Starting Fresh
+
+To reset all databases and start over:
+
+```bash
+# Backup existing data first!
+rm database/tickers.db database/runs.db
+
+# Run migrations
+php database/migrate.php
+```
+
+### Checking Database Status
+
+Use SQLite command line to inspect databases:
+
+```bash
+# Check tickers database
+sqlite3 database/tickers.db ".tables"
+# Output: quotes  tickers
+
+# Check runs database
+sqlite3 database/runs.db ".tables"
+# Output: runs
+
+# View table schema
+sqlite3 database/runs.db ".schema runs"
+```
+
+## Database Access in Code
+
+### Web Application (`public/index.php`)
+
+Both databases are registered in the DI container:
 
 ```php
-use SimpleTrader\Database\Database;
-use SimpleTrader\Database\TickerRepository;
+// Tickers database
+$container->set('db', function() use ($config) {
+    return Database::getInstance($config['database']['tickers']);
+});
 
-$database = Database::getInstance(__DIR__ . '/database/tickers.db');
-$repository = new TickerRepository($database);
+// Runs database
+$container->set('runsDb', function() use ($config) {
+    return Database::getInstance($config['database']['runs']);
+});
 
-// Returns: ['IUSQ' => ['path' => '...', 'exchange' => 'XETR']]
-$tickers = $repository->getEnabledTickers();
+// Repositories
+$container->set('tickerRepository', function($container) {
+    return new TickerRepository($container->get('db'));
+});
+
+$container->set('runRepository', function($container) {
+    return new RunRepository($container->get('runsDb'));
+});
 ```
 
-### Create a New Ticker
+### CLI Scripts (`commands/`)
+
+CLI scripts load both databases:
 
 ```php
-$tickerId = $repository->createTicker([
-    'symbol' => 'AAPL',
-    'exchange' => 'NASDAQ',
-    'csv_path' => __DIR__ . '/AAPL.csv',
-    'enabled' => true
-]);
+$config = require __DIR__ . '/../config/config.php';
+
+$tickersDb = Database::getInstance($config['database']['tickers']);
+$runsDb = Database::getInstance($config['database']['runs']);
+
+$runRepository = new RunRepository($runsDb);
+$tickerRepository = new TickerRepository($tickersDb);
+$quoteRepository = new QuoteRepository($tickersDb);
 ```
 
-### Update a Ticker
+## Configuration (`config/config.php`)
+
+Database paths are configured in the main config file:
 
 ```php
-$repository->updateTicker($tickerId, [
-    'exchange' => 'NYSE',
-    'csv_path' => '/new/path/to/AAPL.csv'
-]);
+'database' => [
+    'tickers' => __DIR__ . '/../database/tickers.db',
+    'runs' => __DIR__ . '/../database/runs.db',
+],
 ```
 
-### Toggle Enabled Status
+## Backup & Restore
 
-```php
-$newStatus = $repository->toggleEnabled($tickerId);
-// Returns: true if enabled, false if disabled
+### Backup
+
+```bash
+# Backup both databases
+cp database/tickers.db database/backups/tickers-$(date +%Y%m%d).db
+cp database/runs.db database/backups/runs-$(date +%Y%m%d).db
+
+# Or use SQLite backup command
+sqlite3 database/tickers.db ".backup database/backups/tickers-$(date +%Y%m%d).db"
+sqlite3 database/runs.db ".backup database/backups/runs-$(date +%Y%m%d).db"
 ```
 
-### Delete a Ticker
+### Restore
 
-```php
-$repository->deleteTicker($tickerId);
+```bash
+# Restore from backup
+cp database/backups/tickers-20240115.db database/tickers.db
+cp database/backups/runs-20240115.db database/runs.db
 ```
 
-### Get Statistics
+## Best Practices
 
-```php
-$stats = $repository->getStatistics();
-// Returns: ['total' => 5, 'enabled' => 4, 'disabled' => 1]
+1. **Run migrations before starting the application**
+2. **Backup databases before upgrading**
+3. **Use the migration script** - Don't create tables manually
+4. **Check migration output** - Ensure all migrations succeed
+5. **Keep databases in database/ directory** - Don't move them unless updating config
+
+## Adding New Migrations
+
+### For Tickers Database
+
+Create new file in `database/migrations/`:
+
+```bash
+# File: 006_add_new_column.sql
+ALTER TABLE tickers ADD COLUMN new_column TEXT;
 ```
 
-## Notes
+### For Runs Database
 
-- The database file (`tickers.db`) is excluded from version control via `.gitignore`
-- All ticker symbols are automatically converted to uppercase
-- Foreign key constraints are enabled
-- Audit logging is automatic for all create/update/delete/toggle operations
-- Path traversal attempts in CSV paths are rejected by validation
+Create new file in `database/runs-migrations/`:
+
+```bash
+# File: 002_add_new_column.sql
+ALTER TABLE runs ADD COLUMN new_column TEXT;
+```
+
+Then run `php database/migrate.php` to apply.
+
