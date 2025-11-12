@@ -25,6 +25,44 @@
         </div>
     </div>
 
+    <!-- Backtest Progress (shown when initializing) -->
+    {% if monitor.status == 'initializing' %}
+    <div class="row" id="backtest-progress-container">
+        <div class="col-12">
+            <div class="card card-warning">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-spinner fa-spin"></i> Initial Backtest Running</h3>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
+                             role="progressbar"
+                             id="backtest-progress-bar"
+                             style="width: {{ monitor.backtest_progress ?? 0 }}%"
+                             aria-valuenow="{{ monitor.backtest_progress ?? 0 }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">
+                            <span id="backtest-progress-text">{{ monitor.backtest_progress ?? 0 }}%</span>
+                        </div>
+                    </div>
+                    <p class="mb-0">
+                        <strong>Status:</strong> <span id="backtest-status">{{ monitor.backtest_status ?? 'pending' }}</span>
+                        {% if monitor.backtest_current_date %}
+                        | <strong>Processing:</strong> <span id="backtest-current-date">{{ monitor.backtest_current_date }}</span>
+                        {% endif %}
+                    </p>
+                    {% if monitor.backtest_error %}
+                    <div class="alert alert-danger mt-3">
+                        <strong>Error:</strong> {{ monitor.backtest_error }}
+                    </div>
+                    {% endif %}
+                    <small class="text-muted">This page will automatically refresh when the backtest completes.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Current Status Cards -->
     <div class="row">
         <div class="col-lg-3 col-6">
@@ -335,6 +373,88 @@ $(document).ready(function() {
             }
         }
     });
+});
+</script>
+{% endif %}
+
+<!-- Backtest Progress Polling -->
+{% if monitor.status == 'initializing' %}
+<script>
+$(document).ready(function() {
+    var monitorId = {{ monitor.id }};
+    var pollInterval = null;
+
+    function pollBacktestProgress() {
+        $.ajax({
+            url: '/monitors/' + monitorId + '/progress',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    // Update progress bar
+                    var progress = response.progress || 0;
+                    $('#backtest-progress-bar')
+                        .css('width', progress + '%')
+                        .attr('aria-valuenow', progress);
+                    $('#backtest-progress-text').text(progress + '%');
+
+                    // Update status
+                    $('#backtest-status').text(response.status);
+
+                    // Update current date if available
+                    if (response.current_date) {
+                        $('#backtest-current-date').text(response.current_date);
+                    }
+
+                    // Check if backtest is completed
+                    if (response.status === 'completed' || response.monitor_status === 'active') {
+                        // Stop polling
+                        if (pollInterval) {
+                            clearInterval(pollInterval);
+                        }
+
+                        // Show success message and reload
+                        $('#backtest-progress-bar')
+                            .removeClass('bg-warning')
+                            .addClass('bg-success')
+                            .removeClass('progress-bar-animated');
+
+                        setTimeout(function() {
+                            location.reload();
+                        }, 2000);
+                    }
+
+                    // Check if backtest failed
+                    if (response.status === 'failed') {
+                        // Stop polling
+                        if (pollInterval) {
+                            clearInterval(pollInterval);
+                        }
+
+                        // Show error
+                        $('#backtest-progress-bar')
+                            .removeClass('bg-warning')
+                            .addClass('bg-danger')
+                            .removeClass('progress-bar-animated');
+
+                        if (response.error) {
+                            var errorHtml = '<div class="alert alert-danger mt-3">' +
+                                '<strong>Error:</strong> ' + response.error +
+                                '</div>';
+                            $('#backtest-progress-container .card-body').append(errorHtml);
+                        }
+                    }
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error polling backtest progress:', error);
+            }
+        });
+    }
+
+    // Poll every 2 seconds
+    pollBacktestProgress(); // Initial call
+    pollInterval = setInterval(pollBacktestProgress, 2000);
 });
 </script>
 {% endif %}

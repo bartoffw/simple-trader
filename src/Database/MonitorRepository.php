@@ -122,6 +122,40 @@ class MonitorRepository
     }
 
     /**
+     * Update backtest progress
+     *
+     * @param int $id Monitor ID
+     * @param int $progress Progress percentage (0-100)
+     * @param string $status Backtest status
+     * @param string|null $currentDate Current date being processed
+     * @param string|null $error Error message if failed
+     * @return bool
+     */
+    public function updateBacktestProgress(
+        int $id,
+        int $progress,
+        string $status,
+        ?string $currentDate = null,
+        ?string $error = null
+    ): bool {
+        $sql = 'UPDATE monitors SET
+                    backtest_progress = :progress,
+                    backtest_status = :status,
+                    backtest_current_date = :current_date,
+                    backtest_error = :error,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = :id';
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->bindValue(':progress', $progress, PDO::PARAM_INT);
+        $stmt->bindValue(':status', $status, PDO::PARAM_STR);
+        $stmt->bindValue(':current_date', $currentDate, PDO::PARAM_STR);
+        $stmt->bindValue(':error', $error, PDO::PARAM_STR);
+        return $stmt->execute();
+    }
+
+    /**
      * Update last processed date
      *
      * @param int $id Monitor ID

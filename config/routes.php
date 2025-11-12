@@ -123,6 +123,10 @@ $app->group('/monitors', function (RouteCollectorProxy $group) {
     $group->post('', SimpleTrader\Controllers\MonitorController::class . ':store')
         ->setName('monitors.store');
 
+    // Get backtest progress (AJAX)
+    $group->get('/{id:[0-9]+}/progress', SimpleTrader\Controllers\MonitorController::class . ':progress')
+        ->setName('monitors.progress');
+
     // View monitor details
     $group->get('/{id:[0-9]+}', SimpleTrader\Controllers\MonitorController::class . ':show')
         ->setName('monitors.show');

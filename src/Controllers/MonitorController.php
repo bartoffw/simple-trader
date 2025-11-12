@@ -162,13 +162,13 @@ class MonitorController
             // Create monitor
             $monitorId = $this->monitorRepository->createMonitor($monitorData);
 
-            // TODO: Trigger initial backtest in background
-            // For now, we'll just set it to active immediately
-            // In production, this would queue a background job
-            $this->monitorRepository->updateStatus($monitorId, 'active');
-            $this->monitorRepository->updateLastProcessedDate($monitorId, date('Y-m-d'));
+            // Set initial backtest status
+            $this->monitorRepository->updateBacktestProgress($monitorId, 0, 'pending', null, null);
 
-            $this->flash->set('success', "Monitor '{$data['name']}' created successfully. Initial backtest will run in the background.");
+            // Trigger backtest in background
+            $this->triggerBackgroundBacktest($monitorId);
+
+            $this->flash->set('success', "Monitor '{$data['name']}' created successfully. Initial backtest is running in the background.");
 
             return $response
                 ->withHeader('Location', '/monitors/' . $monitorId)
@@ -338,5 +338,70 @@ class MonitorController
         return $response
             ->withHeader('Location', '/monitors')
             ->withStatus(302);
+    }
+
+    /**
+     * Get backtest progress (AJAX endpoint)
+     *
+     * GET /monitors/{id}/progress
+     */
+    public function progress(Request $request, Response $response, array $args): Response
+    {
+        $id = (int)$args['id'];
+
+        try {
+            $monitor = $this->monitorRepository->getMonitor($id);
+
+            if ($monitor === null) {
+                $response->getBody()->write(json_encode([
+                    'success' => false,
+                    'message' => 'Monitor not found'
+                ]));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            }
+
+            $response->getBody()->write(json_encode([
+                'success' => true,
+                'progress' => $monitor['backtest_progress'] ?? 0,
+                'status' => $monitor['backtest_status'] ?? 'pending',
+                'current_date' => $monitor['backtest_current_date'] ?? null,
+                'error' => $monitor['backtest_error'] ?? null,
+                'monitor_status' => $monitor['status']
+            ]));
+
+            return $response->withHeader('Content-Type', 'application/json');
+
+        } catch (\Exception $e) {
+            $response->getBody()->write(json_encode([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
+
+    /**
+     * Trigger background backtest execution
+     *
+     * @param int $monitorId Monitor ID
+     * @return void
+     */
+    private function triggerBackgroundBacktest(int $monitorId): void
+    {
+        $projectRoot = __DIR__ . '/../..';
+        $command = sprintf(
+            'php %s/commands/monitor-backtest.php %d > /dev/null 2>&1 &',
+            $projectRoot,
+            $monitorId
+        );
+
+        // Execute in background
+        if (substr(php_uname(), 0, 7) == "Windows") {
+            // Windows
+            pclose(popen("start /B " . $command, "r"));
+        } else {
+            // Unix/Linux/Mac
+            exec($command);
+        }
     }
 }
