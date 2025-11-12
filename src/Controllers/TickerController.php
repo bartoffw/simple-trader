@@ -19,6 +19,7 @@ class TickerController
     private TickerRepository $repository;
     private Twig $view;
     private $flash;
+    private array $config;
 
     public function __construct(ContainerInterface $container)
     {
@@ -26,6 +27,7 @@ class TickerController
         $this->repository = $container->get('tickerRepository');
         $this->view = $container->get('view');
         $this->flash = $container->get('flash');
+        $this->config = require __DIR__ . '/../../config/config.php';
     }
 
     /**
@@ -56,6 +58,7 @@ class TickerController
 
         return $this->view->render($response, 'tickers/create.twig', [
             'sources' => $sources,
+            'exchanges' => $this->config['exchanges'],
             'flash' => $this->flash->all()
         ]);
     }
@@ -137,6 +140,7 @@ class TickerController
         return $this->view->render($response, 'tickers/edit.twig', [
             'ticker' => $ticker,
             'sources' => $sources,
+            'exchanges' => $this->config['exchanges'],
             'flash' => $this->flash->all()
         ]);
     }

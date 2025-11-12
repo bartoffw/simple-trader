@@ -53,16 +53,19 @@
                         <!-- Exchange -->
                         <div class="form-group">
                             <label for="exchange">Exchange <span class="text-danger">*</span></label>
-                            <input type="text"
-                                   class="form-control {% if errors.exchange is defined %}is-invalid{% endif %}"
-                                   id="exchange"
-                                   name="exchange"
-                                   placeholder="e.g., XETR, NYSE, NASDAQ"
-                                   value="{{ old.exchange|default('') }}"
-                                   maxlength="10"
-                                   required>
+                            <select class="form-control {% if errors.exchange is defined %}is-invalid{% endif %}"
+                                    id="exchange"
+                                    name="exchange"
+                                    required>
+                                <option value="">-- Select Exchange --</option>
+                                {% for exchangeCode, country in exchanges %}
+                                    <option value="{{ exchangeCode }}" {% if old.exchange is defined and old.exchange == exchangeCode %}selected{% endif %}>
+                                        {{ exchangeCode }} - {{ country }}
+                                    </option>
+                                {% endfor %}
+                            </select>
                             <small class="form-text text-muted">
-                                Enter the exchange code where this ticker is traded.
+                                Select the stock exchange where this ticker is traded.
                             </small>
                             {% if errors.exchange is defined %}
                                 <span class="error invalid-feedback">{{ errors.exchange }}</span>
