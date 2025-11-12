@@ -22,8 +22,12 @@ use SimpleTrader\Commands\FetchQuotesCommand;
 // Create console application
 $application = new Application('Simple Trader CLI', '1.0.0');
 
-// Register commands
-$application->add(new FetchQuotesCommand());
+// Register command
+$command = new FetchQuotesCommand();
+$application->add($command);
+
+// Set as default command so users don't need to specify command name
+$application->setDefaultCommand($command->getName(), true);
 
 // Run the application
 try {
