@@ -77,36 +77,36 @@ $app->group('/strategies', function (RouteCollectorProxy $group) {
         ->setName('strategies.show');
 });
 
-// Runner Management Routes (Backtest Execution)
-$app->group('/runs', function (RouteCollectorProxy $group) {
+// Backtest Management Routes (Backtest Execution)
+$app->group('/backtests', function (RouteCollectorProxy $group) {
 
-    // List all runs (index page)
+    // List all backtests (index page)
     $group->get('', RunnerController::class . ':index')
-        ->setName('runs.index');
+        ->setName('backtests.index');
 
-    // Show create run form
+    // Show create backtest form
     $group->get('/create', RunnerController::class . ':create')
-        ->setName('runs.create');
+        ->setName('backtests.create');
 
-    // Store new run and start execution (POST)
+    // Store new backtest and start execution (POST)
     $group->post('', RunnerController::class . ':store')
-        ->setName('runs.store');
+        ->setName('backtests.store');
 
-    // View run details and results
+    // View backtest details and results
     $group->get('/{id:[0-9]+}', RunnerController::class . ':show')
-        ->setName('runs.show');
+        ->setName('backtests.show');
 
     // AJAX endpoint for real-time log polling
     $group->get('/{id:[0-9]+}/logs', RunnerController::class . ':logs')
-        ->setName('runs.logs');
+        ->setName('backtests.logs');
 
     // Download standalone HTML report
     $group->get('/{id:[0-9]+}/report', RunnerController::class . ':downloadReport')
-        ->setName('runs.report');
+        ->setName('backtests.report');
 
-    // Delete run (POST)
+    // Delete backtest (POST)
     $group->post('/{id:[0-9]+}/delete', RunnerController::class . ':destroy')
-        ->setName('runs.delete');
+        ->setName('backtests.delete');
 });
 
 // Monitor Management Routes (Strategy Monitoring)

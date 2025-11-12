@@ -6,7 +6,7 @@ use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Views\Twig;
-use SimpleTrader\Database\RunRepository;
+use SimpleTrader\Database\BacktestRepository;
 use SimpleTrader\Database\TickerRepository;
 use SimpleTrader\Helpers\StrategyDiscovery;
 use SimpleTrader\Services\BackgroundRunner;
@@ -19,7 +19,7 @@ use SimpleTrader\Services\BackgroundRunner;
 class RunnerController
 {
     private ContainerInterface $container;
-    private RunRepository $runRepository;
+    private BacktestRepository $backtestRepository;
     private TickerRepository $tickerRepository;
     private Twig $view;
     private $flash;
@@ -27,7 +27,7 @@ class RunnerController
     public function __construct(ContainerInterface $container)
     {
         $this->container = $container;
-        $this->runRepository = new RunRepository($container->get('runsDb'));
+        $this->backtestRepository = new BacktestRepository($container->get('backtestsDb'));
         $this->tickerRepository = $container->get('tickerRepository');
         $this->view = $container->get('view');
         $this->flash = $container->get('flash');
@@ -41,10 +41,10 @@ class RunnerController
     public function index(Request $request, Response $response): Response
     {
         // Get all runs
-        $runs = $this->runRepository->getAllRuns();
+        $runs = $this->backtestRepository->getAllBacktests();
 
         // Get statistics
-        $stats = $this->runRepository->getStatistics();
+        $stats = $this->backtestRepository->getStatistics();
 
         // Enhance runs with additional info
         foreach ($runs as &$run) {
@@ -67,7 +67,7 @@ class RunnerController
             }
         }
 
-        return $this->view->render($response, 'runs/index.twig', [
+        return $this->view->render($response, 'backtests/index.twig', [
             'runs' => $runs,
             'stats' => $stats,
             'flash' => $this->flash->all()
@@ -99,7 +99,7 @@ class RunnerController
         // Get available tickers (enabled only)
         $tickers = $this->tickerRepository->getAllTickers(true);
 
-        return $this->view->render($response, 'runs/create.twig', [
+        return $this->view->render($response, 'backtests/create.twig', [
             'strategies' => $strategies,
             'tickers' => $tickers,
             'flash' => $this->flash->all()
@@ -139,7 +139,7 @@ class RunnerController
         if (!empty($errors)) {
             $this->flash->set('error', implode(', ', $errors));
             return $response
-                ->withHeader('Location', '/runs/create')
+                ->withHeader('Location', '/backtests/create')
                 ->withStatus(302);
         }
 
@@ -184,12 +184,12 @@ class RunnerController
             'status' => 'pending'
         ];
 
-        $runId = $this->runRepository->createRun($runData);
+        $runId = $this->backtestRepository->createBacktest($runData);
 
         if ($runId === false) {
             $this->flash->set('error', 'Failed to create run');
             return $response
-                ->withHeader('Location', '/runs/create')
+                ->withHeader('Location', '/backtests/create')
                 ->withStatus(302);
         }
 
@@ -200,7 +200,7 @@ class RunnerController
         $this->flash->set('success', "Run #{$runId} started successfully!");
 
         return $response
-            ->withHeader('Location', '/runs/' . $runId)
+            ->withHeader('Location', '/backtests/' . $runId)
             ->withStatus(302);
     }
 
@@ -212,7 +212,7 @@ class RunnerController
     public function show(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
-        $run = $this->runRepository->getRun($id);
+        $run = $this->backtestRepository->getBacktest($id);
 
         if ($run === null) {
             return $this->view->render($response->withStatus(404), 'error.twig', [
@@ -246,7 +246,7 @@ class RunnerController
         // Get strategy info
         $run['strategy_info'] = StrategyDiscovery::getStrategyInfo($run['strategy_class']);
 
-        return $this->view->render($response, 'runs/show.twig', [
+        return $this->view->render($response, 'backtests/show.twig', [
             'run' => $run,
             'flash' => $this->flash->all()
         ]);
@@ -260,7 +260,7 @@ class RunnerController
     public function logs(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
-        $run = $this->runRepository->getRun($id);
+        $run = $this->backtestRepository->getBacktest($id);
 
         if ($run === null) {
             $response->getBody()->write(json_encode([
@@ -290,7 +290,7 @@ class RunnerController
     public function downloadReport(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
-        $run = $this->runRepository->getRun($id);
+        $run = $this->backtestRepository->getBacktest($id);
 
         if ($run === null || empty($run['report_html'])) {
             return $response->withStatus(404);
@@ -313,7 +313,7 @@ class RunnerController
     public function destroy(Request $request, Response $response, array $args): Response
     {
         $id = (int)$args['id'];
-        $run = $this->runRepository->getRun($id);
+        $run = $this->backtestRepository->getBacktest($id);
 
         if ($run === null) {
             $this->flash->set('error', 'Run not found');
@@ -330,7 +330,7 @@ class RunnerController
                 ->withStatus(302);
         }
 
-        if ($this->runRepository->deleteRun($id)) {
+        if ($this->backtestRepository->deleteBacktest($id)) {
             $this->flash->set('success', "Run #{$id} deleted successfully");
         } else {
             $this->flash->set('error', 'Failed to delete run');

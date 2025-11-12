@@ -30,8 +30,8 @@ USAGE:
 DESCRIPTION:
   This script performs the following operations:
 
-  1. Creates runs.db database
-     - Initializes runs table for backtest execution history
+  1. Creates backtests.db database
+     - Initializes backtests table for backtest execution history
      - Creates indexes for performance
 
   2. Creates monitors.db database
@@ -45,7 +45,7 @@ DESCRIPTION:
      - Initializes tickers table for ticker metadata
      - Initializes quotes table for OHLCV data
      - Creates indexes for fast querying
-     - Removes old runs table if it exists (database separation)
+     - Removes old backtests table if it exists (database separation)
 
 WHEN TO RUN:
   - Initial installation (first time setup)
@@ -61,12 +61,12 @@ WHAT IT DOES:
   - Safe to run multiple times (idempotent)
 
 DATABASE FILES:
-  - database/runs.db      (backtest run history)
+  - database/backtests.db (backtest execution history)
   - database/monitors.db  (strategy monitoring data)
   - database/tickers.db   (ticker and quote data)
 
 MIGRATION FILES:
-  - database/runs-migrations/*.sql      (runs database migrations)
+  - database/backtests-migrations/*.sql (backtests database migrations)
   - database/monitors-migrations/*.sql  (monitors database migrations)
   - database/migrations/*.sql           (tickers database migrations)
 
@@ -102,10 +102,10 @@ echo "=== Simple-Trader Database Migration ===" . PHP_EOL . PHP_EOL;
 
 $success = true;
 $databases = [
-    'runs' => [
-        'path' => __DIR__ . '/runs.db',
-        'migrations' => __DIR__ . '/runs-migrations',
-        'name' => 'Runs Database'
+    'backtests' => [
+        'path' => __DIR__ . '/backtests.db',
+        'migrations' => __DIR__ . '/backtests-migrations',
+        'name' => 'Backtests Database'
     ],
     'monitors' => [
         'path' => __DIR__ . '/monitors.db',

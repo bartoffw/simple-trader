@@ -41,9 +41,9 @@ $container->set('db', function() use ($config) {
     return \SimpleTrader\Database\Database::getInstance($config['database']['tickers']);
 });
 
-// Register Runs Database in Container
-$container->set('runsDb', function() use ($config) {
-    return \SimpleTrader\Database\Database::getInstance($config['database']['runs']);
+// Register Backtests Database in Container
+$container->set('backtestsDb', function() use ($config) {
+    return \SimpleTrader\Database\Database::getInstance($config['database']['backtests']);
 });
 
 // Register Monitors Database in Container
@@ -61,9 +61,9 @@ $container->set('quoteRepository', function($container) {
     return new \SimpleTrader\Database\QuoteRepository($container->get('db'));
 });
 
-// Register RunRepository in Container
-$container->set('runRepository', function($container) {
-    return new \SimpleTrader\Database\RunRepository($container->get('runsDb'));
+// Register BacktestRepository in Container
+$container->set('backtestRepository', function($container) {
+    return new \SimpleTrader\Database\BacktestRepository($container->get('backtestsDb'));
 });
 
 // Register MonitorRepository in Container

@@ -1,10 +1,10 @@
--- Migration: Create runs table for backtesting runs
+-- Migration: Create backtests table for backtesting runs
 -- This table stores all backtest runs with their configurations and results
 
 PRAGMA foreign_keys = OFF;  -- No foreign keys since tickers are in a different database
 
--- Create runs table
-CREATE TABLE IF NOT EXISTS runs (
+-- Create backtests table
+CREATE TABLE IF NOT EXISTS backtests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(255) NOT NULL,
     strategy_class VARCHAR(100) NOT NULL,
@@ -28,10 +28,10 @@ CREATE TABLE IF NOT EXISTS runs (
 );
 
 -- Create index on status for filtering
-CREATE INDEX IF NOT EXISTS idx_runs_status ON runs(status);
+CREATE INDEX IF NOT EXISTS idx_backtests_status ON backtests(status);
 
 -- Create index on created_at for sorting
-CREATE INDEX IF NOT EXISTS idx_runs_created_at ON runs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_backtests_created_at ON backtests(created_at DESC);
 
 -- Create index on strategy for filtering
-CREATE INDEX IF NOT EXISTS idx_runs_strategy ON runs(strategy_class);
+CREATE INDEX IF NOT EXISTS idx_backtests_strategy ON backtests(strategy_class);
