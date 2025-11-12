@@ -126,7 +126,7 @@ $container->set('flash', function() {
 $container->set(\SimpleTrader\Controllers\DocumentationController::class, function($container) use ($config) {
     return new \SimpleTrader\Controllers\DocumentationController(
         $container->get('view'),
-        $config['paths']['root']
+        __DIR__ . '/..'  // Project root directory
     );
 });
 
