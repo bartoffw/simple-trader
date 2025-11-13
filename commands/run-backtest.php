@@ -47,8 +47,8 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use Carbon\Carbon;
 use SimpleTrader\Assets;
 use SimpleTrader\Backtester;
+use SimpleTrader\Database\BacktestRepository;
 use SimpleTrader\Database\Database;
-use SimpleTrader\Database\RunRepository;
 use SimpleTrader\Database\TickerRepository;
 use SimpleTrader\Database\QuoteRepository;
 use SimpleTrader\Helpers\DatabaseAssetLoader;
@@ -101,7 +101,7 @@ try {
     $tickersDb = Database::getInstance($config['database']['tickers']);
     $runsDb = Database::getInstance($config['database']['runs']);
 
-    $runRepository = new RunRepository($runsDb);
+    $backtestRepository = new BacktestRepository($runsDb);
     $tickerRepository = new TickerRepository($tickersDb);
     $quoteRepository = new QuoteRepository($tickersDb);
 
@@ -109,7 +109,7 @@ try {
     if ($isRunIdMode) {
         // Mode 1: Load from database
         $runId = (int)$options['run-id'];
-        $run = $runRepository->getRun($runId);
+        $run = $backtestRepository->getBacktest($runId);
 
         if (!$run) {
             outputError("Run not found: {$runId}", $outputFormat);

@@ -27,7 +27,7 @@ class BacktestRepository
      */
     public function getAllBacktests(?string $status = null, ?int $limit = null): array
     {
-        $sql = 'SELECT * FROM backtestsWHERE 1=1';
+        $sql = 'SELECT * FROM backtests WHERE 1=1';
 
         if ($status !== null) {
             $sql .= ' AND status = :status';

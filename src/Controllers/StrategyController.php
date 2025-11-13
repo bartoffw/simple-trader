@@ -5,9 +5,9 @@ namespace SimpleTrader\Controllers;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
+use SimpleTrader\Database\BacktestRepository;
 use Slim\Views\Twig;
 use SimpleTrader\Helpers\StrategyDiscovery;
-use SimpleTrader\Database\RunRepository;
 use SimpleTrader\Database\TickerRepository;
 
 /**
@@ -20,7 +20,7 @@ class StrategyController
     private ContainerInterface $container;
     private Twig $view;
     private $flash;
-    private RunRepository $runRepository;
+    private BacktestRepository $backtestRepository;
     private TickerRepository $tickerRepository;
 
     public function __construct(ContainerInterface $container)
@@ -28,7 +28,7 @@ class StrategyController
         $this->container = $container;
         $this->view = $container->get('view');
         $this->flash = $container->get('flash');
-        $this->runRepository = $container->get('runRepository');
+        $this->backtestRepository = $container->get('backtestRepository');
         $this->tickerRepository = $container->get('tickerRepository');
     }
 

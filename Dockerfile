@@ -1,4 +1,4 @@
-FROM php:8.3-apache-bookworm
+FROM php:8.4-apache-bookworm
 
 RUN apt-get update && apt-get install -y \
       libfreetype-dev libjpeg62-turbo-dev libpng-dev libzip-dev

@@ -2,7 +2,7 @@
 
 namespace SimpleTrader\Services;
 
-use SimpleTrader\Database\RunRepository;
+use SimpleTrader\Database\BacktestRepository;
 use SimpleTrader\Loggers\LoggerInterface;
 use SimpleTrader\Loggers\Level;
 
@@ -13,16 +13,16 @@ use SimpleTrader\Loggers\Level;
  */
 class BacktestLogger implements LoggerInterface
 {
-    private RunRepository $runRepository;
+    private BacktestRepository $backtestRepository;
     private int $runId;
     private Level $level = Level::Info;
     private string $buffer = '';
     private int $flushThreshold = 10; // Flush after 10 log lines
     private int $lineCount = 0;
 
-    public function __construct(RunRepository $runRepository, int $runId)
+    public function __construct(BacktestRepository $backtestRepository, int $runId)
     {
-        $this->runRepository = $runRepository;
+        $this->backtestRepository = $backtestRepository;
         $this->runId = $runId;
     }
 
