@@ -94,16 +94,32 @@ class BackgroundRunner
 
         $now = new \DateTime();
 
-        // Check pending backtests (stuck for more than 2 minutes)
+        // Check pending backtests (stuck for more than 30 seconds)
         foreach ($pendingBacktests as $backtest) {
             $stats['checked']++;
             $createdAt = new \DateTime($backtest['created_at']);
-            $minutesSinceCreated = ($now->getTimestamp() - $createdAt->getTimestamp()) / 60;
+            $secondsSinceCreated = $now->getTimestamp() - $createdAt->getTimestamp();
+            $minutesSinceCreated = $secondsSinceCreated / 60;
 
-            if ($minutesSinceCreated > 2) {
+            // For very new backtests (< 1 minute), wait at least 30 seconds before first restart
+            // For older backtests, restart immediately as they clearly failed
+            $shouldRestart = false;
+            if ($secondsSinceCreated >= 30 && $secondsSinceCreated < 60) {
+                // First restart attempt after 30 seconds
+                $shouldRestart = true;
+            } elseif ($minutesSinceCreated >= 1) {
+                // Subsequent restart attempts every health check if still pending after 1 minute
+                $shouldRestart = true;
+            }
+
+            if ($shouldRestart) {
                 // Backtest has been pending for too long, restart it
                 $timestamp = date('Y-m-d H:i:s');
-                $logMessage = "\n[{$timestamp}] [HEALTH CHECK] Backtest was stuck in pending status for " . round($minutesSinceCreated, 1) . " minutes. Attempting to restart...\n";
+                if ($secondsSinceCreated < 60) {
+                    $logMessage = "\n[{$timestamp}] [HEALTH CHECK] Backtest hasn't started after {$secondsSinceCreated} seconds. Attempting to start...\n";
+                } else {
+                    $logMessage = "\n[{$timestamp}] [HEALTH CHECK] Backtest was stuck in pending status for " . round($minutesSinceCreated, 1) . " minutes. Attempting to restart...\n";
+                }
                 $repository->appendLog($backtest['id'], $logMessage);
 
                 $this->startRun($backtest['id']);

@@ -108,6 +108,10 @@ $app->group('/backtests', function (RouteCollectorProxy $group) {
     $group->post('/{id:[0-9]+}/delete', RunnerController::class . ':destroy')
         ->setName('backtests.delete');
 
+    // Manual restart endpoint
+    $group->post('/{id:[0-9]+}/restart', RunnerController::class . ':restart')
+        ->setName('backtests.restart');
+
     // Health check endpoint - restart stalled backtests
     $group->post('/health-check', RunnerController::class . ':healthCheck')
         ->setName('backtests.healthCheck');

@@ -21,12 +21,18 @@
                     <i class="fas fa-check-circle"></i>
                     <strong>Backtest Completed!</strong>
                     Execution time: {{ run.execution_time_seconds|number_format(2) }} seconds
+                    {% if run.started_at %}
+                        (started {{ run.started_at }}, completed {{ run.completed_at }})
+                    {% endif %}
                 </div>
             {% elseif run.status == 'running' %}
                 <div class="alert alert-warning">
                     <i class="fas fa-spinner fa-spin"></i>
                     <strong>Backtest Running...</strong>
                     Logs are updated in real-time below.
+                    {% if run.started_at %}
+                        <br><small>Started {{ run.started_at }}, running for <span id="elapsed-time">calculating...</span></small>
+                    {% endif %}
                 </div>
             {% elseif run.status == 'failed' %}
                 <div class="alert alert-danger">
@@ -41,6 +47,12 @@
                     <i class="fas fa-hourglass-half"></i>
                     <strong>Backtest Pending</strong>
                     The backtest is queued and will start shortly.
+                    <br><small>Created {{ run.created_at }}, pending for <span id="elapsed-time">calculating...</span></small>
+                    <form action="/backtests/{{ run.id }}/restart" method="POST" style="display: inline; margin-left: 10px;">
+                        <button type="submit" class="btn btn-sm btn-warning" title="Restart backtest now">
+                            <i class="fas fa-redo"></i> Restart Now
+                        </button>
+                    </form>
                 </div>
             {% endif %}
         </div>
@@ -318,7 +330,10 @@ $(document).ready(function() {
         let coloredHtml = '';
 
         lines.forEach(line => {
-            if (line.includes('[HEALTH CHECK]')) {
+            if (line.includes('[MANUAL RESTART]')) {
+                // Manual restart messages in cyan/blue
+                coloredHtml += '<span style="color: #00d9ff; font-weight: bold;">' + escapeHtml(line) + '</span>\n';
+            } else if (line.includes('[HEALTH CHECK]')) {
                 // Health check messages in orange/yellow
                 coloredHtml += '<span style="color: #ffa500;">' + escapeHtml(line) + '</span>\n';
             } else if (line.includes('[ERROR]') || line.includes('Error:') || line.includes('Fatal error')) {
@@ -381,6 +396,32 @@ $(document).ready(function() {
         });
     }
 
+    // Calculate and update elapsed time
+    function updateElapsedTime() {
+        const elapsedSpan = $('#elapsed-time');
+        if (elapsedSpan.length === 0) return;
+
+        const startTime = runStatus === 'running' && '{{ run.started_at }}'
+            ? new Date('{{ run.started_at }}').getTime()
+            : new Date('{{ run.created_at }}').getTime();
+
+        const now = new Date().getTime();
+        const elapsedMs = now - startTime;
+        const elapsedSeconds = Math.floor(elapsedMs / 1000);
+
+        if (elapsedSeconds < 60) {
+            elapsedSpan.text(elapsedSeconds + ' seconds');
+        } else if (elapsedSeconds < 3600) {
+            const minutes = Math.floor(elapsedSeconds / 60);
+            const seconds = elapsedSeconds % 60;
+            elapsedSpan.text(minutes + ' min ' + seconds + ' sec');
+        } else {
+            const hours = Math.floor(elapsedSeconds / 3600);
+            const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+            elapsedSpan.text(hours + ' hr ' + minutes + ' min');
+        }
+    }
+
     // Start polling if run is pending or running
     if (runStatus === 'pending' || runStatus === 'running') {
         // Initial poll
@@ -388,6 +429,10 @@ $(document).ready(function() {
 
         // Poll every 2 seconds
         pollInterval = setInterval(pollLogs, 2000);
+
+        // Update elapsed time immediately and every second
+        updateElapsedTime();
+        setInterval(updateElapsedTime, 1000);
 
         // Scroll logs initially
         scrollLogsToBottom();
