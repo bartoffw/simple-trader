@@ -189,36 +189,36 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for run in runs %}
+                                {% for backtest in backtests %}
                                     <tr>
-                                        <td>{{ run.id }}</td>
-                                        <td><strong>{{ run.name }}</strong></td>
+                                        <td>{{ backtest.id }}</td>
+                                        <td><strong>{{ backtest.name }}</strong></td>
                                         <td class="text-center">
-                                            {% if run.status == 'completed' %}
-                                                <span class="badge badge-success">{{ run.status }}</span>
-                                            {% elseif run.status == 'running' %}
-                                                <span class="badge badge-primary">{{ run.status }}</span>
-                                            {% elseif run.status == 'failed' %}
-                                                <span class="badge badge-danger">{{ run.status }}</span>
+                                            {% if backtest.status == 'completed' %}
+                                                <span class="badge badge-success">{{ backtest.status }}</span>
+                                            {% elseif backtest.status == 'running' %}
+                                                <span class="badge badge-primary">{{ backtest.status }}</span>
+                                            {% elseif backtest.status == 'failed' %}
+                                                <span class="badge badge-danger">{{ backtest.status }}</span>
                                             {% else %}
-                                                <span class="badge badge-secondary">{{ run.status }}</span>
+                                                <span class="badge badge-secondary">{{ backtest.status }}</span>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <small class="text-muted">{{ run.created_at }}</small>
+                                            <small class="text-muted">{{ backtest.created_at }}</small>
                                         </td>
                                         <td>
-                                            <code class="small">{{ run.tickers }}</code>
+                                            <code class="small">{{ backtest.tickers }}</code>
                                         </td>
                                         <td class="text-right">
-                                            {% if run.net_profit is not null %}
-                                                {% if run.net_profit >= 0 %}
+                                            {% if backtest.net_profit is not null %}
+                                                {% if backtest.net_profit >= 0 %}
                                                     <span class="text-success">
-                                                        <strong>${{ run.net_profit|number_format(2) }}</strong>
+                                                        <strong>${{ backtest.net_profit|number_format(2) }}</strong>
                                                     </span>
                                                 {% else %}
                                                     <span class="text-danger">
-                                                        <strong>${{ run.net_profit|number_format(2) }}</strong>
+                                                        <strong>${{ backtest.net_profit|number_format(2) }}</strong>
                                                     </span>
                                                 {% endif %}
                                             {% else %}
@@ -226,14 +226,14 @@
                                             {% endif %}
                                         </td>
                                         <td class="text-center">
-                                            {% if run.execution_time %}
-                                                {{ run.execution_time|number_format(1) }}s
+                                            {% if backtest.execution_time %}
+                                                {{ backtest.execution_time|number_format(1) }}s
                                             {% else %}
                                                 <span class="text-muted">-</span>
                                             {% endif %}
                                         </td>
                                         <td class="text-right">
-                                            <a href="/runs/{{ run.id }}"
+                                            <a href="/backtests/{{ backtest.id }}"
                                                class="btn btn-sm btn-info"
                                                title="View Report">
                                                 <i class="fas fa-chart-bar"></i> View Report
@@ -248,7 +248,7 @@
                             <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                             <p class="text-muted">No backtest runs found for this strategy.</p>
                             <small class="text-muted">
-                                Run a backtest using this strategy from the <a href="/runs">Runner Manager</a>.
+                                Run a backtest using this strategy from the <a href="/backtests">Backtest Manager</a>.
                             </small>
                         </div>
                     {% endif %}

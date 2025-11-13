@@ -318,7 +318,7 @@ class RunnerController
         if ($run === null) {
             $this->flash->set('error', 'Run not found');
             return $response
-                ->withHeader('Location', '/runs')
+                ->withHeader('Location', '/backtests')
                 ->withStatus(302);
         }
 
@@ -326,7 +326,7 @@ class RunnerController
         if ($run['status'] === 'running') {
             $this->flash->set('error', 'Cannot delete a running backtest');
             return $response
-                ->withHeader('Location', '/runs')
+                ->withHeader('Location', '/backtests')
                 ->withStatus(302);
         }
 
@@ -337,7 +337,7 @@ class RunnerController
         }
 
         return $response
-            ->withHeader('Location', '/runs')
+            ->withHeader('Location', '/backtests')
             ->withStatus(302);
     }
 
