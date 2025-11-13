@@ -107,6 +107,10 @@ $app->group('/backtests', function (RouteCollectorProxy $group) {
     // Delete backtest (POST)
     $group->post('/{id:[0-9]+}/delete', RunnerController::class . ':destroy')
         ->setName('backtests.delete');
+
+    // Health check endpoint - restart stalled backtests
+    $group->post('/health-check', RunnerController::class . ':healthCheck')
+        ->setName('backtests.healthCheck');
 });
 
 // Monitor Management Routes (Strategy Monitoring)

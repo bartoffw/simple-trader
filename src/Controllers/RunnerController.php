@@ -342,6 +342,24 @@ class RunnerController
     }
 
     /**
+     * Health check endpoint - restart stalled backtests
+     *
+     * POST /backtests/health-check
+     */
+    public function healthCheck(Request $request, Response $response): Response
+    {
+        $runner = new BackgroundRunner(__DIR__ . '/../..');
+        $stats = $runner->healthCheck($this->backtestRepository);
+
+        $response->getBody()->write(json_encode([
+            'success' => true,
+            'stats' => $stats
+        ]));
+
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+
+    /**
      * Extract strategy parameters with types and defaults
      */
     private function extractStrategyParameters(string $strategyClass): array

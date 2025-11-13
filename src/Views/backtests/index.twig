@@ -177,10 +177,36 @@
 $(document).ready(function() {
     // Auto-refresh for running runs
     const hasRunningRuns = {{ (stats.running > 0 or stats.pending > 0) ? 'true' : 'false' }};
+    const hasPendingRuns = {{ stats.pending > 0 ? 'true' : 'false' }};
+
+    // Run health check if there are pending/running backtests
     if (hasRunningRuns) {
+        // Run health check immediately
+        runHealthCheck();
+
+        // Run health check every 30 seconds
+        setInterval(runHealthCheck, 30000);
+
+        // Reload page every 10 seconds to show updates
         setTimeout(function() {
             location.reload();
-        }, 10000); // Reload every 10 seconds if there are running/pending runs
+        }, 10000);
+    }
+
+    function runHealthCheck() {
+        $.ajax({
+            url: '/backtests/health-check',
+            method: 'POST',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success && response.stats.restarted > 0) {
+                    console.log('Health check: ' + response.stats.restarted + ' backtest(s) restarted');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Health check failed:', error);
+            }
+        });
     }
 });
 </script>
