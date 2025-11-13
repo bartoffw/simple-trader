@@ -134,8 +134,8 @@ Simple-Trader uses three separate SQLite databases. Run migrations for each:
 # Tickers database
 php commands/migrate.php tickers
 
-# Runs database (backtests)
-php commands/migrate.php runs
+# Backtests database (backtests)
+php commands/migrate.php backtests
 
 # Monitors database (strategy monitoring)
 php commands/migrate.php monitors
@@ -149,7 +149,7 @@ ls -lh database/*.db
 
 You should see:
 - `database/tickers.db` - Ticker and quote data
-- `database/runs.db` - Backtest run history
+- `database/backtests.db` - Backtest run history
 - `database/monitors.db` - Strategy monitor configuration and history
 
 ### 3. Set Database Permissions

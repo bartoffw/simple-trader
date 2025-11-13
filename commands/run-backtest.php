@@ -99,9 +99,9 @@ try {
 
     // Initialize database connections and repositories
     $tickersDb = Database::getInstance($config['database']['tickers']);
-    $runsDb = Database::getInstance($config['database']['runs']);
+    $backtestsDb = Database::getInstance($config['database']['backtests']);
 
-    $backtestRepository = new BacktestRepository($runsDb);
+    $backtestRepository = new BacktestRepository($backtestsDb);
     $tickerRepository = new TickerRepository($tickersDb);
     $quoteRepository = new QuoteRepository($tickersDb);
 
@@ -197,7 +197,7 @@ try {
         // Save to database if not skipped
         $saveToDb = !$skipSave;
         if ($saveToDb) {
-            $runId = $runRepository->createRun([
+            $backtestId = $backtestRepository->createBacktest([
                 'name' => $runConfig['name'],
                 'strategy_class' => $runConfig['strategy_class'],
                 'strategy_parameters' => json_encode($runConfig['strategy_parameters']),
@@ -210,19 +210,19 @@ try {
                 'optimization_params' => json_encode($runConfig['optimization_params']),
                 'status' => 'pending'
             ]);
-            $runConfig['id'] = $runId;
+            $runConfig['id'] = $backtestId;
         }
     }
 
     // Update status if saving to database
     if ($saveToDb && $runConfig['id']) {
-        $runRepository->updateStatus($runConfig['id'], 'running');
+        $backtestRepository->updateStatus($runConfig['id'], 'running');
     }
 
     // Create logger based on output format and save mode
     if ($saveToDb && $runConfig['id']) {
         // Use database logger
-        $logger = new BacktestLogger($runRepository, $runConfig['id']);
+        $logger = new BacktestLogger($backtestRepository, $runConfig['id']);
         $logger->setLevel(Level::Info);
     } else {
         // Use console logger for non-save mode
@@ -344,7 +344,7 @@ try {
         $reportHtml = $reportGenerator->generateReport($backtest, $assets->getTickers());
 
         // Save results
-        $runRepository->updateResults($runConfig['id'], [
+        $backtestRepository->updateResults($runConfig['id'], [
             'report_html' => $reportHtml,
             'result_metrics' => json_encode($metrics),
             'execution_time' => $executionTime,
@@ -394,7 +394,7 @@ try {
     $errorTrace = $e->getTraceAsString();
 
     if (isset($saveToDb) && $saveToDb && isset($runConfig) && isset($runConfig['id']) && $runConfig['id']) {
-        $runRepository->updateError($runConfig['id'], $errorMsg . "\n" . $errorTrace);
+        $backtestRepository->updateError($runConfig['id'], $errorMsg . "\n" . $errorTrace);
     }
 
     outputError($errorMsg, $outputFormat ?? 'human', $errorTrace);

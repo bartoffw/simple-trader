@@ -88,7 +88,7 @@ class BacktestLogger implements LoggerInterface
     public function flush(): void
     {
         if (!empty($this->buffer)) {
-            $this->runRepository->appendLog($this->runId, $this->buffer);
+            $this->backtestRepository->appendLog($this->runId, $this->buffer);
             $this->buffer = '';
             $this->lineCount = 0;
         }

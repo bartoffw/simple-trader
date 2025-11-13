@@ -11,11 +11,11 @@ Stores ticker symbols, exchanges, data sources, and historical quote data.
 - `tickers` - Ticker metadata (symbol, exchange, source, enabled status)
 - `quotes` - Historical OHLCV data for each ticker
 
-### 2. Runs Database (`runs.db`)
+### 2. Backtests Database (`backtests.db`)
 Stores backtest execution runs, configurations, results, and logs.
 
 **Tables:**
-- `runs` - Backtest run configurations, status, results, and reports
+- `backtests` - Backtest run configurations, status, results, and reports
 
 ### 3. Monitors Database (`monitors.db`)
 Stores strategy monitoring configurations, daily snapshots, trades, and performance metrics.
@@ -46,7 +46,7 @@ php database/migrate.php
 ```
 
 This will:
-1. Create `runs.db` and initialize the runs table
+1. Create `backtests.db` and initialize the backtests table
 2. Create `tickers.db` and initialize tickers/quotes tables
 3. Create `monitors.db` and initialize all monitoring tables
 4. Display success message with database paths
@@ -55,17 +55,17 @@ This will:
 ```
 === Simple-Trader Database Migration ===
 
-=== Runs Database ===
-Database: /path/to/database/runs.db
-Migrations: /path/to/database/runs-migrations
+=== Backtests Database ===
+Database: /path/to/database/backtests.db
+Migrations: /path/to/database/backtests-migrations
 
 [1/2] Connecting to database...
 ✓ Connected successfully
 
 [2/2] Running migrations...
-  → Running 001_create_runs_table.sql... ✓
+  → Running 001_create_backtests_table.sql... ✓
 
-✓ Runs Database migrations completed!
+✓ Backtests Database migrations completed!
 
 === Tickers Database ===
 Database: /path/to/database/tickers.db
@@ -78,7 +78,7 @@ Migrations: /path/to/database/migrations
   → Running 001_create_tickers_table.sql... ✓
   → Running 002_add_source_to_tickers.sql... ✓
   → Running 003_create_quotes_table.sql... ✓
-  → Running 005_drop_runs_table.sql... ✓
+  → Running 005_drop_backtests_table.sql... ✓
 
 ✓ Tickers Database migrations completed!
 
@@ -101,29 +101,29 @@ Migrations: /path/to/database/monitors-migrations
 === ✓ All Migrations Completed Successfully! ===
 
 Databases created:
-  - /path/to/database/runs.db
+  - /path/to/database/backtests.db
   - /path/to/database/tickers.db
   - /path/to/database/monitors.db
 ```
 
 ### Upgrading (Existing Installation)
 
-If you have an existing installation with runs in the tickers database:
+If you have an existing installation with backtests in the tickers database:
 
 ```bash
-# This will create runs.db and migrate tickers.db
+# This will create backtests.db and migrate tickers.db
 php database/migrate.php
 ```
 
-**Note:** Migration `005_drop_runs_table.sql` will drop the runs table from `tickers.db`. Any existing run data will be lost. This is by design for the database separation.
+**Note:** Migration `005_drop_backtests_table.sql` will drop the backtests table from `tickers.db`. Any existing backtest data will be lost. This is by design for the database separation.
 
 ### Individual Database Migration (Advanced)
 
 You can also migrate databases individually:
 
 ```bash
-# Runs database only
-php database/migrate-runs.php
+# Backtests database only
+php database/migrate-backtests.php
 
 # Tickers database only (legacy script, now handled by migrate.php)
 # Not recommended - use migrate.php instead
@@ -131,14 +131,14 @@ php database/migrate-runs.php
 
 ## Migration Files
 
-### Runs Migrations (`runs-migrations/`)
-- `001_create_runs_table.sql` - Creates runs table with all columns
+### Backtests Migrations (`backtests-migrations/`)
+- `001_create_backtests_table.sql` - Creates backtests table with all columns
 
 ### Tickers Migrations (`migrations/`)
 - `001_create_tickers_table.sql` - Creates tickers table
 - `002_add_source_to_tickers.sql` - Adds source column
 - `003_create_quotes_table.sql` - Creates quotes table
-- `005_drop_runs_table.sql` - Removes runs table from tickers.db (separation)
+- `005_drop_backtests_table.sql` - Removes backtests table from tickers.db (separation)
 
 ### Monitors Migrations (`monitors-migrations/`)
 - `001_create_monitors_table.sql` - Creates monitors table for strategy monitoring configurations
@@ -149,9 +149,9 @@ php database/migrate-runs.php
 
 ## Troubleshooting
 
-### Error: "no such table: runs"
+### Error: "no such table: backtests"
 
-This means the runs database hasn't been created. Run:
+This means the backtests database hasn't been created. Run:
 
 ```bash
 php database/migrate.php
@@ -179,7 +179,7 @@ To reset all databases and start over:
 
 ```bash
 # Backup existing data first!
-rm database/tickers.db database/runs.db database/monitors.db
+rm database/tickers.db database/backtests.db database/monitors.db
 
 # Run migrations
 php database/migrate.php
@@ -194,9 +194,9 @@ Use SQLite command line to inspect databases:
 sqlite3 database/tickers.db ".tables"
 # Output: quotes  tickers
 
-# Check runs database
-sqlite3 database/runs.db ".tables"
-# Output: runs
+# Check backtests database
+sqlite3 database/backtests.db ".tables"
+# Output: backtests
 
 # Check monitors database
 sqlite3 database/monitors.db ".tables"
@@ -218,9 +218,9 @@ $container->set('db', function() use ($config) {
     return Database::getInstance($config['database']['tickers']);
 });
 
-// Runs database
-$container->set('runsDb', function() use ($config) {
-    return Database::getInstance($config['database']['runs']);
+// Backtests database
+$container->set('backtestsDb', function() use ($config) {
+    return Database::getInstance($config['database']['backtests']);
 });
 
 // Monitors database
@@ -233,8 +233,8 @@ $container->set('tickerRepository', function($container) {
     return new TickerRepository($container->get('db'));
 });
 
-$container->set('runRepository', function($container) {
-    return new RunRepository($container->get('runsDb'));
+$container->set('backtestRepository', function($container) {
+    return new BacktestRepository($container->get('backtestsDb'));
 });
 
 $container->set('monitorRepository', function($container) {
@@ -250,10 +250,10 @@ CLI scripts load all three databases:
 $config = require __DIR__ . '/../config/config.php';
 
 $tickersDb = Database::getInstance($config['database']['tickers']);
-$runsDb = Database::getInstance($config['database']['runs']);
+$backtestsDb = Database::getInstance($config['database']['backtests']);
 $monitorsDb = Database::getInstance($config['database']['monitors']);
 
-$runRepository = new RunRepository($runsDb);
+$backtestRepository = new BacktestRepository($backtestsDb);
 $tickerRepository = new TickerRepository($tickersDb);
 $quoteRepository = new QuoteRepository($tickersDb);
 $monitorRepository = new MonitorRepository($monitorsDb);
@@ -266,7 +266,7 @@ Database paths are configured in the main config file:
 ```php
 'database' => [
     'tickers' => __DIR__ . '/../database/tickers.db',
-    'runs' => __DIR__ . '/../database/runs.db',
+    'backtests' => __DIR__ . '/../database/backtests.db',
     'monitors' => __DIR__ . '/../database/monitors.db',
 ],
 ```
@@ -278,12 +278,12 @@ Database paths are configured in the main config file:
 ```bash
 # Backup all databases
 cp database/tickers.db database/backups/tickers-$(date +%Y%m%d).db
-cp database/runs.db database/backups/runs-$(date +%Y%m%d).db
+cp database/backtests.db database/backups/backtests-$(date +%Y%m%d).db
 cp database/monitors.db database/backups/monitors-$(date +%Y%m%d).db
 
 # Or use SQLite backup command
 sqlite3 database/tickers.db ".backup database/backups/tickers-$(date +%Y%m%d).db"
-sqlite3 database/runs.db ".backup database/backups/runs-$(date +%Y%m%d).db"
+sqlite3 database/backtests.db ".backup database/backups/backtests-$(date +%Y%m%d).db"
 sqlite3 database/monitors.db ".backup database/backups/monitors-$(date +%Y%m%d).db"
 ```
 
@@ -292,7 +292,7 @@ sqlite3 database/monitors.db ".backup database/backups/monitors-$(date +%Y%m%d).
 ```bash
 # Restore from backup
 cp database/backups/tickers-20240115.db database/tickers.db
-cp database/backups/runs-20240115.db database/runs.db
+cp database/backups/backtests-20240115.db database/backtests.db
 cp database/backups/monitors-20240115.db database/monitors.db
 ```
 
@@ -315,13 +315,13 @@ Create new file in `database/migrations/`:
 ALTER TABLE tickers ADD COLUMN new_column TEXT;
 ```
 
-### For Runs Database
+### For Backtests Database
 
-Create new file in `database/runs-migrations/`:
+Create new file in `database/backtests-migrations/`:
 
 ```bash
 # File: 002_add_new_column.sql
-ALTER TABLE runs ADD COLUMN new_column TEXT;
+ALTER TABLE backtests ADD COLUMN new_column TEXT;
 ```
 
 ### For Monitors Database
