@@ -231,10 +231,13 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div id="log-output" style="background: #1e1e1e; color: #d4d4d4; padding: 15px; max-height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; white-space: pre-wrap;">
-                        {{ run.log_output|default('No logs yet...') }}
-                    </div>
+                    <div id="log-output" style="background: #1e1e1e; color: #d4d4d4; padding: 15px; max-height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; white-space: pre-wrap;">{{ run.log_output|default('No logs yet...') }}</div>
                 </div>
+                {% if run.error_message %}
+                    <div class="card-footer bg-danger text-white">
+                        <strong><i class="fas fa-exclamation-triangle"></i> Error:</strong> {{ run.error_message }}
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -268,13 +271,13 @@
     <!-- Actions -->
     <div class="row">
         <div class="col-12">
-            <a href="/runs" class="btn btn-default">
+            <a href="/backtests" class="btn btn-default">
                 <i class="fas fa-arrow-left"></i> Back to List
             </a>
             {% if run.status != 'running' %}
-                <form action="/runs/{{ run.id }}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this run?');">
+                <form action="/backtests/{{ run.id }}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this backtest?');">
                     <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash"></i> Delete Run
+                        <i class="fas fa-trash"></i> Delete Backtest
                     </button>
                 </form>
             {% endif %}
@@ -296,6 +299,52 @@ $(document).ready(function() {
         logOutput.scrollTop(logOutput[0].scrollHeight);
     }
 
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // Update log display with color coding
+    function updateLogDisplay(logText) {
+        // Apply color coding to log lines
+        const lines = logText.split('\n');
+        let coloredHtml = '';
+
+        lines.forEach(line => {
+            if (line.includes('[HEALTH CHECK]')) {
+                // Health check messages in orange/yellow
+                coloredHtml += '<span style="color: #ffa500;">' + escapeHtml(line) + '</span>\n';
+            } else if (line.includes('[ERROR]') || line.includes('Error:') || line.includes('Fatal error')) {
+                // Error messages in red
+                coloredHtml += '<span style="color: #ff5555;">' + escapeHtml(line) + '</span>\n';
+            } else if (line.includes('[WARNING]') || line.includes('Warning:')) {
+                // Warning messages in yellow
+                coloredHtml += '<span style="color: #ffff55;">' + escapeHtml(line) + '</span>\n';
+            } else if (line.includes('[SUCCESS]') || line.includes('✓')) {
+                // Success messages in green
+                coloredHtml += '<span style="color: #50fa7b;">' + escapeHtml(line) + '</span>\n';
+            } else {
+                // Default color
+                coloredHtml += escapeHtml(line) + '\n';
+            }
+        });
+
+        $('#log-output').html(coloredHtml);
+    }
+
+    // Initialize log display with color coding on page load
+    const initialLog = $('#log-output').text();
+    if (initialLog && initialLog !== 'No logs yet...') {
+        updateLogDisplay(initialLog);
+    }
+
     // Poll for log updates if run is pending or running
     function pollLogs() {
         $.ajax({
@@ -306,7 +355,7 @@ $(document).ready(function() {
                 if (response.success) {
                     // Update logs if changed
                     if (response.log_output && response.log_output.length > lastLogLength) {
-                        $('#log-output').text(response.log_output);
+                        updateLogDisplay(response.log_output);
                         lastLogLength = response.log_output.length;
                         scrollLogsToBottom();
                     }

@@ -28,10 +28,10 @@ class BackgroundRunner
     {
         $command = $this->buildCommand($runId);
 
-        // Create log file for this run
-        $logDir = $this->projectRoot . '/var/logs';
+        // Create log file for this run in a writable location
+        $logDir = $this->projectRoot . '/database/logs';
         if (!is_dir($logDir)) {
-            mkdir($logDir, 0755, true);
+            @mkdir($logDir, 0755, true);
         }
         $logFile = $logDir . '/backtest-' . $runId . '.log';
 
@@ -102,6 +102,10 @@ class BackgroundRunner
 
             if ($minutesSinceCreated > 2) {
                 // Backtest has been pending for too long, restart it
+                $timestamp = date('Y-m-d H:i:s');
+                $logMessage = "\n[{$timestamp}] [HEALTH CHECK] Backtest was stuck in pending status for " . round($minutesSinceCreated, 1) . " minutes. Attempting to restart...\n";
+                $repository->appendLog($backtest['id'], $logMessage);
+
                 $this->startRun($backtest['id']);
                 $stats['restarted']++;
             }
@@ -115,8 +119,13 @@ class BackgroundRunner
 
             // If running for more than 30 minutes, likely stalled
             if ($minutesSinceStarted > 30) {
-                // Mark as failed
-                $repository->updateError($backtest['id'], 'Backtest timed out after ' . round($minutesSinceStarted) . ' minutes');
+                // Mark as failed with log message
+                $timestamp = date('Y-m-d H:i:s');
+                $errorMsg = "Backtest timed out after " . round($minutesSinceStarted) . " minutes";
+                $logMessage = "\n[{$timestamp}] [ERROR] {$errorMsg}\n";
+
+                $repository->appendLog($backtest['id'], $logMessage);
+                $repository->updateError($backtest['id'], $errorMsg);
                 $stats['failed']++;
             }
         }
