@@ -299,7 +299,7 @@ $(document).ready(function() {
     // Poll for log updates if run is pending or running
     function pollLogs() {
         $.ajax({
-            url: '/runs/' + runId + '/logs',
+            url: '/backtests/' + runId + '/logs',
             method: 'GET',
             dataType: 'json',
             success: function(response) {
