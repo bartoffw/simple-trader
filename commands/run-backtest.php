@@ -305,7 +305,7 @@ try {
         $assets,
         new Carbon($runConfig['start_date']),
         new Carbon($runConfig['end_date']),
-        empty($optimizationParamsObjects) ? null : $optimizationParamsObjects
+        $optimizationParamsObjects
     );
 
     $executionTime = microtime(true) - $startTime;
