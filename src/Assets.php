@@ -138,7 +138,16 @@ class Assets
         if (count($columns) !== count(self::$columns)) {
             throw new LoaderException('Column count does not match for ' . $ticker . ': ' . count($columns) . ' vs ' . count(self::$columns));
         }
-        return $asset->sortRecordsByColumns('date', false);
+
+        // Sort by date descending (most recent first)
+        // Since sortRecordsByColumns doesn't exist in current WoollyM version,
+        // convert to array, sort, and rebuild DataFrame
+        $data = $asset->toArray();
+        usort($data, function($a, $b) {
+            return strcmp($b['date'], $a['date']); // Descending order
+        });
+
+        return DataFrame::fromArray($data);
     }
 
     public static function cloneAssetToDate(DataFrame $df, Carbon $fromDate, Carbon $toDate): DataFrame
