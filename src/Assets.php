@@ -79,10 +79,9 @@ class Assets
 //                if ($latestExistingDate->toDateString() === $da)
 //            }
             $clonedAsset = self::cloneAssetToDate($df, $fromDate, $toDate);
-            // Only add asset if it has data for the date range
-            if ($clonedAsset->count() > 0) {
-                $assets->addAsset($clonedAsset, $ticker);
-            }
+            // Always add the asset, even if empty for this date range
+            // This ensures strategies can rely on consistent ticker availability
+            $assets->addAsset($clonedAsset, $ticker, false, $this->exchanges[$ticker] ?? '', $this->paths[$ticker] ?? '');
         }
         return $assets;
     }
@@ -132,6 +131,12 @@ class Assets
 
     public static function validateAndSortAsset(DataFrame $asset, string $ticker): DataFrame
     {
+        // For empty DataFrames, return as-is without validation
+        // This allows empty date ranges while maintaining structure
+        if ($asset->count() === 0) {
+            return $asset;
+        }
+
         // check required columns
         $columns = $asset->columnsNames();
         foreach ($columns as $colName) {
@@ -156,16 +161,10 @@ class Assets
 
     public static function cloneAssetToDate(DataFrame $df, Carbon $fromDate, Carbon $toDate): DataFrame
     {
-        $filtered = $df->selectAll()
+        // Filter data to date range
+        // Even if empty, the filtered DataFrame should maintain its structure
+        return $df->selectAll()
             ->where(fn($record, $recordKey) => (new Carbon($record['date']))->between($fromDate, $toDate))
             ->export();
-
-        // If filtering resulted in empty DataFrame, ensure it maintains column structure
-        if ($filtered->count() === 0) {
-            // Return empty DataFrame with proper columns
-            return DataFrame::fromArray([]);
-        }
-
-        return $filtered;
     }
 }
