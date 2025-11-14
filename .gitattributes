@@ -1,0 +1,9 @@
+# Enforce Unix-style line endings (LF) for text files
+* text=auto
+
+# Explicitly set line endings for shell scripts and PHP files
+*.sh text eol=lf
+*.php text eol=lf
+
+# Ensure command-line scripts use Unix line endings
+commands/*.php text eol=lf
