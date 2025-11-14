@@ -35,13 +35,29 @@ class BackgroundRunner
         }
         $logFile = $logDir . '/backtest-' . $runId . '.log';
 
+        // Log the command being executed for debugging
+        $timestamp = date('Y-m-d H:i:s');
+        $commandLog = "[{$timestamp}] Executing command: {$command}\n";
+        $commandLog .= "[{$timestamp}] Log file: {$logFile}\n";
+        $commandLog .= "[{$timestamp}] PHP Binary: " . $this->phpBinary . "\n";
+        $commandLog .= "[{$timestamp}] Working directory: " . getcwd() . "\n\n";
+        file_put_contents($logFile, $commandLog, FILE_APPEND);
+
         // Execute command in background with logging
         if (stripos(PHP_OS, 'WIN') === 0) {
             // Windows
-            pclose(popen("start /B " . $command . " > " . escapeshellarg($logFile) . " 2>&1", "r"));
+            pclose(popen("start /B " . $command . " >> " . escapeshellarg($logFile) . " 2>&1", "r"));
         } else {
             // Unix/Linux/Mac - capture output for debugging
-            exec($command . " >> " . escapeshellarg($logFile) . " 2>&1 &");
+            $fullCommand = $command . " >> " . escapeshellarg($logFile) . " 2>&1 &";
+            exec($fullCommand, $output, $returnCode);
+
+            // Log execution result
+            $execLog = "[{$timestamp}] Exec return code: {$returnCode}\n";
+            if (!empty($output)) {
+                $execLog .= "[{$timestamp}] Exec output: " . implode("\n", $output) . "\n";
+            }
+            file_put_contents($logFile, $execLog, FILE_APPEND);
         }
 
         return true;
