@@ -138,7 +138,7 @@ class Assets
         if (count($columns) !== count(self::$columns)) {
             throw new LoaderException('Column count does not match for ' . $ticker . ': ' . count($columns) . ' vs ' . count(self::$columns));
         }
-        return $asset->sortRecordsByColumns(by: 'date', ascending: false);
+        return $asset->sortRecordsByColumns('date', false);
     }
 
     public static function cloneAssetToDate(DataFrame $df, Carbon $fromDate, Carbon $toDate): DataFrame
