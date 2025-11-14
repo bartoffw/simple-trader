@@ -38,19 +38,32 @@ class BackgroundRunner
 
         // Log the command being executed for debugging
         $timestamp = date('Y-m-d H:i:s');
-        $commandLog = "[{$timestamp}] Executing command: {$command}\n";
-        $commandLog .= "[{$timestamp}] Log file: {$logFile}\n";
+        $scriptPath = $this->projectRoot . '/commands/run-backtest.php';
+        $commandLog = "[{$timestamp}] === BACKGROUND PROCESS START ===\n";
+        $commandLog .= "[{$timestamp}] Run ID: {$runId}\n";
+        $commandLog .= "[{$timestamp}] Script path: {$scriptPath}\n";
+        $commandLog .= "[{$timestamp}] Script exists: " . (file_exists($scriptPath) ? 'YES' : 'NO') . "\n";
+        $commandLog .= "[{$timestamp}] Script executable: " . (is_executable($scriptPath) ? 'YES' : 'NO') . "\n";
         $commandLog .= "[{$timestamp}] PHP Binary: " . $this->phpBinary . "\n";
-        $commandLog .= "[{$timestamp}] Working directory: " . getcwd() . "\n\n";
+        $commandLog .= "[{$timestamp}] Command: {$command}\n";
+        $commandLog .= "[{$timestamp}] Log file: {$logFile}\n";
+        $commandLog .= "[{$timestamp}] Working directory: " . getcwd() . "\n";
+        $commandLog .= "[{$timestamp}] PHP_OS: " . PHP_OS . "\n\n";
         file_put_contents($logFile, $commandLog, FILE_APPEND);
 
         // Execute command in background with logging
         if (stripos(PHP_OS, 'WIN') === 0) {
             // Windows
-            pclose(popen("start /B " . $command . " >> " . escapeshellarg($logFile) . " 2>&1", "r"));
+            $fullCommand = "start /B " . $command . " >> " . escapeshellarg($logFile) . " 2>&1";
+            $commandLog = "[{$timestamp}] Windows command: {$fullCommand}\n\n";
+            file_put_contents($logFile, $commandLog, FILE_APPEND);
+            pclose(popen($fullCommand, "r"));
         } else {
             // Unix/Linux/Mac - capture output for debugging
             $fullCommand = $command . " >> " . escapeshellarg($logFile) . " 2>&1 &";
+            $commandLog = "[{$timestamp}] Full command with redirect: {$fullCommand}\n\n";
+            file_put_contents($logFile, $commandLog, FILE_APPEND);
+
             exec($fullCommand, $output, $returnCode);
 
             // Log execution result
@@ -58,6 +71,7 @@ class BackgroundRunner
             if (!empty($output)) {
                 $execLog .= "[{$timestamp}] Exec output: " . implode("\n", $output) . "\n";
             }
+            $execLog .= "\n";
             file_put_contents($logFile, $execLog, FILE_APPEND);
         }
 
@@ -73,7 +87,15 @@ class BackgroundRunner
     private function buildCommand(int $runId): string
     {
         $scriptPath = $this->projectRoot . '/commands/run-backtest.php';
-        return escapeshellcmd($this->phpBinary) . ' ' . escapeshellarg($scriptPath) . ' --run-id=' . escapeshellarg($runId);
+
+        // Build command - use direct script execution if it has shebang and is executable
+        if (is_executable($scriptPath)) {
+            // Script is executable, use it directly
+            return escapeshellarg($scriptPath) . ' --run-id=' . escapeshellarg((string)$runId);
+        } else {
+            // Use PHP binary explicitly
+            return $this->phpBinary . ' ' . escapeshellarg($scriptPath) . ' --run-id=' . escapeshellarg((string)$runId);
+        }
     }
 
     /**
