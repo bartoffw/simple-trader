@@ -15,7 +15,8 @@ class BackgroundRunner
     public function __construct(string $projectRoot)
     {
         $this->projectRoot = $projectRoot;
-        $this->phpBinary = PHP_BINARY;
+        // Use PHP_BINARY if available, otherwise fallback to 'php' command
+        $this->phpBinary = !empty(PHP_BINARY) ? PHP_BINARY : 'php';
     }
 
     /**
