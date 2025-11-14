@@ -31,41 +31,49 @@ class BacktestLogger implements LoggerInterface
         $this->level = $level;
     }
 
-    public function logDebug(string $message, array $context = []): void
+    public function log(Level $level, string $text): void
+    {
+        $this->writeLog($level->name, $text);
+    }
+
+    public function logDebug(string $debug): void
     {
         if ($this->level->value >= Level::Debug->value) {
-            $this->writeLog('DEBUG', $message, $context);
+            $this->writeLog('DEBUG', $debug);
         }
     }
 
-    public function logInfo(string $message, array $context = []): void
+    public function logInfo(string $info): void
     {
         if ($this->level->value >= Level::Info->value) {
-            $this->writeLog('INFO', $message, $context);
+            $this->writeLog('INFO', $info);
         }
     }
 
-    public function logWarning(string $message, array $context = []): void
+    public function logWarning(string $warning): void
     {
         if ($this->level->value >= Level::Warning->value) {
-            $this->writeLog('WARNING', $message, $context);
+            $this->writeLog('WARNING', $warning);
         }
     }
 
-    public function logError(string $message, array $context = []): void
+    public function logError(string $error): void
     {
         if ($this->level->value >= Level::Error->value) {
-            $this->writeLog('ERROR', $message, $context);
+            $this->writeLog('ERROR', $error);
         }
     }
 
-    private function writeLog(string $level, string $message, array $context = []): void
+    public function getLogs(): array
     {
-        // Replace context placeholders
-        foreach ($context as $key => $value) {
-            $message = str_replace('{' . $key . '}', $value, $message);
-        }
+        // Return logs as array of lines
+        // Note: For database logger, we don't keep logs in memory
+        // The logs are stored in database and retrieved via BacktestRepository
+        return [];
+    }
 
+    private function writeLog(string $level, string $message): void
+    {
         $timestamp = date('Y-m-d H:i:s');
         $logLine = "[{$timestamp}] [{$level}] {$message}\n";
 
