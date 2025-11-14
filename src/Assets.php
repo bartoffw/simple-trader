@@ -78,7 +78,11 @@ class Assets
 //                $latestExistingDate = $existingAssets->getLatestDate($ticker);
 //                if ($latestExistingDate->toDateString() === $da)
 //            }
-            $assets->addAsset(self::cloneAssetToDate($df, $fromDate, $toDate), $ticker);
+            $clonedAsset = self::cloneAssetToDate($df, $fromDate, $toDate);
+            // Only add asset if it has data for the date range
+            if ($clonedAsset->count() > 0) {
+                $assets->addAsset($clonedAsset, $ticker);
+            }
         }
         return $assets;
     }
@@ -152,7 +156,16 @@ class Assets
 
     public static function cloneAssetToDate(DataFrame $df, Carbon $fromDate, Carbon $toDate): DataFrame
     {
-        return $df->selectAll()
-            ->where(fn($record, $recordKey) => (new Carbon($record['date']))->between($fromDate, $toDate))->export();
+        $filtered = $df->selectAll()
+            ->where(fn($record, $recordKey) => (new Carbon($record['date']))->between($fromDate, $toDate))
+            ->export();
+
+        // If filtering resulted in empty DataFrame, ensure it maintains column structure
+        if ($filtered->count() === 0) {
+            // Return empty DataFrame with proper columns
+            return DataFrame::fromArray([]);
+        }
+
+        return $filtered;
     }
 }
