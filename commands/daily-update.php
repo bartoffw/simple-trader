@@ -13,6 +13,7 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use SimpleTrader\Investor\EmailNotifier;
+use SimpleTrader\Loggers\File;
 
 // Parse command line options
 $options = getopt('h', ['help', 'date:', 'skip-quotes', 'skip-monitors']);
@@ -107,12 +108,17 @@ try {
     $skipQuotes = isset($options['skip-quotes']);
     $skipMonitors = isset($options['skip-monitors']);
 
-    echo "========================================" . PHP_EOL;
-    echo "=== Daily Update Master Dispatcher ===" . PHP_EOL;
-    echo "========================================" . PHP_EOL;
-    echo "Started: " . date('Y-m-d H:i:s') . PHP_EOL;
-    echo "Processing date: {$date}" . PHP_EOL;
-    echo PHP_EOL;
+    // Initialize logger with file output
+    $logFile = __DIR__ . '/../var/logs/daily-update.log';
+    $logger = new File($logFile, true);
+
+    $logger->writeRaw("========================================");
+    $logger->writeRaw("=== Daily Update Master Dispatcher ===");
+    $logger->writeRaw("========================================");
+    $logger->writeRaw("Started: " . date('Y-m-d H:i:s'));
+    $logger->writeRaw("Processing date: {$date}");
+    $logger->writeRaw("Log file: " . $logFile);
+    $logger->writeRaw("");
 
     $projectRoot = __DIR__ . '/..';
     $results = [
@@ -135,10 +141,10 @@ try {
 
     // Step 1: Update Quotes
     if (!$skipQuotes) {
-        echo "========================================" . PHP_EOL;
-        echo "Step 1: Updating Ticker Quotes" . PHP_EOL;
-        echo "========================================" . PHP_EOL;
-        echo PHP_EOL;
+        $logger->writeRaw("========================================");
+        $logger->writeRaw("Step 1: Updating Ticker Quotes");
+        $logger->writeRaw("========================================");
+        $logger->writeRaw("");
 
         $quotesCommand = "php " . escapeshellarg($projectRoot . "/commands/update-quotes.php");
         $quotesOutput = [];
@@ -148,7 +154,7 @@ try {
 
         // Print output
         foreach ($quotesOutput as $line) {
-            echo $line . PHP_EOL;
+            $logger->writeRaw($line);
         }
 
         $results['quotes'] = [
@@ -157,23 +163,24 @@ try {
             'success' => $quotesExitCode === 0
         ];
 
-        echo PHP_EOL;
+        $logger->writeRaw("");
 
         if ($quotesExitCode !== 0) {
-            echo "⚠ Quote update failed with exit code {$quotesExitCode}" . PHP_EOL;
-            echo "Continuing with monitor updates..." . PHP_EOL;
-            echo PHP_EOL;
+            $logger->writeRaw("⚠ Quote update failed with exit code {$quotesExitCode}");
+            $logger->writeRaw("Continuing with monitor updates...");
+            $logger->writeRaw("");
         }
     } else {
-        echo "Skipping quote updates (--skip-quotes)" . PHP_EOL . PHP_EOL;
+        $logger->writeRaw("Skipping quote updates (--skip-quotes)");
+        $logger->writeRaw("");
     }
 
     // Step 2: Update Monitors
     if (!$skipMonitors) {
-        echo "========================================" . PHP_EOL;
-        echo "Step 2: Updating Strategy Monitors" . PHP_EOL;
-        echo "========================================" . PHP_EOL;
-        echo PHP_EOL;
+        $logger->writeRaw("========================================");
+        $logger->writeRaw("Step 2: Updating Strategy Monitors");
+        $logger->writeRaw("========================================");
+        $logger->writeRaw("");
 
         $monitorsCommand = "php " . escapeshellarg($projectRoot . "/commands/update-monitor.php");
         if ($date !== date('Y-m-d')) {
@@ -187,7 +194,7 @@ try {
 
         // Print output
         foreach ($monitorsOutput as $line) {
-            echo $line . PHP_EOL;
+            $logger->writeRaw($line);
         }
 
         $results['monitors'] = [
@@ -196,36 +203,38 @@ try {
             'success' => $monitorsExitCode === 0
         ];
 
-        echo PHP_EOL;
+        $logger->writeRaw("");
 
         if ($monitorsExitCode !== 0) {
-            echo "⚠ Monitor update failed with exit code {$monitorsExitCode}" . PHP_EOL;
-            echo PHP_EOL;
+            $logger->writeRaw("⚠ Monitor update failed with exit code {$monitorsExitCode}");
+            $logger->writeRaw("");
         }
     } else {
-        echo "Skipping monitor updates (--skip-monitors)" . PHP_EOL . PHP_EOL;
+        $logger->writeRaw("Skipping monitor updates (--skip-monitors)");
+        $logger->writeRaw("");
     }
 
     // Print overall summary
-    echo "========================================" . PHP_EOL;
-    echo "=== Overall Summary ===" . PHP_EOL;
-    echo "========================================" . PHP_EOL;
+    $logger->writeRaw("========================================");
+    $logger->writeRaw("=== Overall Summary ===");
+    $logger->writeRaw("========================================");
 
     if (!$skipQuotes) {
         $quotesStatus = $results['quotes']['success'] ? '✓ Success' : '✗ Failed';
-        echo "Quotes Update: {$quotesStatus} (exit code: {$results['quotes']['exit_code']})" . PHP_EOL;
+        $logger->writeRaw("Quotes Update: {$quotesStatus} (exit code: {$results['quotes']['exit_code']})");
     } else {
-        echo "Quotes Update: Skipped" . PHP_EOL;
+        $logger->writeRaw("Quotes Update: Skipped");
     }
 
     if (!$skipMonitors) {
         $monitorsStatus = $results['monitors']['success'] ? '✓ Success' : '✗ Failed';
-        echo "Monitors Update: {$monitorsStatus} (exit code: {$results['monitors']['exit_code']})" . PHP_EOL;
+        $logger->writeRaw("Monitors Update: {$monitorsStatus} (exit code: {$results['monitors']['exit_code']})");
     } else {
-        echo "Monitors Update: Skipped" . PHP_EOL;
+        $logger->writeRaw("Monitors Update: Skipped");
     }
 
-    echo PHP_EOL . "Completed: " . date('Y-m-d H:i:s') . PHP_EOL;
+    $logger->writeRaw("");
+    $logger->writeRaw("Completed: " . date('Y-m-d H:i:s'));
 
     // Send consolidated email notification
     if ($notifier) {
@@ -270,8 +279,17 @@ try {
     exit(0); // Success
 
 } catch (\Exception $e) {
-    echo PHP_EOL . "✗ Fatal Error: " . $e->getMessage() . PHP_EOL;
-    echo "File: " . $e->getFile() . ":" . $e->getLine() . PHP_EOL;
+    $errorMsg = "✗ Fatal Error: " . $e->getMessage();
+    $errorFile = "File: " . $e->getFile() . ":" . $e->getLine();
+
+    if (isset($logger)) {
+        $logger->writeRaw("");
+        $logger->writeRaw($errorMsg);
+        $logger->writeRaw($errorFile);
+    } else {
+        echo PHP_EOL . $errorMsg . PHP_EOL;
+        echo $errorFile . PHP_EOL;
+    }
 
     if (isset($notifier) && $notifier) {
         $notifier->notifyError("Fatal error in daily-update: " . $e->getMessage());

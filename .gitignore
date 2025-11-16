@@ -5,3 +5,10 @@ vendor/
 # Database files
 database/*.db
 database/*.sqlite
+
+# Log files
+var/logs/*.log
+!var/logs/.gitkeep
+
+# Lock files
+var/*.lock

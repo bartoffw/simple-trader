@@ -17,6 +17,8 @@ use SimpleTrader\Database\MonitorRepository;
 use SimpleTrader\Database\TickerRepository;
 use SimpleTrader\Database\QuoteRepository;
 use SimpleTrader\Services\MonitorBacktestService;
+use SimpleTrader\Loggers\File;
+use SimpleTrader\Loggers\Level;
 
 // Check for help flag
 if (isset($argv[1]) && ($argv[1] === '--help' || $argv[1] === '-h')) {
@@ -84,6 +86,17 @@ if ($monitorId <= 0) {
 }
 
 try {
+    // Initialize logger with file output
+    $logFile = __DIR__ . '/../var/logs/monitor-backtest.log';
+    $logger = new File($logFile, true);
+    $logger->setLevel(Level::Info);
+
+    $logger->writeRaw("=== Monitor Backtest ===");
+    $logger->writeRaw("Started: " . date('Y-m-d H:i:s'));
+    $logger->writeRaw("Monitor ID: {$monitorId}");
+    $logger->writeRaw("Log file: " . $logFile);
+    $logger->writeRaw("");
+
     // Load configuration
     $config = require __DIR__ . '/../config/config.php';
 
@@ -103,23 +116,35 @@ try {
         $quoteRepository
     );
 
-    echo "=== Monitor Backtest ===" . PHP_EOL;
-    echo "Monitor ID: {$monitorId}" . PHP_EOL;
-    echo "Starting backtest execution..." . PHP_EOL . PHP_EOL;
+    $logger->writeRaw("Starting backtest execution...");
+    $logger->writeRaw("");
 
     // Execute backtest
     $success = $backtestService->executeBacktest($monitorId);
 
     if ($success) {
-        echo PHP_EOL . "✓ Backtest completed successfully!" . PHP_EOL;
+        $logger->writeRaw("");
+        $logger->writeRaw("✓ Backtest completed successfully!");
+        $logger->writeRaw("Completed: " . date('Y-m-d H:i:s'));
         exit(0);
     } else {
-        echo PHP_EOL . "✗ Backtest failed. Check monitor backtest_error field for details." . PHP_EOL;
+        $logger->writeRaw("");
+        $logger->writeRaw("✗ Backtest failed. Check monitor backtest_error field for details.");
+        $logger->writeRaw("Completed: " . date('Y-m-d H:i:s'));
         exit(1);
     }
 
 } catch (\Exception $e) {
-    echo "✗ Error: " . $e->getMessage() . PHP_EOL;
-    echo "File: " . $e->getFile() . ":" . $e->getLine() . PHP_EOL;
+    $errorMsg = "✗ Error: " . $e->getMessage();
+    $errorFile = "File: " . $e->getFile() . ":" . $e->getLine();
+
+    if (isset($logger)) {
+        $logger->writeRaw("");
+        $logger->writeRaw($errorMsg);
+        $logger->writeRaw($errorFile);
+    } else {
+        echo $errorMsg . PHP_EOL;
+        echo $errorFile . PHP_EOL;
+    }
     exit(1);
 }

@@ -17,7 +17,7 @@ use SimpleTrader\Database\TickerRepository;
 use SimpleTrader\Database\QuoteRepository;
 use SimpleTrader\Services\QuoteFetcher;
 use SimpleTrader\Services\QuoteUpdateService;
-use SimpleTrader\Loggers\Console;
+use SimpleTrader\Loggers\File;
 use SimpleTrader\Loggers\Level;
 use SimpleTrader\Investor\EmailNotifier;
 
@@ -98,8 +98,15 @@ if (!flock($lockHandle, LOCK_EX | LOCK_NB)) {
 }
 
 try {
-    echo "=== Update Ticker Quotes ===" . PHP_EOL;
-    echo "Started: " . date('Y-m-d H:i:s') . PHP_EOL . PHP_EOL;
+    // Initialize logger with file output
+    $logFile = __DIR__ . '/../var/logs/update-quotes.log';
+    $logger = new File($logFile, true);
+    $logger->setLevel(Level::Info);
+
+    $logger->writeRaw("=== Update Ticker Quotes ===");
+    $logger->writeRaw("Started: " . date('Y-m-d H:i:s'));
+    $logger->writeRaw("Log file: " . $logFile);
+    $logger->writeRaw("");
 
     // Load configuration
     $config = require __DIR__ . '/../config/config.php';
@@ -115,9 +122,7 @@ try {
     $quoteFetcher = new QuoteFetcher($quoteRepository, $tickerRepository);
     $quoteUpdateService = new QuoteUpdateService($tickerRepository, $quoteRepository, $quoteFetcher);
 
-    // Initialize logger
-    $logger = new Console();
-    $logger->setLevel(Level::Info);
+    // Set logger for service
     $quoteUpdateService->setLogger($logger);
 
     // Initialize email notifier (if configured)
@@ -137,7 +142,8 @@ try {
     $results = null;
     if (isset($options['ticker-id'])) {
         $tickerId = (int)$options['ticker-id'];
-        echo "Updating ticker ID: {$tickerId}" . PHP_EOL . PHP_EOL;
+        $logger->writeRaw("Updating ticker ID: {$tickerId}");
+        $logger->writeRaw("");
 
         $result = $quoteUpdateService->updateTicker($tickerId);
 
@@ -149,24 +155,28 @@ try {
             'details' => [$result]
         ];
     } else {
-        echo "Updating all enabled tickers" . PHP_EOL . PHP_EOL;
+        $logger->writeRaw("Updating all enabled tickers");
+        $logger->writeRaw("");
         $results = $quoteUpdateService->updateAllTickers();
     }
 
     // Print summary
-    echo PHP_EOL . "=== Summary ===" . PHP_EOL;
-    echo "Total tickers: {$results['total']}" . PHP_EOL;
-    echo "✓ Succeeded: {$results['success']}" . PHP_EOL;
-    echo "✗ Failed: {$results['failed']}" . PHP_EOL;
+    $logger->writeRaw("");
+    $logger->writeRaw("=== Summary ===");
+    $logger->writeRaw("Total tickers: {$results['total']}");
+    $logger->writeRaw("✓ Succeeded: {$results['success']}");
+    $logger->writeRaw("✗ Failed: {$results['failed']}");
 
     if (!empty($results['errors'])) {
-        echo PHP_EOL . "Errors:" . PHP_EOL;
+        $logger->writeRaw("");
+        $logger->writeRaw("Errors:");
         foreach ($results['errors'] as $error) {
-            echo "  - {$error}" . PHP_EOL;
+            $logger->writeRaw("  - {$error}");
         }
     }
 
-    echo PHP_EOL . "Completed: " . date('Y-m-d H:i:s') . PHP_EOL;
+    $logger->writeRaw("");
+    $logger->writeRaw("Completed: " . date('Y-m-d H:i:s'));
 
     // Send email notification
     if ($notifier) {
@@ -196,10 +206,19 @@ try {
     exit(0); // Success
 
 } catch (\Exception $e) {
-    echo PHP_EOL . "✗ Fatal Error: " . $e->getMessage() . PHP_EOL;
-    echo "File: " . $e->getFile() . ":" . $e->getLine() . PHP_EOL;
+    $errorMsg = "✗ Fatal Error: " . $e->getMessage();
+    $errorFile = "File: " . $e->getFile() . ":" . $e->getLine();
 
-    if ($notifier) {
+    if (isset($logger)) {
+        $logger->writeRaw("");
+        $logger->writeRaw($errorMsg);
+        $logger->writeRaw($errorFile);
+    } else {
+        echo PHP_EOL . $errorMsg . PHP_EOL;
+        echo $errorFile . PHP_EOL;
+    }
+
+    if (isset($notifier) && $notifier) {
         $notifier->notifyError("Fatal error in update-quotes: " . $e->getMessage());
         $notifier->sendAllNotifications();
     }
