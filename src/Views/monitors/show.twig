@@ -20,7 +20,15 @@
                 <h5><i class="fas fa-chart-line"></i> {{ monitor.name }}</h5>
                 <p class="mb-1"><strong>Strategy:</strong> {{ strategy_info.strategy_name }}</p>
                 <p class="mb-1"><strong>Tickers:</strong> {{ ticker_symbols|join(', ') }}</p>
-                <p class="mb-0"><strong>Monitoring Since:</strong> {{ monitor.start_date }}</p>
+                <p class="mb-1"><strong>Monitoring Since:</strong> {{ monitor.start_date }}</p>
+                {% if strategy_params|length > 0 %}
+                    <p class="mb-0"><strong>Strategy Parameters:</strong></p>
+                    <ul class="list-unstyled ml-3 mb-0">
+                        {% for key, value in strategy_params %}
+                            <li><code>{{ key }}</code>: {{ value }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
             </div>
         </div>
     </div>

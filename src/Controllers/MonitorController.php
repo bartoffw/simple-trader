@@ -75,12 +75,14 @@ class MonitorController
      */
     public function create(Request $request, Response $response): Response
     {
-        // Get available strategies
+        // Get available strategies with parameters
         $strategyClasses = StrategyDiscovery::getAvailableStrategies();
         $strategies = [];
         foreach ($strategyClasses as $strategyClass) {
             $info = StrategyDiscovery::getStrategyInfo($strategyClass);
             if ($info) {
+                // Extract strategy parameters using reflection
+                $info['parameters'] = $this->extractStrategyParameters($strategyClass);
                 $strategies[] = $info;
             }
         }
@@ -148,12 +150,31 @@ class MonitorController
         }
 
         try {
+            // Process strategy parameters from array format to JSON
+            $strategyParametersJson = null;
+            if (!empty($data['strategy_params']) && is_array($data['strategy_params'])) {
+                // Convert array values to appropriate types
+                $strategyParams = [];
+                foreach ($data['strategy_params'] as $key => $value) {
+                    if (is_numeric($value)) {
+                        if (strpos($value, '.') !== false) {
+                            $strategyParams[$key] = floatval($value);
+                        } else {
+                            $strategyParams[$key] = intval($value);
+                        }
+                    } else {
+                        $strategyParams[$key] = $value;
+                    }
+                }
+                $strategyParametersJson = json_encode($strategyParams);
+            }
+
             // Prepare monitor data
             $monitorData = [
                 'name' => $data['name'],
                 'strategy_class' => $data['strategy_class'],
                 'tickers' => implode(',', $data['tickers']),
-                'strategy_parameters' => !empty($data['strategy_parameters']) ? $data['strategy_parameters'] : null,
+                'strategy_parameters' => $strategyParametersJson,
                 'start_date' => $data['start_date'],
                 'initial_capital' => $data['initial_capital'],
                 'status' => 'initializing'
@@ -248,9 +269,16 @@ class MonitorController
             }
         }
 
+        // Parse strategy parameters for display
+        $strategyParams = [];
+        if (!empty($monitor['strategy_parameters'])) {
+            $strategyParams = json_decode($monitor['strategy_parameters'], true) ?: [];
+        }
+
         return $this->view->render($response, 'monitors/show.twig', [
             'monitor' => $monitor,
             'strategy_info' => $strategyInfo,
+            'strategy_params' => $strategyParams,
             'ticker_symbols' => $tickerSymbols,
             'latest_snapshot' => $latestSnapshot,
             'snapshots' => array_reverse($snapshots), // Reverse for chronological order in chart
@@ -404,4 +432,44 @@ class MonitorController
             exec($command);
         }
     }
+
+    /**
+     * Extract strategy parameters using reflection
+     *
+     * @param string $strategyClass Full class name
+     * @return array Array of parameter definitions
+     */
+    private function extractStrategyParameters(string $strategyClass): array
+    {
+        $parameters = [];
+
+        try {
+            // Ensure the class name has the full namespace
+            $className = $strategyClass;
+            if (strpos($className, '\\') === false) {
+                $className = "SimpleTrader\\{$strategyClass}";
+            }
+
+            if (!class_exists($className)) {
+                return $parameters;
+            }
+
+            $reflection = new \ReflectionClass($className);
+            $defaultProps = $reflection->getDefaultProperties();
+            $strategyParams = $defaultProps['strategyParameters'] ?? [];
+
+            foreach ($strategyParams as $name => $value) {
+                $parameters[] = [
+                    'name' => $name,
+                    'default' => $value,
+                    'type' => is_int($value) ? 'integer' : (is_float($value) ? 'float' : 'string')
+                ];
+            }
+        } catch (\Exception $e) {
+            // Log error or handle gracefully
+        }
+
+        return $parameters;
+    }
 }
+
