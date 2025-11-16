@@ -16,6 +16,10 @@ require __DIR__ . '/../vendor/autoload.php';
 // Load Configuration
 $config = require __DIR__ . '/../config/config.php';
 
+// Initialize Log Manager and configure PHP error logging
+$logManager = new \SimpleTrader\Services\LogManager(__DIR__ . '/../var/logs');
+$logManager->configurePHPErrorLogging();
+
 // Create Container
 $container = new Container();
 
@@ -127,6 +131,20 @@ $container->set(\SimpleTrader\Controllers\DocumentationController::class, functi
     return new \SimpleTrader\Controllers\DocumentationController(
         $container->get('view'),
         __DIR__ . '/..'  // Project root directory
+    );
+});
+
+// Register LogManager in Container
+$container->set('logManager', function() use ($logManager) {
+    return $logManager;
+});
+
+// Register LogsController with dependencies
+$container->set(\SimpleTrader\Controllers\LogsController::class, function($container) {
+    return new \SimpleTrader\Controllers\LogsController(
+        $container->get('view'),
+        $container->get('logManager'),
+        $container->get('flash')
     );
 });
 

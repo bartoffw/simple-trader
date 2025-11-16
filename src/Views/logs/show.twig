@@ -1,0 +1,239 @@
+{% extends "layout.twig" %}
+
+{% set active_menu = 'logs' %}
+
+{% block title %}{{ logInfo.title }} - Logs - {{ app_name }}{% endblock %}
+
+{% block page_title %}{{ logInfo.title }}{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tickers">Home</a></li>
+    <li class="breadcrumb-item"><a href="/logs">Logs</a></li>
+    <li class="breadcrumb-item active">{{ logInfo.title }}</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <!-- Sidebar with log file menu -->
+        <div class="col-lg-3 d-none d-lg-block">
+            <div class="card card-outline card-info sticky-top" style="top: 20px;">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-list mr-2"></i>
+                        All Logs
+                    </h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for category, logs in logDefinitions %}
+                            <div class="list-group-item bg-light text-bold small">
+                                {{ category }}
+                            </div>
+                            {% for slug, log in logs %}
+                                <a href="/logs/{{ slug }}"
+                                   class="list-group-item list-group-item-action {% if slug == currentSlug %}active{% endif %}">
+                                    <i class="fas fa-{{ log.icon }} mr-2"></i>
+                                    {{ log.title }}
+                                </a>
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="/logs" class="btn btn-sm btn-outline-primary btn-block">
+                        <i class="fas fa-arrow-left"></i> Back to Index
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content area -->
+        <div class="col-lg-9">
+            <!-- Log info and controls -->
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-{{ logInfo.icon }} mr-2"></i>
+                        {{ logInfo.title }}
+                    </h3>
+                    <div class="card-tools">
+                        <span class="badge badge-info mr-2" id="line-counter">
+                            Showing {{ logData.lines|length }} of {{ logData.total_lines }} lines
+                        </span>
+                        <form method="POST" action="/logs/{{ currentSlug }}/clear" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Are you sure you want to clear this log file?')">
+                                <i class="fas fa-trash"></i> Clear Log
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="p-3 bg-light border-bottom">
+                        <small class="text-muted">
+                            <strong>File:</strong> {{ logInfo.path }}<br>
+                            <strong>Size:</strong> {{ (logInfo.size / 1024)|number_format(2) }} KB |
+                            <strong>Total Lines:</strong> {{ logData.total_lines|number_format }} |
+                            <strong>Last Modified:</strong> {{ logInfo.modified ? logInfo.modified|date('Y-m-d H:i:s') : 'N/A' }}
+                        </small>
+                    </div>
+
+                    <!-- Load more button -->
+                    <div class="text-center p-2 bg-light border-bottom" id="load-more-container">
+                        {% if logData.has_more %}
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="load-more-btn"
+                                    data-slug="{{ currentSlug }}"
+                                    data-offset="{{ logData.offset + logData.limit }}"
+                                    data-limit="{{ logData.limit }}">
+                                <i class="fas fa-arrow-up"></i> Load Earlier Lines ({{ logData.start_line - 1 }} more)
+                            </button>
+                        {% else %}
+                            <span class="text-muted small">
+                                <i class="fas fa-check-circle"></i> Beginning of file reached
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Log content -->
+                    <div class="log-content p-0" id="log-content">
+                        {% if logData.lines|length > 0 %}
+                            <pre class="mb-0 p-3" style="background: #1e1e1e; color: #d4d4d4; font-size: 12px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; max-height: 600px; overflow-y: auto;" id="log-lines">{% for line in logData.lines %}{{ line }}
+{% endfor %}</pre>
+                        {% else %}
+                            <div class="text-center p-5">
+                                <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">Log file is empty</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.sticky-top {
+    position: sticky;
+    z-index: 1020;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+
+.list-group-item.active {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+/* Syntax highlighting for log lines */
+pre {
+    counter-reset: line;
+}
+
+.log-line-error {
+    color: #f14c4c;
+}
+
+.log-line-warning {
+    color: #cca700;
+}
+
+.log-line-info {
+    color: #3dc9b0;
+}
+
+.log-line-debug {
+    color: #808080;
+}
+
+#log-lines {
+    scroll-behavior: smooth;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    var currentOffset = {{ logData.offset + logData.limit }};
+    var totalLines = {{ logData.total_lines }};
+    var limit = {{ logData.limit }};
+    var slug = '{{ currentSlug }}';
+    var isLoading = false;
+
+    // Scroll to bottom of log by default
+    var logContainer = document.getElementById('log-lines');
+    if (logContainer) {
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    // Load more lines button handler
+    $('#load-more-btn').on('click', function() {
+        if (isLoading) return;
+
+        var $btn = $(this);
+        var originalText = $btn.html();
+
+        isLoading = true;
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Loading...');
+
+        $.ajax({
+            url: '/logs/' + slug + '/lines',
+            method: 'GET',
+            data: {
+                offset: currentOffset,
+                limit: limit
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success && response.lines.length > 0) {
+                    // Prepend new lines to the log
+                    var newContent = response.lines.join('\n') + '\n';
+                    var $logLines = $('#log-lines');
+                    var currentContent = $logLines.text();
+                    $logLines.text(newContent + currentContent);
+
+                    // Update counter
+                    var displayedLines = $logLines.text().split('\n').length - 1;
+                    $('#line-counter').text('Showing ' + displayedLines + ' of ' + response.total_lines + ' lines');
+
+                    // Update offset for next load
+                    currentOffset = response.offset + response.limit;
+
+                    // Update or hide load more button
+                    if (response.has_more) {
+                        var remainingLines = response.start_line - 1;
+                        $btn.html('<i class="fas fa-arrow-up"></i> Load Earlier Lines (' + remainingLines + ' more)');
+                    } else {
+                        $('#load-more-container').html(
+                            '<span class="text-muted small">' +
+                            '<i class="fas fa-check-circle"></i> Beginning of file reached' +
+                            '</span>'
+                        );
+                    }
+                } else if (!response.has_more) {
+                    $('#load-more-container').html(
+                        '<span class="text-muted small">' +
+                        '<i class="fas fa-check-circle"></i> Beginning of file reached' +
+                        '</span>'
+                    );
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading more lines:', error);
+                $btn.html(originalText);
+                alert('Failed to load more lines. Please try again.');
+            },
+            complete: function() {
+                isLoading = false;
+                $btn.prop('disabled', false);
+            }
+        });
+    });
+
+    // Auto-refresh (optional, disabled by default)
+    // setInterval(function() { /* refresh logic */ }, 5000);
+});
+</script>
+{% endblock %}

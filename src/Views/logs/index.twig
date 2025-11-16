@@ -1,0 +1,77 @@
+{% extends "layout.twig" %}
+
+{% set active_menu = 'logs' %}
+
+{% block title %}Logs Viewer - {{ app_name }}{% endblock %}
+
+{% block page_title %}Logs Viewer{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tickers">Home</a></li>
+    <li class="breadcrumb-item active">Logs</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-file-alt mr-2"></i>
+                        Application Logs
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        View and manage application log files. Click on a log to view its contents.
+                    </p>
+
+                    {% for category, logs in logDefinitions %}
+                        <div class="log-category mb-4">
+                            <h4 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-folder-open mr-2"></i>
+                                {{ category }}
+                            </h4>
+                            <div class="row">
+                                {% for slug, log in logs %}
+                                    <div class="col-md-6 col-lg-4 mb-3">
+                                        <div class="card h-100 {% if logStats[slug].exists %}border-success{% else %}border-secondary{% endif %}">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i class="fas fa-{{ log.icon }} mr-2 {% if logStats[slug].exists %}text-success{% else %}text-muted{% endif %}"></i>
+                                                    {{ log.title }}
+                                                </h5>
+                                                <p class="card-text text-muted small">
+                                                    {{ log.description }}
+                                                </p>
+                                                {% if logStats[slug].exists %}
+                                                    <dl class="row small mb-0">
+                                                        <dt class="col-sm-5">Size:</dt>
+                                                        <dd class="col-sm-7">{{ logStats[slug].size_human }}</dd>
+                                                        <dt class="col-sm-5">Lines:</dt>
+                                                        <dd class="col-sm-7">{{ logStats[slug].lines|number_format }}</dd>
+                                                        <dt class="col-sm-5">Modified:</dt>
+                                                        <dd class="col-sm-7">{{ logStats[slug].modified }}</dd>
+                                                    </dl>
+                                                {% else %}
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="fas fa-info-circle"></i> Log file not yet created
+                                                    </p>
+                                                {% endif %}
+                                            </div>
+                                            <div class="card-footer">
+                                                <a href="/logs/{{ slug }}" class="btn btn-sm btn-primary {% if not logStats[slug].exists %}disabled{% endif %}">
+                                                    <i class="fas fa-eye"></i> View Log
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
