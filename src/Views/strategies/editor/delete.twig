@@ -1,0 +1,99 @@
+{% extends "layout.twig" %}
+
+{% set active_menu = 'strategies' %}
+
+{% block title %}Delete Strategy - {{ app_name }}{% endblock %}
+
+{% block page_title %}Delete Strategy{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tickers">Home</a></li>
+    <li class="breadcrumb-item"><a href="/strategies">Strategies</a></li>
+    <li class="breadcrumb-item"><a href="/strategies/editor">Editor</a></li>
+    <li class="breadcrumb-item active">Delete {{ strategy.class_name }}</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger">
+                    <h3 class="card-title"><i class="fas fa-exclamation-triangle"></i> Delete Strategy</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h5><i class="icon fas fa-ban"></i> Warning!</h5>
+                        You are about to permanently delete this strategy. This action cannot be undone.
+                    </div>
+
+                    <div class="form-group">
+                        <label>Class Name</label>
+                        <input type="text" class="form-control" value="{{ strategy.class_name }}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Strategy Name</label>
+                        <input type="text" class="form-control" value="{{ strategy.strategy_name }}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>File to be Deleted</label>
+                        <input type="text" class="form-control text-danger" value="{{ strategy.file_path }}" readonly>
+                    </div>
+
+                    {% if backtests_count > 0 %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Warning:</strong> This strategy is referenced by {{ backtests_count }} backtest(s).
+                            Deleting it may cause issues with those backtest records.
+                        </div>
+                    {% endif %}
+
+                    <form action="/strategies/editor/{{ strategy.class_name }}/delete" method="POST"
+                          onsubmit="return confirm('Are you absolutely sure you want to delete {{ strategy.class_name }}?');">
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="fas fa-trash"></i> Delete Permanently
+                            </button>
+                            <a href="/strategies/editor" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Strategy Details</h3>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong></p>
+                    <p class="text-muted">{{ strategy.strategy_description|default('No description available.') }}</p>
+
+                    <p><strong>Parameters:</strong></p>
+                    {% if strategy.strategy_parameters|length > 0 %}
+                        <ul>
+                            {% for name, value in strategy.strategy_parameters %}
+                                <li><code>{{ name }}</code> = {{ value }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No parameters defined.</p>
+                    {% endif %}
+
+                    <p><strong>Overridden Methods:</strong></p>
+                    {% if strategy.methods|length > 0 %}
+                        <ul>
+                            {% for name, data in strategy.methods %}
+                                <li><code>{{ name }}()</code></li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No methods overridden.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

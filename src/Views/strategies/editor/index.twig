@@ -1,0 +1,138 @@
+{% extends "layout.twig" %}
+
+{% set active_menu = 'strategies' %}
+
+{% block title %}Strategy Editor - {{ app_name }}{% endblock %}
+
+{% block page_title %}Strategy Editor{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tickers">Home</a></li>
+    <li class="breadcrumb-item"><a href="/strategies">Strategies</a></li>
+    <li class="breadcrumb-item active">Editor</li>
+{% endblock %}
+
+{% block content %}
+    <!-- Permission Warning -->
+    {% if not is_writable %}
+        <div class="alert alert-danger">
+            <i class="icon fas fa-exclamation-triangle"></i>
+            <strong>Write Permission Error!</strong>
+            The strategy directory is not writable. You cannot create or edit strategies.
+            <br><small>Directory: <code>{{ strategy_dir }}</code></small>
+        </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Edit Strategies</h3>
+                    <div class="card-tools">
+                        {% if is_writable %}
+                            <a href="/strategies/editor/create" class="btn btn-success btn-sm">
+                                <i class="fas fa-plus"></i> Create New Strategy
+                            </a>
+                        {% endif %}
+                        <span class="badge badge-primary ml-2">{{ strategies|length }} strateg{{ strategies|length != 1 ? 'ies' : 'y' }}</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if strategies|length > 0 %}
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th style="width: 18%">Strategy Name</th>
+                                    <th style="width: 35%">Description</th>
+                                    <th style="width: 15%">Class Name</th>
+                                    <th style="width: 8%" class="text-center">Methods</th>
+                                    <th style="width: 8%" class="text-center">Writable</th>
+                                    <th style="width: 16%" class="text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for strategy in strategies %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ strategy.strategy_name }}</strong>
+                                        </td>
+                                        <td>
+                                            {% set description = strategy.strategy_description|default('No description.') %}
+                                            {% if description|length > 100 %}
+                                                <span class="text-muted">{{ description|slice(0, 100) }}...</span>
+                                            {% else %}
+                                                <span class="text-muted">{{ description }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <code class="text-info">{{ strategy.class_name }}</code>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge badge-info">{{ strategy.overridden_count }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            {% if strategy.is_writable %}
+                                                <span class="badge badge-success"><i class="fas fa-check"></i></span>
+                                            {% else %}
+                                                <span class="badge badge-danger"><i class="fas fa-lock"></i></span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-right">
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="/strategies/editor/{{ strategy.class_name }}/edit"
+                                                   class="btn btn-primary"
+                                                   title="Edit Strategy">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                {% if strategy.is_writable %}
+                                                    <a href="/strategies/editor/{{ strategy.class_name }}/rename"
+                                                       class="btn btn-warning"
+                                                       title="Rename Strategy">
+                                                        <i class="fas fa-i-cursor"></i>
+                                                    </a>
+                                                    <a href="/strategies/editor/{{ strategy.class_name }}/delete"
+                                                       class="btn btn-danger"
+                                                       title="Delete Strategy">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <div class="text-center p-5">
+                            <i class="fas fa-code fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No strategies found.</p>
+                            {% if is_writable %}
+                                <a href="/strategies/editor/create" class="btn btn-success">
+                                    <i class="fas fa-plus"></i> Create Your First Strategy
+                                </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Information Card -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="callout callout-info">
+                <h5><i class="fas fa-code"></i> Strategy Editor</h5>
+                <p>
+                    The Strategy Editor allows you to create and modify trading strategy PHP classes directly from the UI.
+                    Each strategy must extend the <code>BaseStrategy</code> class and can override core methods like
+                    <code>onOpen()</code>, <code>onClose()</code>, and <code>onStrategyEnd()</code>.
+                </p>
+                <p class="mb-0">
+                    <i class="fas fa-folder"></i>
+                    <strong>Strategy Directory:</strong> <code>{{ strategy_dir }}</code>
+                </p>
+            </div>
+        </div>
+    </div>
+{% endblock %}

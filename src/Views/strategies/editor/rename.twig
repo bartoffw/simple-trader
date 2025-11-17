@@ -1,0 +1,84 @@
+{% extends "layout.twig" %}
+
+{% set active_menu = 'strategies' %}
+
+{% block title %}Rename Strategy - {{ app_name }}{% endblock %}
+
+{% block page_title %}Rename Strategy{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tickers">Home</a></li>
+    <li class="breadcrumb-item"><a href="/strategies">Strategies</a></li>
+    <li class="breadcrumb-item"><a href="/strategies/editor">Editor</a></li>
+    <li class="breadcrumb-item active">Rename {{ strategy.class_name }}</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h3 class="card-title"><i class="fas fa-i-cursor"></i> Rename Strategy Class</h3>
+                </div>
+                <div class="card-body">
+                    <form action="/strategies/editor/{{ strategy.class_name }}/rename" method="POST">
+                        <div class="form-group">
+                            <label>Current Class Name</label>
+                            <input type="text" class="form-control" value="{{ strategy.class_name }}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Strategy Name</label>
+                            <input type="text" class="form-control" value="{{ strategy.strategy_name }}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Current File</label>
+                            <input type="text" class="form-control" value="{{ strategy.file_path }}" readonly>
+                        </div>
+
+                        <hr>
+
+                        <div class="form-group">
+                            <label for="new_class_name">New Class Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="new_class_name" name="new_class_name"
+                                   pattern="^[a-zA-Z_][a-zA-Z0-9_]*$" required
+                                   value="{{ strategy.class_name }}"
+                                   placeholder="NewClassName">
+                            <small class="text-muted">
+                                Must be valid PHP class name. This will also rename the file.
+                            </small>
+                        </div>
+
+                        {% if backtests_count > 0 %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>Warning:</strong> This strategy is referenced by {{ backtests_count }} backtest(s).
+                                Renaming will not update those references automatically.
+                            </div>
+                        {% endif %}
+
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-edit"></i> Rename Strategy
+                            </button>
+                            <a href="/strategies/editor" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="callout callout-warning">
+                <h5><i class="fas fa-info-circle"></i> Important Notes</h5>
+                <ul>
+                    <li>The PHP class name must match the file name</li>
+                    <li>Both the class and file will be renamed simultaneously</li>
+                    <li>Existing backtest references will NOT be updated</li>
+                    <li>Make sure no other code depends on the old class name</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+{% endblock %}

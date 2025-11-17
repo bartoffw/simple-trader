@@ -1,0 +1,325 @@
+{% extends "layout.twig" %}
+
+{% set active_menu = 'strategies' %}
+
+{% block title %}Edit {{ strategy.class_name }} - {{ app_name }}{% endblock %}
+
+{% block page_title %}Edit Strategy: {{ strategy.strategy_name }}{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tickers">Home</a></li>
+    <li class="breadcrumb-item"><a href="/strategies">Strategies</a></li>
+    <li class="breadcrumb-item"><a href="/strategies/editor">Editor</a></li>
+    <li class="breadcrumb-item active">Edit {{ strategy.class_name }}</li>
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
+    <style>
+        .CodeMirror {
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            height: auto;
+            min-height: 150px;
+        }
+        .CodeMirror-scroll {
+            min-height: 150px;
+        }
+        .method-signature {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-bottom: 10px;
+            border-left: 4px solid #007bff;
+        }
+        .parameter-row {
+            margin-bottom: 10px;
+        }
+        .method-card {
+            margin-bottom: 20px;
+        }
+        .method-card .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .properties-editor .CodeMirror {
+            min-height: 100px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <form action="/strategies/editor/{{ strategy.class_name }}" method="POST" id="strategyForm">
+        <div class="row">
+            <!-- Left Column: Basic Info & Parameters -->
+            <div class="col-md-4">
+                <!-- Strategy Info -->
+                <div class="card">
+                    <div class="card-header bg-primary">
+                        <h3 class="card-title">Strategy Information</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Class Name</label>
+                            <input type="text" class="form-control" value="{{ strategy.class_name }}" readonly>
+                            <small class="text-muted">File: {{ strategy.file_path }}</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="strategy_name">Strategy Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="strategy_name" name="strategy_name"
+                                   value="{{ strategy.strategy_name }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="strategy_description">Description</label>
+                            <textarea class="form-control" id="strategy_description" name="strategy_description"
+                                      rows="4">{{ strategy.strategy_description }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Strategy Parameters -->
+                <div class="card">
+                    <div class="card-header bg-info">
+                        <h3 class="card-title">Strategy Parameters</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" id="addParameter">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="parametersContainer">
+                            {% for name, value in strategy.strategy_parameters %}
+                                <div class="parameter-row">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" name="param_names[]"
+                                               value="{{ name }}" placeholder="Parameter name">
+                                        <input type="text" class="form-control" name="param_values[]"
+                                               value="{{ value }}" placeholder="Default value">
+                                        <div class="input-group-append">
+                                            <button type="button" class="btn btn-danger remove-param">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <p class="text-muted" id="noParamsMsg">No parameters defined. Click + to add.</p>
+                            {% endfor %}
+                        </div>
+                        <small class="text-muted">
+                            Values: integers (30), floats (0.05), booleans (true/false), strings ("text"), arrays ([1,2,3])
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Custom Properties -->
+                <div class="card properties-editor">
+                    <div class="card-header bg-secondary">
+                        <h3 class="card-title">Custom Properties</h3>
+                    </div>
+                    <div class="card-body">
+                        <small class="text-muted d-block mb-2">
+                            Define private/protected variables (one per line):
+                        </small>
+                        <textarea id="custom_properties" name="custom_properties" class="form-control">{% for name, prop in strategy.custom_properties %}
+    {{ prop.visibility }} {{ prop.type }} ${{ name }} = {{ prop.default }};
+{% endfor %}</textarea>
+                        <small class="text-muted mt-2 d-block">
+                            Example: <code>protected bool $buyFlag = false;</code>
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Methods -->
+            <div class="col-md-8">
+                {% for methodName, methodData in methods %}
+                    <div class="card method-card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-code"></i> {{ methodName }}()
+                            </h3>
+                            {% if methodData.body %}
+                                <div class="card-tools">
+                                    <span class="badge badge-light">Overridden</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="card-body">
+                            <div class="method-signature">
+                                {{ methodData.signature }}
+                            </div>
+                            <label>Method Body:</label>
+                            <textarea id="method_{{ methodName }}" name="method_{{ methodName }}"
+                                      class="code-editor">{{ methodData.body }}</textarea>
+                            {% if methodName == 'onOpen' or methodName == 'onClose' or methodName == 'onStrategyEnd' %}
+                                <small class="text-warning d-block mt-2">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    Remember to call <code>parent::{{ methodName }}($assets, $dateTime, $isLive);</code> at the start
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+
+                <!-- Action Buttons -->
+                <div class="card">
+                    <div class="card-body">
+                        <button type="submit" class="btn btn-success btn-lg" {% if not strategy.is_writable %}disabled{% endif %}>
+                            <i class="fas fa-save"></i> Save Strategy
+                        </button>
+                        <a href="/strategies/editor" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-arrow-left"></i> Back to List
+                        </a>
+                        <button type="button" class="btn btn-info btn-lg" id="validateBtn">
+                            <i class="fas fa-check-circle"></i> Validate Syntax
+                        </button>
+                        {% if not strategy.is_writable %}
+                            <div class="alert alert-warning mt-3">
+                                <i class="fas fa-lock"></i> File is not writable. Changes cannot be saved.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Validation Result Modal -->
+    <div class="modal fade" id="validationModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Syntax Validation</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="validationResult"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/php/php.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            // Initialize CodeMirror for all code editors
+            var editors = {};
+            $('.code-editor').each(function() {
+                var textarea = this;
+                var editor = CodeMirror.fromTextArea(textarea, {
+                    mode: 'text/x-php',
+                    theme: 'dracula',
+                    lineNumbers: true,
+                    indentUnit: 4,
+                    indentWithTabs: false,
+                    matchBrackets: true,
+                    autoCloseBrackets: true,
+                    extraKeys: {
+                        'Ctrl-Space': 'autocomplete',
+                        'Tab': function(cm) {
+                            cm.replaceSelection('    ', 'end');
+                        }
+                    }
+                });
+                editor.setSize(null, 'auto');
+                editors[textarea.id] = editor;
+
+                // Sync editor content with textarea before form submit
+                editor.on('change', function() {
+                    editor.save();
+                });
+            });
+
+            // Initialize CodeMirror for custom properties
+            var propsEditor = CodeMirror.fromTextArea(document.getElementById('custom_properties'), {
+                mode: 'text/x-php',
+                theme: 'dracula',
+                lineNumbers: true,
+                indentUnit: 4,
+                matchBrackets: true,
+                autoCloseBrackets: true
+            });
+            propsEditor.setSize(null, 100);
+            propsEditor.on('change', function() {
+                propsEditor.save();
+            });
+
+            // Add parameter button
+            $('#addParameter').click(function() {
+                $('#noParamsMsg').remove();
+                var html = `
+                    <div class="parameter-row">
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="param_names[]" placeholder="Parameter name">
+                            <input type="text" class="form-control" name="param_values[]" placeholder="Default value">
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-danger remove-param">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                $('#parametersContainer').append(html);
+            });
+
+            // Remove parameter button
+            $(document).on('click', '.remove-param', function() {
+                $(this).closest('.parameter-row').remove();
+            });
+
+            // Validate syntax button
+            $('#validateBtn').click(function() {
+                // Collect all method bodies
+                var allCode = '';
+                for (var id in editors) {
+                    allCode += editors[id].getValue() + "\n";
+                }
+
+                $.ajax({
+                    url: '/strategies/editor/validate',
+                    method: 'POST',
+                    data: { code: allCode },
+                    success: function(response) {
+                        var html = '';
+                        if (response.valid) {
+                            html = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Syntax is valid!</div>';
+                        } else {
+                            html = '<div class="alert alert-danger"><i class="fas fa-times-circle"></i> Syntax Error:<br><pre>' + response.error + '</pre></div>';
+                        }
+                        $('#validationResult').html(html);
+                        $('#validationModal').modal('show');
+                    },
+                    error: function() {
+                        $('#validationResult').html('<div class="alert alert-warning">Could not validate syntax.</div>');
+                        $('#validationModal').modal('show');
+                    }
+                });
+            });
+
+            // Save all editors before form submit
+            $('#strategyForm').on('submit', function() {
+                for (var id in editors) {
+                    editors[id].save();
+                }
+                propsEditor.save();
+            });
+        });
+    </script>
+{% endblock %}

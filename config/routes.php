@@ -8,6 +8,7 @@
 
 use SimpleTrader\Controllers\TickerController;
 use SimpleTrader\Controllers\StrategyController;
+use SimpleTrader\Controllers\StrategyEditorController;
 use SimpleTrader\Controllers\RunnerController;
 use SimpleTrader\Controllers\DocumentationController;
 use SimpleTrader\Controllers\LogsController;
@@ -72,6 +73,50 @@ $app->group('/strategies', function (RouteCollectorProxy $group) {
     // List all strategies (index page)
     $group->get('', StrategyController::class . ':index')
         ->setName('strategies.index');
+
+    // Strategy Editor Routes
+    $group->group('/editor', function (RouteCollectorProxy $editorGroup) {
+
+        // List all strategies for editing
+        $editorGroup->get('', StrategyEditorController::class . ':index')
+            ->setName('strategies.editor.index');
+
+        // Show create new strategy form
+        $editorGroup->get('/create', StrategyEditorController::class . ':create')
+            ->setName('strategies.editor.create');
+
+        // Store new strategy (POST)
+        $editorGroup->post('', StrategyEditorController::class . ':store')
+            ->setName('strategies.editor.store');
+
+        // Validate PHP syntax (AJAX)
+        $editorGroup->post('/validate', StrategyEditorController::class . ':validateSyntax')
+            ->setName('strategies.editor.validate');
+
+        // Edit strategy form
+        $editorGroup->get('/{className}/edit', StrategyEditorController::class . ':edit')
+            ->setName('strategies.editor.edit');
+
+        // Update strategy (POST)
+        $editorGroup->post('/{className}', StrategyEditorController::class . ':update')
+            ->setName('strategies.editor.update');
+
+        // Show rename form
+        $editorGroup->get('/{className}/rename', StrategyEditorController::class . ':showRename')
+            ->setName('strategies.editor.rename');
+
+        // Rename strategy (POST)
+        $editorGroup->post('/{className}/rename', StrategyEditorController::class . ':rename')
+            ->setName('strategies.editor.doRename');
+
+        // Show delete confirmation
+        $editorGroup->get('/{className}/delete', StrategyEditorController::class . ':confirmDelete')
+            ->setName('strategies.editor.delete');
+
+        // Delete strategy (POST)
+        $editorGroup->post('/{className}/delete', StrategyEditorController::class . ':destroy')
+            ->setName('strategies.editor.destroy');
+    });
 
     // View strategy details
     $group->get('/{className}', StrategyController::class . ':show')
