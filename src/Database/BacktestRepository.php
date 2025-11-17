@@ -62,7 +62,7 @@ class BacktestRepository
      */
     public function getBacktestsByStrategy(string $strategyClass, ?int $limit = null): array
     {
-        $sql = 'SELECT * FROM backtestsWHERE strategy_class = :strategy_class ORDER BY created_at DESC';
+        $sql = 'SELECT * FROM backtests WHERE strategy_class = :strategy_class ORDER BY created_at DESC';
 
         if ($limit !== null) {
             $sql .= ' LIMIT :limit';
@@ -87,7 +87,7 @@ class BacktestRepository
      */
     public function getBacktest(int $id): ?array
     {
-        $sql = 'SELECT * FROM backtestsWHERE id = :id';
+        $sql = 'SELECT * FROM backtests WHERE id = :id';
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
@@ -222,12 +222,12 @@ class BacktestRepository
     public function appendLog(int $id, string $logText): bool
     {
         // Get current log
-        $run = $this->getRun($id);
-        if (!$run) {
+        $backtest = $this->getBacktest($id);
+        if (!$backtest) {
             return false;
         }
 
-        $currentLog = $run['log_output'] ?? '';
+        $currentLog = $backtest['log_output'] ?? '';
         $newLog = $currentLog . $logText;
 
         $sql = 'UPDATE backtests SET log_output = :log_output WHERE id = :id';
@@ -246,7 +246,7 @@ class BacktestRepository
      */
     public function deleteBacktest(int $id): bool
     {
-        $sql = 'DELETE FROM backtestsWHERE id = :id';
+        $sql = 'DELETE FROM backtests WHERE id = :id';
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
 
@@ -261,12 +261,12 @@ class BacktestRepository
     public function getStatistics(): array
     {
         $sql = 'SELECT
-                    COUNT(*) as total_runs,
-                    SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed_runs,
-                    SUM(CASE WHEN status = "failed" THEN 1 ELSE 0 END) as failed_runs,
-                    SUM(CASE WHEN status = "running" THEN 1 ELSE 0 END) as running_runs,
-                    SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) as pending_runs
-                FROM runs';
+                    COUNT(*) as total_backtests,
+                    SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed_backtests,
+                    SUM(CASE WHEN status = "failed" THEN 1 ELSE 0 END) as failed_backtests,
+                    SUM(CASE WHEN status = "running" THEN 1 ELSE 0 END) as running_backtests,
+                    SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) as pending_backtests
+                FROM backtests';
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
@@ -274,11 +274,11 @@ class BacktestRepository
         $result = $stmt->fetch();
 
         return [
-            'total' => (int)($result['total_runs'] ?? 0),
-            'completed' => (int)($result['completed_runs'] ?? 0),
-            'failed' => (int)($result['failed_runs'] ?? 0),
-            'running' => (int)($result['running_runs'] ?? 0),
-            'pending' => (int)($result['pending_runs'] ?? 0)
+            'total' => (int)($result['total_backtests'] ?? 0),
+            'completed' => (int)($result['completed_backtests'] ?? 0),
+            'failed' => (int)($result['failed_backtests'] ?? 0),
+            'running' => (int)($result['running_backtests'] ?? 0),
+            'pending' => (int)($result['pending_backtests'] ?? 0)
         ];
     }
 }

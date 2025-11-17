@@ -8,12 +8,12 @@
 
 {% block breadcrumb %}
     <li class="breadcrumb-item"><a href="/tickers">Home</a></li>
-    <li class="breadcrumb-item"><a href="/runs">Runs</a></li>
+    <li class="breadcrumb-item"><a href="/backtests">Backtests</a></li>
     <li class="breadcrumb-item active">Create</li>
 {% endblock %}
 
 {% block content %}
-    <form action="/runs" method="POST" id="run-form">
+    <form action="/backtests" method="POST" id="run-form">
         <div class="row">
             <!-- Basic Configuration -->
             <div class="col-md-6">
@@ -169,7 +169,7 @@
         <!-- Action Buttons -->
         <div class="row">
             <div class="col-12">
-                <a href="/runs" class="btn btn-default">
+                <a href="/backtests" class="btn btn-default">
                     <i class="fas fa-times"></i> Cancel
                 </a>
                 <button type="submit" class="btn btn-primary">

@@ -120,7 +120,7 @@ class Investor
                             $tickerDf->addRecord($quote->toArray());
                         }
                         $tickerDf = Assets::validateAndSortAsset($tickerDf, $tickerName);
-                        CSV::fromDataFrame($tickerDf->sortRecordsByColumns('date'))->toFile($assets->getPath($tickerName), true);
+                        CSV::fromDataFrame($tickerDf)->toFile($assets->getPath($tickerName), true);
 
                         $newAssets->addAsset(CSV::fromFilePath($assets->getPath($tickerName))->import(), $tickerName, false, $assets->getExchange($tickerName), $assets->getPath($tickerName));
                         $updateAssets = true;

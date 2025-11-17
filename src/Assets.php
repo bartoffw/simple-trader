@@ -78,7 +78,10 @@ class Assets
 //                $latestExistingDate = $existingAssets->getLatestDate($ticker);
 //                if ($latestExistingDate->toDateString() === $da)
 //            }
-            $assets->addAsset(self::cloneAssetToDate($df, $fromDate, $toDate), $ticker);
+            $clonedAsset = self::cloneAssetToDate($df, $fromDate, $toDate);
+            // Always add the asset, even if empty for this date range
+            // This ensures strategies can rely on consistent ticker availability
+            $assets->addAsset($clonedAsset, $ticker, false, $this->exchanges[$ticker] ?? '', $this->paths[$ticker] ?? '');
         }
         return $assets;
     }
@@ -128,6 +131,12 @@ class Assets
 
     public static function validateAndSortAsset(DataFrame $asset, string $ticker): DataFrame
     {
+        // For empty DataFrames, return as-is without validation
+        // This allows empty date ranges while maintaining structure
+        if ($asset->count() === 0) {
+            return $asset;
+        }
+
         // check required columns
         $columns = $asset->columnsNames();
         foreach ($columns as $colName) {
@@ -138,12 +147,24 @@ class Assets
         if (count($columns) !== count(self::$columns)) {
             throw new LoaderException('Column count does not match for ' . $ticker . ': ' . count($columns) . ' vs ' . count(self::$columns));
         }
-        return $asset->sortRecordsByColumns(by: 'date', ascending: false);
+
+        // Sort by date descending (most recent first)
+        // Since sortRecordsByColumns doesn't exist in current WoollyM version,
+        // convert to array, sort, and rebuild DataFrame
+        $data = $asset->toArray();
+        usort($data, function($a, $b) {
+            return strcmp($b['date'], $a['date']); // Descending order
+        });
+
+        return DataFrame::fromArray($data);
     }
 
     public static function cloneAssetToDate(DataFrame $df, Carbon $fromDate, Carbon $toDate): DataFrame
     {
+        // Filter data to date range
+        // Even if empty, the filtered DataFrame should maintain its structure
         return $df->selectAll()
-            ->where(fn($record, $recordKey) => (new Carbon($record['date']))->between($fromDate, $toDate))->export();
+            ->where(fn($record, $recordKey) => (new Carbon($record['date']))->between($fromDate, $toDate))
+            ->export();
     }
 }

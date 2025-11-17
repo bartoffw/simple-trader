@@ -1,19 +1,19 @@
 <?php
 
 /**
- * Runs Database Migration Script
+ * Backtests Database Migration Script
  *
- * Initializes the SQLite runs database and runs all migrations
+ * Initializes the SQLite backtests database and runs all migrations
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use SimpleTrader\Database\Database;
 
-$databasePath = __DIR__ . '/runs.db';
-$migrationsDir = __DIR__ . '/runs-migrations';
+$databasePath = __DIR__ . '/backtests.db';
+$migrationsDir = __DIR__ . '/backtests-migrations';
 
-echo "=== Simple-Trader Runs Database Migration ===" . PHP_EOL;
+echo "=== Simple-Trader Backtests Database Migration ===" . PHP_EOL;
 echo "Database: {$databasePath}" . PHP_EOL . PHP_EOL;
 
 try {

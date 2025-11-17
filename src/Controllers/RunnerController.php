@@ -318,7 +318,7 @@ class RunnerController
         if ($run === null) {
             $this->flash->set('error', 'Run not found');
             return $response
-                ->withHeader('Location', '/runs')
+                ->withHeader('Location', '/backtests')
                 ->withStatus(302);
         }
 
@@ -326,7 +326,7 @@ class RunnerController
         if ($run['status'] === 'running') {
             $this->flash->set('error', 'Cannot delete a running backtest');
             return $response
-                ->withHeader('Location', '/runs')
+                ->withHeader('Location', '/backtests')
                 ->withStatus(302);
         }
 
@@ -337,8 +337,72 @@ class RunnerController
         }
 
         return $response
-            ->withHeader('Location', '/runs')
+            ->withHeader('Location', '/backtests')
             ->withStatus(302);
+    }
+
+    /**
+     * Manual restart endpoint
+     *
+     * POST /backtests/{id}/restart
+     */
+    public function restart(Request $request, Response $response, array $args): Response
+    {
+        $id = (int)$args['id'];
+        $backtest = $this->backtestRepository->getBacktest($id);
+
+        if ($backtest === null) {
+            $this->flash->set('error', 'Backtest not found');
+            return $response
+                ->withHeader('Location', '/backtests')
+                ->withStatus(302);
+        }
+
+        // Only restart pending or failed backtests
+        if ($backtest['status'] !== 'pending' && $backtest['status'] !== 'failed') {
+            $this->flash->set('error', 'Can only restart pending or failed backtests');
+            return $response
+                ->withHeader('Location', '/backtests/' . $id)
+                ->withStatus(302);
+        }
+
+        // Add log message
+        $timestamp = date('Y-m-d H:i:s');
+        $logMessage = "\n[{$timestamp}] [MANUAL RESTART] User manually restarted the backtest\n";
+        $this->backtestRepository->appendLog($id, $logMessage);
+
+        // Reset status to pending if failed
+        if ($backtest['status'] === 'failed') {
+            $this->backtestRepository->updateStatus($id, 'pending');
+        }
+
+        // Restart
+        $runner = new BackgroundRunner(__DIR__ . '/../..');
+        $runner->startRun($id);
+
+        $this->flash->set('success', 'Backtest restart initiated');
+
+        return $response
+            ->withHeader('Location', '/backtests/' . $id)
+            ->withStatus(302);
+    }
+
+    /**
+     * Health check endpoint - restart stalled backtests
+     *
+     * POST /backtests/health-check
+     */
+    public function healthCheck(Request $request, Response $response): Response
+    {
+        $runner = new BackgroundRunner(__DIR__ . '/../..');
+        $stats = $runner->healthCheck($this->backtestRepository);
+
+        $response->getBody()->write(json_encode([
+            'success' => true,
+            'stats' => $stats
+        ]));
+
+        return $response->withHeader('Content-Type', 'application/json');
     }
 
     /**

@@ -83,14 +83,14 @@ class StrategyController
             ]);
         }
 
-        // Get all runs for this strategy
-        $runs = $this->runRepository->getRunsByStrategy($strategy['full_class_name']);
+        // Get all backtests for this strategy
+        $backtests = $this->backtestRepository->getBacktestsByStrategy($strategy['full_class_name']);
 
-        // Enhance runs with ticker information and formatted data
-        $enhancedRuns = [];
-        foreach ($runs as $run) {
+        // Enhance backtests with ticker information and formatted data
+        $enhancedBacktests = [];
+        foreach ($backtests as $backtest) {
             // Parse tickers (comma-separated IDs)
-            $tickerIds = array_map('intval', explode(',', $run['tickers'] ?? ''));
+            $tickerIds = array_map('intval', explode(',', $backtest['tickers'] ?? ''));
             $tickerSymbols = [];
             foreach ($tickerIds as $tickerId) {
                 $ticker = $this->tickerRepository->getTicker($tickerId);
@@ -101,29 +101,29 @@ class StrategyController
 
             // Parse result metrics if available
             $netProfit = null;
-            if (!empty($run['result_metrics'])) {
-                $metrics = json_decode($run['result_metrics'], true);
+            if (!empty($backtest['result_metrics'])) {
+                $metrics = json_decode($backtest['result_metrics'], true);
                 if (isset($metrics['net_profit'])) {
                     $netProfit = $metrics['net_profit'];
                 }
             }
 
-            $enhancedRuns[] = [
-                'id' => $run['id'],
-                'name' => $run['name'],
-                'status' => $run['status'],
-                'created_at' => $run['created_at'],
+            $enhancedBacktests[] = [
+                'id' => $backtest['id'],
+                'name' => $backtest['name'],
+                'status' => $backtest['status'],
+                'created_at' => $backtest['created_at'],
                 'tickers' => implode(', ', $tickerSymbols),
                 'net_profit' => $netProfit,
-                'execution_time' => $run['execution_time_seconds'] ?? null,
-                'start_date' => $run['start_date'],
-                'end_date' => $run['end_date']
+                'execution_time' => $backtest['execution_time_seconds'] ?? null,
+                'start_date' => $backtest['start_date'],
+                'end_date' => $backtest['end_date']
             ];
         }
 
         return $this->view->render($response, 'strategies/show.twig', [
             'strategy' => $strategy,
-            'runs' => $enhancedRuns,
+            'backtests' => $enhancedBacktests,
             'flash' => $this->flash->all()
         ]);
     }
