@@ -12,3 +12,5 @@ var/logs/*.log
 
 # Lock files
 var/*.lock
+/node_modules/
+/reports/
