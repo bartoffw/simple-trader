@@ -124,19 +124,20 @@ class StrategyEditorController
      */
     public function update(Request $request, Response $response, array $args): Response
     {
-        $className = $args['className'];
+        $oldClassName = $args['className'];
         $data = $request->getParsedBody();
+        $newClassName = trim($data['class_name'] ?? $oldClassName);
 
         // Validate permissions
-        if (!$this->codeParser->isStrategyFileWritable($className)) {
+        if (!$this->codeParser->isStrategyFileWritable($oldClassName)) {
             $this->flash->set('error', 'Strategy file is not writable.');
             return $response
-                ->withHeader('Location', "/strategies/editor/{$className}/edit")
+                ->withHeader('Location', "/strategies/editor/{$oldClassName}/edit")
                 ->withStatus(302);
         }
 
         // Parse current strategy to preserve structure
-        $existingStrategy = $this->codeParser->parseStrategy($className);
+        $existingStrategy = $this->codeParser->parseStrategy($oldClassName);
         if (!$existingStrategy) {
             $this->flash->set('error', 'Could not parse existing strategy.');
             return $response
@@ -144,9 +145,29 @@ class StrategyEditorController
                 ->withStatus(302);
         }
 
+        // Check if class name is being changed
+        $isRenaming = ($newClassName !== $oldClassName);
+        if ($isRenaming) {
+            // Validate new class name
+            if (!$this->codeParser->isValidClassName($newClassName)) {
+                $this->flash->set('error', 'Invalid class name. Use only letters, numbers, and underscores.');
+                return $response
+                    ->withHeader('Location', "/strategies/editor/{$oldClassName}/edit")
+                    ->withStatus(302);
+            }
+
+            // Check if new class name already exists
+            if ($this->codeParser->strategyExists($newClassName)) {
+                $this->flash->set('error', "Strategy '{$newClassName}' already exists. Choose a different name.");
+                return $response
+                    ->withHeader('Location', "/strategies/editor/{$oldClassName}/edit")
+                    ->withStatus(302);
+            }
+        }
+
         // Update strategy data
         $strategyData = [
-            'class_name' => $className,
+            'class_name' => $newClassName,
             'strategy_name' => $data['strategy_name'] ?? $existingStrategy['strategy_name'],
             'strategy_description' => $data['strategy_description'] ?? $existingStrategy['strategy_description'],
             'strategy_parameters' => [],
@@ -182,21 +203,34 @@ class StrategyEditorController
         // Generate and save code
         $code = $this->codeParser->generateStrategyCode($strategyData);
 
-        if (!$this->codeParser->saveStrategy($className, $code)) {
+        if (!$this->codeParser->saveStrategy($newClassName, $code)) {
             $this->flash->set('error', 'Failed to save strategy. Check PHP syntax and file permissions.');
             return $response
-                ->withHeader('Location', "/strategies/editor/{$className}/edit")
+                ->withHeader('Location', "/strategies/editor/{$oldClassName}/edit")
                 ->withStatus(302);
+        }
+
+        // If renaming, delete old file
+        if ($isRenaming) {
+            $this->codeParser->deleteStrategy($oldClassName);
         }
 
         // Clear opcache if available
         if (function_exists('opcache_invalidate')) {
-            opcache_invalidate($this->codeParser->getStrategyFilePath($className), true);
+            opcache_invalidate($this->codeParser->getStrategyFilePath($newClassName), true);
+            if ($isRenaming) {
+                opcache_invalidate($this->codeParser->getStrategyFilePath($oldClassName), true);
+            }
         }
 
-        $this->flash->set('success', "Strategy '{$strategyData['strategy_name']}' updated successfully.");
+        $message = "Strategy '{$strategyData['strategy_name']}' updated successfully.";
+        if ($isRenaming) {
+            $message = "Strategy renamed to '{$newClassName}' and updated successfully.";
+        }
+
+        $this->flash->set('success', $message);
         return $response
-            ->withHeader('Location', "/strategies/editor/{$className}/edit")
+            ->withHeader('Location', "/strategies/editor/{$newClassName}/edit")
             ->withStatus(302);
     }
 

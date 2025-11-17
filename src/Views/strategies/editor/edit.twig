@@ -46,7 +46,7 @@
             color: white;
         }
         .properties-editor .CodeMirror {
-            min-height: 100px;
+            min-height: 200px;
         }
     </style>
 {% endblock %}
@@ -63,9 +63,14 @@
                     </div>
                     <div class="card-body">
                         <div class="form-group">
-                            <label>Class Name</label>
-                            <input type="text" class="form-control" value="{{ strategy.class_name }}" readonly>
+                            <label for="class_name">Class Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="class_name" name="class_name"
+                                   value="{{ strategy.class_name }}" pattern="^[a-zA-Z_][a-zA-Z0-9_]*$" required
+                                   {% if not strategy.is_writable %}readonly{% endif %}>
                             <small class="text-muted">File: {{ strategy.file_path }}</small>
+                            <small class="text-warning d-block">
+                                <i class="fas fa-info-circle"></i> Changing class name will rename the file
+                            </small>
                         </div>
                         <div class="form-group">
                             <label for="strategy_name">Strategy Name <span class="text-danger">*</span></label>
@@ -83,9 +88,9 @@
                 <!-- Strategy Parameters -->
                 <div class="card">
                     <div class="card-header bg-info">
-                        <h3 class="card-title">Strategy Parameters</h3>
+                        <h3 class="card-title">Strategy Parameters <small class="text-white-50">(click + to add)</small></h3>
                         <div class="card-tools">
-                            <button type="button" class="btn btn-tool" id="addParameter">
+                            <button type="button" class="btn btn-tool" id="addParameter" title="Add new parameter">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
@@ -107,7 +112,7 @@
                                     </div>
                                 </div>
                             {% else %}
-                                <p class="text-muted" id="noParamsMsg">No parameters defined. Click + to add.</p>
+                                <p class="text-muted" id="noParamsMsg">No parameters defined. Click <strong>+</strong> button above to add.</p>
                             {% endfor %}
                         </div>
                         <small class="text-muted">
@@ -255,7 +260,7 @@
                 matchBrackets: true,
                 autoCloseBrackets: true
             });
-            propsEditor.setSize(null, 100);
+            propsEditor.setSize(null, 200);
             propsEditor.on('change', function() {
                 propsEditor.save();
             });
