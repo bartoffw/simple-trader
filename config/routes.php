@@ -10,6 +10,7 @@ use SimpleTrader\Controllers\TickerController;
 use SimpleTrader\Controllers\StrategyController;
 use SimpleTrader\Controllers\RunnerController;
 use SimpleTrader\Controllers\DocumentationController;
+use SimpleTrader\Controllers\LogsController;
 use Slim\Routing\RouteCollectorProxy;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -155,6 +156,30 @@ $app->group('/docs', function (RouteCollectorProxy $group) {
     // View specific documentation
     $group->get('/{slug}', DocumentationController::class . ':show')
         ->setName('docs.show');
+});
+
+// Logs Viewer Routes
+$app->group('/logs', function (RouteCollectorProxy $group) {
+
+    // Logs index page (overview of all logs)
+    $group->get('', LogsController::class . ':index')
+        ->setName('logs.index');
+
+    // Get log statistics (AJAX)
+    $group->get('/stats', LogsController::class . ':stats')
+        ->setName('logs.stats');
+
+    // View specific log file
+    $group->get('/{slug}', LogsController::class . ':show')
+        ->setName('logs.show');
+
+    // Get log lines (AJAX for pagination)
+    $group->get('/{slug}/lines', LogsController::class . ':getLines')
+        ->setName('logs.lines');
+
+    // Clear log file (POST)
+    $group->post('/{slug}/clear', LogsController::class . ':clear')
+        ->setName('logs.clear');
 });
 
 // API Routes (for AJAX requests - future enhancement)

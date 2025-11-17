@@ -17,7 +17,7 @@ use SimpleTrader\Database\MonitorRepository;
 use SimpleTrader\Database\TickerRepository;
 use SimpleTrader\Database\QuoteRepository;
 use SimpleTrader\Services\MonitorUpdateService;
-use SimpleTrader\Loggers\Console;
+use SimpleTrader\Loggers\File;
 use SimpleTrader\Loggers\Level;
 use SimpleTrader\Investor\EmailNotifier;
 
@@ -106,9 +106,16 @@ if (!flock($lockHandle, LOCK_EX | LOCK_NB)) {
 try {
     $date = $options['date'] ?? date('Y-m-d');
 
-    echo "=== Update Strategy Monitors ===" . PHP_EOL;
-    echo "Started: " . date('Y-m-d H:i:s') . PHP_EOL;
-    echo "Processing date: {$date}" . PHP_EOL . PHP_EOL;
+    // Initialize logger with file output
+    $logFile = __DIR__ . '/../var/logs/update-monitor.log';
+    $logger = new File($logFile, true);
+    $logger->setLevel(Level::Info);
+
+    $logger->writeRaw("=== Update Strategy Monitors ===");
+    $logger->writeRaw("Started: " . date('Y-m-d H:i:s'));
+    $logger->writeRaw("Processing date: {$date}");
+    $logger->writeRaw("Log file: " . $logFile);
+    $logger->writeRaw("");
 
     // Load configuration
     $config = require __DIR__ . '/../config/config.php';
@@ -129,9 +136,7 @@ try {
         $quoteRepository
     );
 
-    // Initialize logger
-    $logger = new Console();
-    $logger->setLevel(Level::Info);
+    // Set logger for service
     $monitorUpdateService->setLogger($logger);
 
     // Initialize email notifier (if configured)
@@ -151,7 +156,8 @@ try {
     $results = null;
     if (isset($options['monitor-id'])) {
         $monitorId = (int)$options['monitor-id'];
-        echo "Updating monitor ID: {$monitorId}" . PHP_EOL . PHP_EOL;
+        $logger->writeRaw("Updating monitor ID: {$monitorId}");
+        $logger->writeRaw("");
 
         $result = $monitorUpdateService->updateMonitor($monitorId, $date);
 
@@ -164,25 +170,29 @@ try {
             'details' => [$result]
         ];
     } else {
-        echo "Updating all active monitors" . PHP_EOL . PHP_EOL;
+        $logger->writeRaw("Updating all active monitors");
+        $logger->writeRaw("");
         $results = $monitorUpdateService->updateAllMonitors($date);
     }
 
     // Print summary
-    echo PHP_EOL . "=== Summary ===" . PHP_EOL;
-    echo "Total monitors: {$results['total']}" . PHP_EOL;
-    echo "✓ Succeeded: {$results['success']}" . PHP_EOL;
-    echo "⊘ Skipped: {$results['skipped']}" . PHP_EOL;
-    echo "✗ Failed: {$results['failed']}" . PHP_EOL;
+    $logger->writeRaw("");
+    $logger->writeRaw("=== Summary ===");
+    $logger->writeRaw("Total monitors: {$results['total']}");
+    $logger->writeRaw("✓ Succeeded: {$results['success']}");
+    $logger->writeRaw("⊘ Skipped: {$results['skipped']}");
+    $logger->writeRaw("✗ Failed: {$results['failed']}");
 
     if (!empty($results['errors'])) {
-        echo PHP_EOL . "Errors:" . PHP_EOL;
+        $logger->writeRaw("");
+        $logger->writeRaw("Errors:");
         foreach ($results['errors'] as $error) {
-            echo "  - {$error}" . PHP_EOL;
+            $logger->writeRaw("  - {$error}");
         }
     }
 
-    echo PHP_EOL . "Completed: " . date('Y-m-d H:i:s') . PHP_EOL;
+    $logger->writeRaw("");
+    $logger->writeRaw("Completed: " . date('Y-m-d H:i:s'));
 
     // Send email notification
     if ($notifier) {
@@ -214,8 +224,17 @@ try {
     exit(0); // Success
 
 } catch (\Exception $e) {
-    echo PHP_EOL . "✗ Fatal Error: " . $e->getMessage() . PHP_EOL;
-    echo "File: " . $e->getFile() . ":" . $e->getLine() . PHP_EOL;
+    $errorMsg = "✗ Fatal Error: " . $e->getMessage();
+    $errorFile = "File: " . $e->getFile() . ":" . $e->getLine();
+
+    if (isset($logger)) {
+        $logger->writeRaw("");
+        $logger->writeRaw($errorMsg);
+        $logger->writeRaw($errorFile);
+    } else {
+        echo PHP_EOL . $errorMsg . PHP_EOL;
+        echo $errorFile . PHP_EOL;
+    }
 
     if (isset($notifier) && $notifier) {
         $notifier->notifyError("Fatal error in update-monitor: " . $e->getMessage());
