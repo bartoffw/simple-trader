@@ -82,14 +82,14 @@ class StrategyEditorController
         $strategy = $this->codeParser->parseStrategy($className);
 
         if (!$strategy) {
-            $this->flash->setFlash('error', "Strategy '{$className}' not found or cannot be parsed.");
+            $this->flash->set('error', "Strategy '{$className}' not found or cannot be parsed.");
             return $response
                 ->withHeader('Location', '/strategies/editor')
                 ->withStatus(302);
         }
 
         if (!$strategy['is_writable']) {
-            $this->flash->setFlash('warning', "Strategy file is not writable. You can view but not save changes.");
+            $this->flash->set('warning', "Strategy file is not writable. You can view but not save changes.");
         }
 
         // Get overridable methods from BaseStrategy
@@ -129,7 +129,7 @@ class StrategyEditorController
 
         // Validate permissions
         if (!$this->codeParser->isStrategyFileWritable($className)) {
-            $this->flash->setFlash('error', 'Strategy file is not writable.');
+            $this->flash->set('error', 'Strategy file is not writable.');
             return $response
                 ->withHeader('Location', "/strategies/editor/{$className}/edit")
                 ->withStatus(302);
@@ -138,7 +138,7 @@ class StrategyEditorController
         // Parse current strategy to preserve structure
         $existingStrategy = $this->codeParser->parseStrategy($className);
         if (!$existingStrategy) {
-            $this->flash->setFlash('error', 'Could not parse existing strategy.');
+            $this->flash->set('error', 'Could not parse existing strategy.');
             return $response
                 ->withHeader('Location', '/strategies/editor')
                 ->withStatus(302);
@@ -183,7 +183,7 @@ class StrategyEditorController
         $code = $this->codeParser->generateStrategyCode($strategyData);
 
         if (!$this->codeParser->saveStrategy($className, $code)) {
-            $this->flash->setFlash('error', 'Failed to save strategy. Check PHP syntax and file permissions.');
+            $this->flash->set('error', 'Failed to save strategy. Check PHP syntax and file permissions.');
             return $response
                 ->withHeader('Location', "/strategies/editor/{$className}/edit")
                 ->withStatus(302);
@@ -194,7 +194,7 @@ class StrategyEditorController
             opcache_invalidate($this->codeParser->getStrategyFilePath($className), true);
         }
 
-        $this->flash->setFlash('success', "Strategy '{$strategyData['strategy_name']}' updated successfully.");
+        $this->flash->set('success', "Strategy '{$strategyData['strategy_name']}' updated successfully.");
         return $response
             ->withHeader('Location', "/strategies/editor/{$className}/edit")
             ->withStatus(302);
@@ -208,7 +208,7 @@ class StrategyEditorController
     public function create(Request $request, Response $response): Response
     {
         if (!$this->codeParser->isWritable()) {
-            $this->flash->setFlash('error', 'Strategy directory is not writable. Cannot create new strategies.');
+            $this->flash->set('error', 'Strategy directory is not writable. Cannot create new strategies.');
             return $response
                 ->withHeader('Location', '/strategies/editor')
                 ->withStatus(302);
@@ -235,21 +235,21 @@ class StrategyEditorController
 
         // Validate class name
         if (empty($className)) {
-            $this->flash->setFlash('error', 'Class name is required.');
+            $this->flash->set('error', 'Class name is required.');
             return $response
                 ->withHeader('Location', '/strategies/editor/create')
                 ->withStatus(302);
         }
 
         if (!$this->codeParser->isValidClassName($className)) {
-            $this->flash->setFlash('error', 'Invalid class name. Use only letters, numbers, and underscores. Must start with a letter or underscore.');
+            $this->flash->set('error', 'Invalid class name. Use only letters, numbers, and underscores. Must start with a letter or underscore.');
             return $response
                 ->withHeader('Location', '/strategies/editor/create')
                 ->withStatus(302);
         }
 
         if ($this->codeParser->strategyExists($className)) {
-            $this->flash->setFlash('error', "Strategy '{$className}' already exists.");
+            $this->flash->set('error', "Strategy '{$className}' already exists.");
             return $response
                 ->withHeader('Location', '/strategies/editor/create')
                 ->withStatus(302);
@@ -301,13 +301,13 @@ class StrategyEditorController
         $code = $this->codeParser->generateStrategyCode($strategyData);
 
         if (!$this->codeParser->saveStrategy($className, $code)) {
-            $this->flash->setFlash('error', 'Failed to save strategy. Check PHP syntax and file permissions.');
+            $this->flash->set('error', 'Failed to save strategy. Check PHP syntax and file permissions.');
             return $response
                 ->withHeader('Location', '/strategies/editor/create')
                 ->withStatus(302);
         }
 
-        $this->flash->setFlash('success', "Strategy '{$strategyData['strategy_name']}' created successfully.");
+        $this->flash->set('success', "Strategy '{$strategyData['strategy_name']}' created successfully.");
         return $response
             ->withHeader('Location', "/strategies/editor/{$className}/edit")
             ->withStatus(302);
@@ -324,14 +324,14 @@ class StrategyEditorController
 
         $strategy = $this->codeParser->parseStrategy($className);
         if (!$strategy) {
-            $this->flash->setFlash('error', "Strategy '{$className}' not found.");
+            $this->flash->set('error', "Strategy '{$className}' not found.");
             return $response
                 ->withHeader('Location', '/strategies/editor')
                 ->withStatus(302);
         }
 
         if (!$strategy['is_writable']) {
-            $this->flash->setFlash('error', 'Strategy file is not writable.');
+            $this->flash->set('error', 'Strategy file is not writable.');
             return $response
                 ->withHeader('Location', '/strategies/editor')
                 ->withStatus(302);
@@ -359,28 +359,28 @@ class StrategyEditorController
         $newClassName = trim($data['new_class_name'] ?? '');
 
         if (empty($newClassName)) {
-            $this->flash->setFlash('error', 'New class name is required.');
+            $this->flash->set('error', 'New class name is required.');
             return $response
                 ->withHeader('Location', "/strategies/editor/{$oldClassName}/rename")
                 ->withStatus(302);
         }
 
         if (!$this->codeParser->isValidClassName($newClassName)) {
-            $this->flash->setFlash('error', 'Invalid class name. Use only letters, numbers, and underscores.');
+            $this->flash->set('error', 'Invalid class name. Use only letters, numbers, and underscores.');
             return $response
                 ->withHeader('Location', "/strategies/editor/{$oldClassName}/rename")
                 ->withStatus(302);
         }
 
         if ($oldClassName === $newClassName) {
-            $this->flash->setFlash('info', 'No changes made. Class name is the same.');
+            $this->flash->set('info', 'No changes made. Class name is the same.');
             return $response
                 ->withHeader('Location', "/strategies/editor/{$oldClassName}/edit")
                 ->withStatus(302);
         }
 
         if ($this->codeParser->strategyExists($newClassName)) {
-            $this->flash->setFlash('error', "Strategy '{$newClassName}' already exists.");
+            $this->flash->set('error', "Strategy '{$newClassName}' already exists.");
             return $response
                 ->withHeader('Location', "/strategies/editor/{$oldClassName}/rename")
                 ->withStatus(302);
@@ -388,13 +388,13 @@ class StrategyEditorController
 
         // Perform rename
         if (!$this->codeParser->renameStrategy($oldClassName, $newClassName)) {
-            $this->flash->setFlash('error', 'Failed to rename strategy.');
+            $this->flash->set('error', 'Failed to rename strategy.');
             return $response
                 ->withHeader('Location', "/strategies/editor/{$oldClassName}/rename")
                 ->withStatus(302);
         }
 
-        $this->flash->setFlash('success', "Strategy renamed from '{$oldClassName}' to '{$newClassName}' successfully.");
+        $this->flash->set('success', "Strategy renamed from '{$oldClassName}' to '{$newClassName}' successfully.");
         return $response
             ->withHeader('Location', "/strategies/editor/{$newClassName}/edit")
             ->withStatus(302);
@@ -411,7 +411,7 @@ class StrategyEditorController
 
         $strategy = $this->codeParser->parseStrategy($className);
         if (!$strategy) {
-            $this->flash->setFlash('error', "Strategy '{$className}' not found.");
+            $this->flash->set('error', "Strategy '{$className}' not found.");
             return $response
                 ->withHeader('Location', '/strategies/editor')
                 ->withStatus(302);
@@ -437,7 +437,7 @@ class StrategyEditorController
         $className = $args['className'];
 
         if (!$this->codeParser->isStrategyFileWritable($className)) {
-            $this->flash->setFlash('error', 'Strategy file is not writable.');
+            $this->flash->set('error', 'Strategy file is not writable.');
             return $response
                 ->withHeader('Location', '/strategies/editor')
                 ->withStatus(302);
@@ -445,13 +445,13 @@ class StrategyEditorController
 
         // Delete the file
         if (!$this->codeParser->deleteStrategy($className)) {
-            $this->flash->setFlash('error', 'Failed to delete strategy file.');
+            $this->flash->set('error', 'Failed to delete strategy file.');
             return $response
                 ->withHeader('Location', '/strategies/editor')
                 ->withStatus(302);
         }
 
-        $this->flash->setFlash('success', "Strategy '{$className}' deleted successfully.");
+        $this->flash->set('success', "Strategy '{$className}' deleted successfully.");
         return $response
             ->withHeader('Location', '/strategies/editor')
             ->withStatus(302);
