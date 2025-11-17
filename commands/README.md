@@ -2,6 +2,218 @@
 
 This directory contains command-line interface (CLI) tools for running backtests and other operations.
 
+## Quick Reference
+
+| Command | Purpose |
+|---------|---------|
+| `run-backtest.php` | Execute backtests with full parameter control |
+| `list-tickers.php` | View all tickers with data status |
+| `add-ticker.php` | Add new tickers to track |
+| `list-strategies.php` | View available strategies with parameters |
+| `create-strategy.php` | Generate new strategy templates |
+| `get-backtest-results.php` | Retrieve and analyze backtest results |
+| `update-quotes.php` | Update pricing data for tickers |
+| `update-monitor.php` | Update strategy monitors daily |
+| `monitor-backtest.php` | Initial backtest for monitors |
+| `daily-update.php` | Master dispatcher for daily updates |
+| `fetch-quotes.php` | Fetch quotes from data sources |
+
+---
+
+## list-tickers.php
+
+Display all configured tickers with their pricing data status. Essential for understanding available data.
+
+### Usage
+
+```bash
+php commands/list-tickers.php [options]
+```
+
+**Options:**
+- `--format=human|json` - Output format (default: human)
+- `--enabled-only` - Show only enabled tickers
+- `--with-stats` - Include detailed statistics
+
+**Examples:**
+
+```bash
+# List all tickers (human readable)
+php commands/list-tickers.php
+
+# JSON output for scripting
+php commands/list-tickers.php --format=json
+
+# Only enabled tickers with stats
+php commands/list-tickers.php --enabled-only --with-stats
+```
+
+**Output includes:**
+- Ticker ID, symbol, exchange, source
+- Quote count and date range
+- Whether data is current (within 7 days)
+- Volume data availability
+
+---
+
+## add-ticker.php
+
+Add a new ticker to the system for tracking and strategy testing.
+
+### Usage
+
+```bash
+php commands/add-ticker.php --symbol=<SYMBOL> --exchange=<EXCHANGE> --source=<SOURCE> [options]
+```
+
+**Required:**
+- `--symbol=SYMBOL` - Ticker symbol (e.g., AAPL, SPY)
+- `--exchange=EXCHANGE` - Exchange code (e.g., NASDAQ, NYSE)
+- `--source=SOURCE` - Data source class (e.g., TradingViewSource)
+
+**Optional:**
+- `--disabled` - Add in disabled state
+- `--fetch-quotes` - Fetch initial quotes after adding
+- `--format=human|json` - Output format
+
+**Examples:**
+
+```bash
+# Add Apple stock
+php commands/add-ticker.php --symbol=AAPL --exchange=NASDAQ --source=TradingViewSource
+
+# Add and immediately fetch data
+php commands/add-ticker.php --symbol=SPY --exchange=NYSE --source=TradingViewSource --fetch-quotes
+
+# JSON output
+php commands/add-ticker.php --symbol=MSFT --exchange=NASDAQ --source=TradingViewSource --format=json
+```
+
+---
+
+## list-strategies.php
+
+Display all available trading strategies with their parameters and metadata.
+
+### Usage
+
+```bash
+php commands/list-strategies.php [options]
+```
+
+**Options:**
+- `--format=human|json` - Output format (default: human)
+- `--details` - Show overridden methods and doc comments
+- `--strategy=NAME` - Show specific strategy only
+
+**Examples:**
+
+```bash
+# List all strategies
+php commands/list-strategies.php
+
+# JSON output with details
+php commands/list-strategies.php --format=json --details
+
+# Specific strategy info
+php commands/list-strategies.php --strategy=TestStrategy --details
+```
+
+**Output includes:**
+- Class name and display name
+- Strategy description
+- Configurable parameters with defaults
+- Maximum lookback period
+
+---
+
+## create-strategy.php
+
+Generate a new trading strategy PHP file from a template.
+
+### Usage
+
+```bash
+php commands/create-strategy.php --name=<ClassName> [options]
+```
+
+**Required:**
+- `--name=NAME` - PHP class name (must be PascalCase, will add "Strategy" suffix if missing)
+
+**Optional:**
+- `--display-name=NAME` - Human-readable strategy name
+- `--description=DESC` - Strategy description
+- `--params=JSON` - Strategy parameters as JSON string
+- `--lookback=N` - Max lookback period (default: 30)
+- `--template=basic|advanced` - Template type (default: basic)
+- `--format=human|json` - Output format
+
+**Examples:**
+
+```bash
+# Basic strategy
+php commands/create-strategy.php --name=MyStrategy
+
+# Full configuration
+php commands/create-strategy.php --name=SMACrossover \
+  --display-name="SMA Crossover Strategy" \
+  --description="Enters when fast SMA crosses above slow SMA" \
+  --params='{"fast_period":10,"slow_period":30}' \
+  --template=advanced
+
+# JSON output
+php commands/create-strategy.php --name=TestStrategy2 --format=json
+```
+
+**Templates:**
+- **basic**: Simple template with onOpen/onClose stubs
+- **advanced**: Includes helper methods, indicator calculation, state tracking
+
+---
+
+## get-backtest-results.php
+
+Retrieve and analyze backtest results from the database. Critical for decision making.
+
+### Usage
+
+```bash
+php commands/get-backtest-results.php [options]
+```
+
+**Options:**
+- `--id=ID` - Get specific backtest by ID
+- `--strategy=NAME` - Filter by strategy class
+- `--last=N` - Get last N backtests (default: 1)
+- `--format=human|json` - Output format (default: human)
+- `--summary-only` - Show only key metrics (no logs)
+- `--compare` - Side-by-side comparison table
+
+**Examples:**
+
+```bash
+# Get specific backtest
+php commands/get-backtest-results.php --id=5
+
+# Last 3 backtests for strategy
+php commands/get-backtest-results.php --strategy=TestStrategy --last=3
+
+# JSON for analysis
+php commands/get-backtest-results.php --id=5 --format=json --summary-only
+
+# Compare multiple results
+php commands/get-backtest-results.php --last=5 --compare --summary-only
+```
+
+**Key metrics returned:**
+- Net profit and return percentage
+- Total trades, win rate, profit factor
+- Maximum drawdown (% and value)
+- Sharpe ratio
+- Average trade statistics
+
+---
+
 ## run-backtest.php
 
 Execute backtests either from database configurations or directly with command-line parameters.
